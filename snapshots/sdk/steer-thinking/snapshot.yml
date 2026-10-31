@@ -1,0 +1,10 @@
+version: 1
+scenario: steer-thinking
+profile: sdk
+composition: sdk-steer-thinking
+recording: authored
+header:
+  class: sdk-steer-thinking
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn

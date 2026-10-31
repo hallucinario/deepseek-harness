@@ -74,6 +74,8 @@ const handle = await ctx.agents.create({
 
 每个步骤都会发送会话的派生历史——最新的非空 `system/message` 节点是有效提示词，渲染提示词为空时则没有系统消息——及其可见工具 schema；模型的工具调用经过受守卫的工具流水线，每个被接纳的事实都会在下一步据此派生之前追加到会话日志。并行安全调用最多可重叠 `maxParallelToolCalls` 个；独占调用单独运行并构成排序屏障。取消是协作式的：`agent.cancel()` 中止当前活动，并在未设置 `keepInbox` 时清除待处理工作；被取消的流会终结已送达用户的文本。
 
+`agent.steer()` 会中断活跃模型请求，包括等待首个分片和仅输出推理内容的阶段。循环保留已交付的文本和推理内容，丢弃未执行的工具调用片段，并在同一轮次的下一步骤接纳待处理 steering，优先于普通排队轮次。steering 等待正在执行的工具结束；`followup()`、`inject()` 和直接 `send()` 不会中断模型流。完整取消或 dispose 仍会停止轮次。适配器必须响应请求的中止信号，后续请求才能开始。
+
 -----
 
 <a id="understand-the-implementation"></a>

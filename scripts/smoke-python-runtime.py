@@ -877,6 +877,7 @@ def main() -> None:
         if args.scenario in {"all", "sdk-snapshot"}:
             assert args.exe is not None
             smoke_sdk_snapshot(model.url, args.exe.resolve(), args.update_snapshots)
+            smoke_sdk_steer_thinking(args.exe.resolve(), args.update_snapshots)
         if args.scenario in {"all", "sdk-snapshot", "sdk-recovery"}:
             assert args.exe is not None
             smoke_sdk_scheduler_recovery(model.url, args.exe.resolve(), args.update_snapshots)
@@ -1841,6 +1842,40 @@ def smoke_sdk_restart_snapshot(base_url: str, executable: Path, update_snapshots
             raise AssertionError(f"resume did not continue the saved turn sequence: {turns}")
         if RESUME_TEXT not in render_jsonl(restored):
             raise AssertionError("resumed response was not appended to the saved session")
+
+
+def smoke_sdk_steer_thinking(executable: Path, update_snapshots: bool) -> None:
+    """Retain interrupted reasoning and continue the same turn through the Python SDK."""
+    from deepseek_harness import DeepSeekHarness
+
+    patch = Path(__file__).resolve().parent.parent / "snapshots/sdk/steer-thinking/cordis.yml"
+    with tempfile.TemporaryDirectory(prefix="dsh-sdk-steer-thinking-") as temporary:
+        root = Path(temporary).resolve()
+        with DeepSeekHarness(
+            dsh_bin=str(executable), dsh_home=str(root / "home"), cwd=str(root),
+            profile="sdk", patches=(str(patch),),
+            provider="deepseek-official", model="deepseek-v4-flash",
+            env={"DSH_TELEMETRY_DISABLED": "1", "DSH_SNAPSHOT": "replay"},
+        ) as harness:
+            result = harness.run("Think before replying.")
+        messages = [event["data"] for event in result.events if event["type"] == "assistant/message"]
+        if any(event["type"] == "tool/call" for event in result.events):
+            raise AssertionError("Thinking steering dispatched an interrupted tool call")
+        projection = {
+            "final_response": result.final_response,
+            "finish_reason": result.finish_reason,
+            "steps": [event["data"] for event in result.events if event["type"] == "step/start"],
+            "messages": [{
+                "turn": message["turn"], "step": message["step"],
+                "interrupted": message.get("interrupted", False),
+                "content": message["message"]["content"],
+            } for message in messages],
+            "turn_endings": [event["data"] for event in result.events if event["type"] == "turn/end"],
+        }
+        compare_snapshot_files(
+            {"result.json": json.dumps(projection, indent=2) + "\n"}, update_snapshots,
+            ADVANCED_SNAPSHOT_ROOT / "steer-thinking", ("result.json",),
+        )
 
 
 def smoke_sdk_scheduler_recovery(base_url: str, executable: Path, update_snapshots: bool) -> None:

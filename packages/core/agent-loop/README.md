@@ -74,6 +74,8 @@ Every inbox mutation commits one normalized `agent/inbox/spliced` event. The pro
 
 Each step sends the session's derived history — with the latest non-empty `system/message` node as the effective prompt, or no system messages when the rendered prompt is empty — and its visible tool schemas; the model's tool calls run through the guarded tool pipeline and every accepted fact is appended to the session log before the next step derives from it. Parallel-safe calls may overlap up to `maxParallelToolCalls`; exclusive calls run alone as ordering barriers. Cancellation is cooperative: `agent.cancel()` aborts the current activity and, unless `keepInbox` is set, clears pending work; a cancelled stream finalizes the text already delivered to the user.
 
+`agent.steer()` interrupts an active model request, including the wait for its first chunk and reasoning-only output. The loop preserves delivered text and reasoning, discards unexecuted tool-call fragments, and admits pending steering in the same turn's next step before ordinary queued turns. Steering waits for running tools to finish; `followup()`, `inject()`, and direct `send()` do not interrupt streaming. A full cancellation or disposal still stops the turn. Adapters must honor the request's abort signal before the replacement request can start.
+
 -----
 
 <a id="understand-the-implementation"></a>

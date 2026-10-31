@@ -56,7 +56,7 @@ interface AgentHandle {
 
 ## Agent 句柄
 
-`Agent` 是每个插件（UI、钩子、orchestrator）面向编程的 surface；`ctx.agents.get(id)` 返回它，[发起者作用域](#initiating-agent)携带它。具体实现为 dsh-agent-loop 包内部细节；循环外没有任何组件依赖它。统一的 `send` 方法直接暴露 target 与 wakeup 路由；`followup`、`steer` 与 `inject` 是固定预设的别名方法。
+`Agent` 是每个插件（UI、钩子、orchestrator）面向编程的 surface；`ctx.agents.get(id)` 返回它，[发起者作用域](#initiating-agent)携带它。具体实现为 dsh-agent-loop 包内部细节；循环外没有任何组件依赖它。统一的 `send` 方法直接暴露 target 与 wakeup 路由。`followup` 排队普通轮次，`inject` 排队上下文但不唤醒驱动器，`steer` 还会中断活跃模型流以进入下一步骤。
 
 源码：[`packages/core/agent/src/types.ts`](../../packages/core/agent/src/types.ts)
 
@@ -125,8 +125,10 @@ interface Agent {
   followup(message: UserMessage): void
 
   /**
-   * Submit steering for the nearest step. An idle driver starts a turn;
-   * a running driver consumes it at its next step boundary.
+   * Submit steering for the nearest step. An idle driver starts a turn.
+   * During model streaming, interrupt the request, preserve its delivered
+   * text and reasoning, and consume steering in the same turn's next step.
+   * Running tools finish before steering is consumed; queued turns stay pending.
    * A rejected step leaves steering parked in the inbox until the next
    * wake; cancellation or disposal may discard pending steering.
    * @param message - identified steering content and the source that supplied it.

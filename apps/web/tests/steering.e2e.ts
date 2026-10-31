@@ -29,10 +29,8 @@ const MID_EXPECTED = join(SNAPSHOT_DIR, 'mid-steer.expected.md')
 const SETTLED_EXPECTED = join(SNAPSHOT_DIR, 'settled.expected.md')
 const SETTLED_EXPANDED_EXPECTED = join(SNAPSHOT_DIR, 'settled-expanded.expected.md')
 const MODE = webSnapshotMode()
-// The question composer replaces the textarea, so fill → Queue row → Steer
-// starts only after request/context and must finish before the first replay
-// chunk. The compact canonical call plus 500 ms pacing gives loaded CI enough
-// time without stretching a long provider-authored chunk sequence.
+// The question tool is held before execution so these inbox scenarios steer
+// after the model stream settles, while the ordinary composer remains usable.
 const REPLAY_PACE_MS = 500
 
 const PROMPT = 'Use the ask_user_question tool to ask me exactly one question with id "checkpoint", question "Ready to continue?", header "Checkpoint", and options labeled "Yes" and "No". After I answer, reply with one short sentence acknowledging my answer and stop.'
@@ -67,12 +65,33 @@ function claimedMessages(events: readonly SessionEvent[], text: string): Session
     event.type === 'user/message' && JSON.stringify(event.data.content).includes(text))
 }
 
+/** Hold the question tool before its composer takes over the ordinary input. */
+function holdQuestion(scaffold: WebScaffold): { ready: Promise<undefined>; release(): void } {
+  const ready = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const dispose = scaffold.ctx.on('tools/pre-execute', async (exec, next) => {
+    if (exec.name === 'ask_user_question') {
+      ready.resolve(undefined)
+      await release.promise
+    }
+    return next()
+  })
+  return {
+    ready: ready.promise,
+    release() {
+      release.resolve(undefined)
+      dispose()
+    },
+  }
+}
+
 describe('web e2e: mid-turn steering lands durably and visibly', () => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
   let tripwire: ReturnType<typeof watchConsole>
   let hostClock: MockInstance<typeof Date.now> | undefined
+  let question: ReturnType<typeof holdQuestion> | undefined
   const sessionEvents: SessionEvent[] = []
 
   beforeAll(async () => {
@@ -83,6 +102,7 @@ describe('web e2e: mid-turn steering lands durably and visibly', () => {
     scaffold = await launchWebScaffold(MODE === 'record'
       ? {}
       : { replayFixture: FIXTURE, paceMs: REPLAY_PACE_MS, compareReplaySession: true })
+    question = holdQuestion(scaffold)
     scaffold.ctx.on('session/event', (_session, event) => { sessionEvents.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
@@ -95,6 +115,7 @@ describe('web e2e: mid-turn steering lands durably and visibly', () => {
   }, 120_000)
 
   afterAll(async () => {
+    question?.release()
     try {
       await browser?.close()
       await scaffold?.close()
@@ -122,6 +143,7 @@ describe('web e2e: mid-turn steering lands durably and visibly', () => {
       () => sessionEvents.some(event => event.type === 'request/context'),
       { timeout: 10_000 },
     ).toBe(true)
+    await question?.ready
 
     // Enter remains the Queue gesture. In this live window the row action
     // atomically moves this exact occurrence into the current turn's steering outbox.
@@ -137,6 +159,7 @@ describe('web e2e: mid-turn steering lands durably and visibly', () => {
     // A timeout while the Queue row remains means the command observed a
     // stopped Agent (`steer-unavailable`); inspect replay pacing first.
     await pendingSteering.waitFor({ timeout: 10_000 })
+    question?.release()
 
     // The blocked composer keeps steering pending long enough to observe the
     // Host-authoritative mirror before the loop admits it durably.
@@ -210,6 +233,7 @@ describe.each(['reconnect', 'delayed-inbox'] as const)('web e2e: composer shortc
   let page: Page
   let tripwire: ReturnType<typeof watchConsole>
   let remoteSocket: WebSocketRoute | undefined
+  let question: ReturnType<typeof holdQuestion> | undefined
   const sessionEvents: SessionEvent[] = []
   let holdInbox = false
   let heldStream: string | undefined
@@ -222,6 +246,7 @@ describe.each(['reconnect', 'delayed-inbox'] as const)('web e2e: composer shortc
 
   beforeAll(async () => {
     scaffold = await launchWebScaffold({ replayFixture: FIXTURE, paceMs: REPLAY_PACE_MS, compareReplaySession: false })
+    question = holdQuestion(scaffold)
     scaffold.ctx.on('session/event', (_session, event) => { sessionEvents.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
@@ -246,6 +271,7 @@ describe.each(['reconnect', 'delayed-inbox'] as const)('web e2e: composer shortc
   }, 120_000)
 
   afterAll(async () => {
+    question?.release()
     await browser?.close()
     await scaffold?.close()
   })
@@ -261,12 +287,14 @@ describe.each(['reconnect', 'delayed-inbox'] as const)('web e2e: composer shortc
     await input.press('Enter')
     await page.getByRole('button', { name: 'Stop generating' }).waitFor({ timeout: 10_000 })
     await expect.poll(() => sessionEvents.some(event => event.type === 'request/context'), { timeout: 10_000 }).toBe(true)
+    await question?.ready
 
     await page.locator('[data-composer-input][contenteditable="true"]').first().waitFor({ timeout: 10_000 })
     await input.fill(STEER)
     await input.press('Meta+Enter')
     await expect.poll(() => input.textContent(), { timeout: 5_000 }).toBe('')
     expect(await page.locator('[data-queue-dock]').count()).toBe(0)
+    question?.release()
 
     const composer = page.locator('[data-question-key]')
     await composer.waitFor({ timeout: 30_000 })
@@ -387,8 +415,7 @@ describe('web e2e: composer shortcut follows the swapped busy behavior', () => {
 })
 
 describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
-  const releaseReplay = Promise.withResolvers<undefined>()
-  let disposeReplayBarrier: (() => void) | undefined
+  let question: ReturnType<typeof holdQuestion> | undefined
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
@@ -406,10 +433,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
       replayOverride: STEER_ALL_OVERRIDE,
       paceMs: REPLAY_PACE_MS,
     })
-    disposeReplayBarrier = scaffold.ctx.on('llm/stream', async function* (_options, next) {
-      await releaseReplay.promise
-      yield* next()
-    }, { prepend: true })
+    question = holdQuestion(scaffold)
     scaffold.ctx.on('session/event', (_session, event) => { sessionEvents.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
@@ -422,8 +446,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
   }, 120_000)
 
   afterAll(async () => {
-    releaseReplay.resolve(undefined)
-    disposeReplayBarrier?.()
+    question?.release()
     try {
       await browser?.close()
       await scaffold?.close()
@@ -438,7 +461,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
     await input.waitFor({ timeout: 10_000 })
     const settled = scaffold.whenTurnSettled(30_000)
 
-    // Hold the question-tool stream until both rows have been steered, so
+    // Hold the question tool until both rows have been steered, so
     // question-composer takeover cannot race queue publication or the shortcut.
     await page.locator('[data-composer-input][contenteditable="true"]').first().waitFor({ timeout: 10_000 })
     await input.fill(PROMPT)
@@ -447,6 +470,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
     // resolved against a not-yet-running agent admits the message into the turn
     // instead of publishing a Queue row.
     await page.getByRole('button', { name: 'Stop generating' }).waitFor({ timeout: 10_000 })
+    await question?.ready
     await page.locator('[data-composer-input][contenteditable="true"]').first().waitFor({ timeout: 10_000 })
     await input.fill(STEER_ONE)
     await input.press('Enter')
@@ -482,7 +506,6 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
       () => page.locator('[data-pending-steering]').filter({ hasText: /BANANA|ORANGE/ }).count(),
       { timeout: 10_000 },
     ).toBe(2)
-    releaseReplay.resolve(undefined)
     expect(await page.locator('[data-queue-dock]').count()).toBe(0)
     // The reasoning row streams independently of the steering handoff. Wait
     // for the block to settle so the mid snapshot does not race its transient
@@ -490,6 +513,7 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
     await page.locator('[data-variant="think"][data-state="ok"]').first().waitFor({ state: 'attached', timeout: 10_000 })
     const mid = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(STEER_ALL_MID, mid, MODE)
+    question?.release()
 
     // Answer the question; the step closes, the loop drains both steerings
     // into one next-step request, and the final reply obeys both markers.

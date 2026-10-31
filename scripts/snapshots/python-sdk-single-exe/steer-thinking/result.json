@@ -1,0 +1,46 @@
+{
+  "final_response": "STEERING_OK",
+  "finish_reason": "completed",
+  "steps": [
+    {
+      "turn": 1,
+      "step": 1
+    },
+    {
+      "turn": 1,
+      "step": 2
+    }
+  ],
+  "messages": [
+    {
+      "turn": 1,
+      "step": 1,
+      "interrupted": true,
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "Thinking before the correction."
+        }
+      ]
+    },
+    {
+      "turn": 1,
+      "step": 2,
+      "interrupted": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "STEERING_OK"
+        }
+      ]
+    }
+  ],
+  "turn_endings": [
+    {
+      "turn": 1,
+      "reason": {
+        "kind": "completed"
+      }
+    }
+  ]
+}
