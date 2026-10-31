@@ -1,0 +1,13 @@
+[
+  { "kind": "hang" },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "text" },
+      { "type": "text-delta", "index": 0, "text": "REVISION_ACCEPTED" },
+      { "type": "block-end", "index": 0, "block": { "type": "text", "text": "REVISION_ACCEPTED" } },
+      { "type": "usage", "usage": { "inputTokens": 30, "outputTokens": 4 } },
+      { "type": "finish", "reason": { "kind": "stop" } }
+    ]
+  }
+]

@@ -52,7 +52,7 @@ interface AgentHandle {
 
 ## The agent handle
 
-`Agent` is the surface every plugin (UI, hooks, orchestrators) programs against; `ctx.agents.get(id)` returns it, and the [initiator scope](#initiating-agent) carries it. The concrete implementation is package-internal to dsh-agent-loop; nothing outside the loop depends on it. The unified `send` method exposes target and wakeup routing directly; `followup`, `steer`, and `inject` are fixed-preset aliases.
+`Agent` is the surface every plugin (UI, hooks, orchestrators) programs against; `ctx.agents.get(id)` returns it, and the [initiator scope](#initiating-agent) carries it. The concrete implementation is package-internal to dsh-agent-loop; nothing outside the loop depends on it. The unified `send` method exposes target and wakeup routing directly. `followup` queues an ordinary turn, `inject` queues context without waking the driver, and `steer` also interrupts an active model stream to advance to the next step.
 
 Source: [`packages/core/agent/src/types.ts`](../../packages/core/agent/src/types.ts)
 
@@ -121,8 +121,10 @@ interface Agent {
   followup(message: UserMessage): void
 
   /**
-   * Submit steering for the nearest step. An idle driver starts a turn;
-   * a running driver consumes it at its next step boundary.
+   * Submit steering for the nearest step. An idle driver starts a turn.
+   * During model streaming, interrupt the request, preserve its delivered
+   * text and reasoning, and consume steering in the same turn's next step.
+   * Running tools finish before steering is consumed; queued turns stay pending.
    * A rejected step leaves steering parked in the inbox until the next
    * wake; cancellation or disposal may discard pending steering.
    * @param message - identified steering content and the source that supplied it.

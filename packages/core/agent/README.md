@@ -44,7 +44,7 @@ await handle.dispose()   // stops the loop, unregisters, removes the session, un
 
 ### Drive an agent's conversation
 
-The handle's methods route identified user-role messages into the agent's inbox. `followup()` queues an ordinary next-turn prompt and wakes the driver; `steer()` submits next-step input and wakes it; `inject()` adds model-facing context without waking the driver, so it lands in the next admitted step. `cancel(cause)` aborts the active activity and, unless `keepInbox` is set, clears pending work; `whenIdle()` resolves after the whole agent reaches quiescence.
+The handle's methods route identified user-role messages into the agent's inbox. `followup()` queues an ordinary next-turn prompt and wakes the driver; `steer()` submits next-step input, interrupts an active model stream, and wakes the driver; `inject()` adds model-facing context without waking the driver, so it lands in the next admitted step. Steering preserves delivered text and reasoning, continues in the same turn before queued prompts, and waits for running tools. `cancel(cause)` aborts the active activity and, unless `keepInbox` is set, clears pending work; `whenIdle()` resolves after the whole agent reaches quiescence.
 
 ```text
 handle.agent.followup({
@@ -174,7 +174,7 @@ These limits define when this package needs special care. They are current packa
 - **Initiator scope is process-local** — workers, child processes, HTTP, durable queues, and restarts must materialize any required identity explicitly.
 - **Ambient identity may outlive liveness** — consumers still check `agent.status`, cancellation, and the owning capability contract before lifecycle-sensitive work.
 - **Creation listeners share the initialization lifetime.** An `agent/created` listener must not await `agent.whenIdle()` or its own owner's disposal: those operations wait for creation to finish. Return only after required asynchronous tool and prompt installation completes.
-- **`cancel()` clears the inbox by default** — it aborts the in-flight turn plus queued and steering work; `cancel(cause, { keepInbox: true })` aborts only the turn and preserves pending items, and there is no step-only abort that keeps the turn running.
+- **`cancel()` clears the inbox by default** — it aborts the in-flight turn plus queued and steering work; `cancel(cause, { keepInbox: true })` aborts only the turn and preserves pending items. Use `steer()` to interrupt model streaming and continue with new input in the same turn.
 - **Each additional `UserMessage` carries exactly one `MessageSource`** — contributions from several plugins merged onto one message collapse under one source, so the message cannot name several producers.
 
 <a id="dev-note"></a>

@@ -1,4 +1,4 @@
-import { ToolCallId, createUserMessage, expandAssistantStream } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, createUserMessage, expandAssistantStream, type StreamChunk } from '@deepseek-ai/dsh-llm'
 /**
  * Tests for the queue-aware `Agent.cancel()` primitive. The default clears
  * queued and steering work, while `keepInbox` preserves pending input for a
@@ -1148,5 +1148,266 @@ describe('Agent.cancel()', () => {
     expect(turnEnd?.type === 'turn/end' && turnEnd.data.reason)
       .toEqual({ kind: 'aborted', reason: { kind: 'user' } })
     await ctx.fiber.dispose()
+  })
+})
+
+describe('Agent.steer() during model streaming', () => {
+  const reasoning: StreamChunk[] = [
+    { type: 'block-start', index: 0, blockType: 'reasoning' },
+    { type: 'reasoning-delta', index: 0, text: 'thinking about the original request' },
+  ]
+
+  async function streamingAgent(adapter: MockAdapter, ready: (chunk: StreamChunk) => boolean = chunk => chunk.type === 'reasoning-delta') {
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('steering-stream'), { provider: 'mock', model: 'mock' })
+    const started = Promise.withResolvers<undefined>()
+    ctx.on('agent/assistant-stream', ({ agent: subject, frame }) => {
+      if (subject === agent && frame.type === 'chunk' && ready(frame.chunk)) started.resolve(undefined)
+    })
+    send(agent, 'original request')
+    await started.promise
+    return { ctx, agent }
+  }
+
+  it('interrupts reasoning and delivers steering in the same turn before queued followups', async () => {
+    const adapter = new MockAdapter([
+      { hangAfter: reasoning }, textResponse('updated answer'), textResponse('queued answer'),
+    ])
+    const { ctx, agent } = await streamingAgent(adapter)
+    try {
+      send(agent, 'later task')
+      const message = createUserMessage({ content: [{ type: 'text', text: 'change the plan' }], source: { kind: 'user' } })
+      agent.steer(message)
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(3)
+      expect(adapter.requests[0]?.signal?.aborted).toBe(true)
+      expect(adapter.requests[1]?.messages.filter(item => item.role === 'user').flatMap(item => item.content))
+        .toEqual([{ type: 'text', text: 'original request' }, { type: 'text', text: 'change the plan' }])
+      expect(adapter.requests[1]?.messages.filter(item => item.role === 'assistant').flatMap(item => item.content))
+        .toEqual([{ type: 'reasoning', text: 'thinking about the original request' }])
+      const events = agent.session.snapshotEvents()
+      expect(events.filter(event => event.type === 'step/start').map(event => event.data))
+        .toEqual([{ turn: 1, step: 1 }, { turn: 1, step: 2 }, { turn: 2, step: 1 }])
+      expect(events.find(event => event.type === 'assistant/message')?.data)
+        .toMatchObject({ interrupted: true })
+      expect(events.filter(event => event.type === 'user/message' && event.data.id === message.id)).toHaveLength(1)
+      expect(userTexts(agent)).toEqual(['original request', 'change the plan', 'later task'])
+      expect(agent.inbox.nextStep).toHaveLength(0)
+      expect(agent.inbox.nextTurn).toHaveLength(0)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('keeps multiple steering messages in order while the interrupted stream unwinds', async () => {
+    const adapter = new MockAdapter(['hang-slow', textResponse('updated answer')])
+    const { ctx, agent } = await streamingAgent(adapter, chunk => chunk.type === 'text-delta')
+    try {
+      for (const text of ['first correction', 'second correction']) {
+        agent.steer(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+      }
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(2)
+      expect(userTexts(agent)).toEqual(['original request', 'first correction', 'second correction'])
+      expect(agent.session.snapshotEvents().filter(event => event.type === 'turn/start')).toHaveLength(1)
+      expect(agent.inbox.nextStep).toHaveLength(0)
+      expect(agent.inbox.nextTurn).toHaveLength(0)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('leaves a stream running for followups, injected context, and rejected steering', async () => {
+    const adapter = new MockAdapter([
+      { hangAfter: reasoning }, textResponse('updated answer'), textResponse('queued answer'),
+    ])
+    const { ctx, agent } = await streamingAgent(adapter)
+    try {
+      send(agent, 'later task')
+      const context = createUserMessage({ content: [{ type: 'text', text: 'context' }], source: { kind: 'user' } })
+      agent.inject(context)
+      expect(() => { agent.steer(context) }).toThrow(/already pending/)
+      expect(adapter.requests[0]?.signal?.aborted).toBe(false)
+      expect(adapter.requests).toHaveLength(1)
+
+      agent.steer(createUserMessage({ content: [{ type: 'text', text: 'apply now' }], source: { kind: 'user' } }))
+      await agent.whenIdle()
+      expect(userTexts(agent)).toEqual(['original request', 'context', 'apply now', 'later task'])
+      expect(adapter.requests).toHaveLength(3)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('drops unfinished tool calls when steering interrupts the stream', async () => {
+    const adapter = new MockAdapter([
+      { hangAfter: [
+        ...reasoning,
+        { type: 'block-start', index: 1, blockType: 'tool-call' },
+        { type: 'tool-call-delta', index: 1, id: ToolCallId('unfinished'), name: 'action', argumentsDelta: '{"path":' },
+      ] },
+      textResponse('updated answer'),
+    ])
+    const { ctx, agent } = await streamingAgent(adapter, chunk => chunk.type === 'tool-call-delta')
+    let executions = 0
+    ctx.tools.register(defineContentToolFixture({
+      name: 'action', description: 'count executions', parameters: {},
+      execute: async () => {
+        executions += 1
+        return [{ type: 'text', text: 'ran' }]
+      },
+    }))
+    try {
+      agent.steer(createUserMessage({ content: [{ type: 'text', text: 'skip that action' }], source: { kind: 'user' } }))
+      await agent.whenIdle()
+
+      expect(executions).toBe(0)
+      expect(adapter.requests).toHaveLength(2)
+      expect(adapter.requests[1]?.messages.flatMap(message => message.content).some(block => block.type === 'tool-call')).toBe(false)
+      expect(agent.session.snapshotEvents().some(event => event.type === 'tool/call')).toBe(false)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('waits for an executing tool before applying steering', async () => {
+    const adapter = new MockAdapter([toolCallResponse('active-tool', 'action', {}), textResponse('updated answer')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('steer-during-tool'), { provider: 'mock', model: 'mock' })
+    const started = Promise.withResolvers<AbortSignal>()
+    const release = Promise.withResolvers<undefined>()
+    ctx.tools.register(defineContentToolFixture({
+      name: 'action', description: 'finish ongoing work', parameters: {},
+      execute: async (_args, exec) => {
+        if (exec.signal === undefined) throw new Error('tool execution omitted its signal')
+        started.resolve(exec.signal)
+        await release.promise
+        return [{ type: 'text', text: 'tool finished' }]
+      },
+    }))
+    try {
+      send(agent, 'original request')
+      const toolSignal = await started.promise
+      agent.steer(createUserMessage({ content: [{ type: 'text', text: 'next direction' }], source: { kind: 'user' } }))
+      expect(toolSignal.aborted).toBe(false)
+      expect(adapter.requests[0]?.signal?.aborted).toBe(false)
+      expect(adapter.requests).toHaveLength(1)
+      release.resolve(undefined)
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(2)
+      expect(adapter.requests[1]?.messages.find(message => message.role === 'tool'))
+        .toMatchObject({ isError: false, content: [{ type: 'text', text: 'tool finished' }] })
+      expect(userTexts(agent)).toEqual(['original request', 'next direction'])
+    } finally {
+      release.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('honors full cancellation that arrives as the interrupted stream settles', async () => {
+    const adapter = new MockAdapter([{ hangAfter: reasoning }])
+    const { ctx, agent } = await streamingAgent(adapter)
+    try {
+      ctx.on('agent/assistant-stream', ({ agent: subject, frame }) => {
+        if (subject === agent && frame.type === 'end') {
+          agent.cancel({ kind: 'user' })
+        }
+      })
+      agent.steer(createUserMessage({ content: [{ type: 'text', text: 'discard this correction' }], source: { kind: 'user' } }))
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(1)
+      expect(userTexts(agent)).toEqual(['original request'])
+      expect(agent.inbox.nextStep).toHaveLength(0)
+      expect(agent.inbox.nextTurn).toHaveLength(0)
+      expect(agent.session.snapshotEvents().findLast(event => event.type === 'turn/end')?.data.reason)
+        .toEqual({ kind: 'aborted', reason: { kind: 'user' } })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('does not issue an empty continuation when the steering message is removed', async () => {
+    const adapter = new MockAdapter([{ hangAfter: reasoning }])
+    const { ctx, agent } = await streamingAgent(adapter)
+    try {
+      const message = createUserMessage({ content: [{ type: 'text', text: 'retracted correction' }], source: { kind: 'user' } })
+      agent.steer(message)
+      agent.inbox.remove(message.id)
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(1)
+      expect(userTexts(agent)).toEqual(['original request'])
+      expect(agent.inbox.nextStep).toHaveLength(0)
+      expect(agent.inbox.nextTurn).toHaveLength(0)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('accepts steering before the first model chunk without creating an empty assistant message', async () => {
+    const adapter = new MockAdapter([textResponse('abandoned answer'), textResponse('updated answer')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('steer-before-chunk'), { provider: 'mock', model: 'mock' })
+    let steered = false
+    ctx.on('agent/assistant-stream', ({ agent: subject, frame }) => {
+      if (subject === agent && frame.type === 'start' && !steered) {
+        steered = true
+        agent.steer(createUserMessage({ content: [{ type: 'text', text: 'change the plan' }], source: { kind: 'user' } }))
+      }
+    })
+    try {
+      send(agent, 'original request')
+      await agent.whenIdle()
+
+      expect(userTexts(agent)).toEqual(['original request', 'change the plan'])
+      expect(agent.session.snapshotEvents().filter(event => event.type === 'assistant/attempt')).toHaveLength(1)
+      expect(agent.session.snapshotEvents().filter(event => event.type === 'assistant/message')).toHaveLength(1)
+      expect(agent.session.snapshotEvents().findLast(event => event.type === 'turn/end')?.data.reason)
+        .toEqual({ kind: 'completed' })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('preserves a stream failure when its settlement listener submits steering', async () => {
+    const failure = new Error('stream middleware failed')
+    const adapter = new MockAdapter([textResponse('partial answer'), textResponse('replacement answer')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('steer-after-stream-failure'), { provider: 'mock', model: 'mock' })
+    const correction = createUserMessage({ content: [{ type: 'text', text: 'retry with this correction' }], source: { kind: 'user' } })
+    const errors: unknown[] = []
+    let steered = false
+    ctx.on('llm/stream', async function* (_options, next) {
+      for await (const chunk of next()) {
+        yield chunk
+        if (chunk.type === 'text-delta') throw failure
+      }
+    })
+    ctx.on('agent/assistant-stream', ({ agent: subject, frame }) => {
+      if (subject === agent && frame.type === 'end' && !steered) {
+        steered = true
+        agent.steer(correction)
+      }
+    })
+    ctx.on('agent/error', ({ agent: subject, error }) => {
+      if (subject === agent) errors.push(error)
+    })
+    try {
+      send(agent, 'original request')
+      await agent.whenIdle()
+
+      expect(adapter.requests).toHaveLength(1)
+      expect(adapter.requests[0]?.signal?.aborted).toBe(false)
+      expect(errors).toEqual([failure])
+      expect(agent.inbox.nextStep).toEqual([correction])
+      expect(agent.session.snapshotEvents().findLast(event => event.type === 'turn/end'))
+        .toMatchObject({ data: { reason: { kind: 'error', error: { message: failure.message } } } })
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 })

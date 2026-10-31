@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.2/steering-interrupts-streams/guide.md
+/:
+  en: 95f4752a4c56d214
+  zh: f9841c53185fb8ea
+/steering-interrupts-model-streaming:
+  en: f619b52dddefef90
+  zh: d7d49c9e89057bd9
+/steering-interrupts-model-streaming/change:
+  en: 13bc9974601850b9
+  zh: 88bd5cd2912226c5
+/steering-interrupts-model-streaming/migration:
+  en: 8e28b02dc3a7aa01
+  zh: ae2b7818ab08f42f

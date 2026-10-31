@@ -222,8 +222,10 @@ declare module './types.ts' {
     followup(message: UserMessage): void
 
     /**
-   * Submit steering for the nearest step. An idle driver starts a turn;
-   * a running driver consumes it at its next step boundary.
+   * Submit steering for the nearest step. An idle driver starts a turn.
+   * During model streaming, interrupt the request, preserve its delivered
+   * text and reasoning, and consume steering in the same turn's next step.
+   * Running tools finish before steering is consumed; queued turns stay pending.
    * A rejected step leaves steering parked in the inbox until the next
    * wake; cancellation or disposal may discard pending steering.
    * @param message - identified steering content and the source that supplied it.

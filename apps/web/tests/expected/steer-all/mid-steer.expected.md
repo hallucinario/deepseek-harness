@@ -9,6 +9,8 @@
 - text: Use the ask_user_question tool to ask me exactly one question with id "checkpoint", question "Ready to continue?", header "Checkpoint", and options labeled "Yes" and "No". After I answer, reply with one short sentence acknowledging my answer and stop. {{clock}}
 - button "Copy"
 - button "Think The user wants me to ask them a checkpoint question first, then continue with whatever they interject. Let me do exactly that."
+- text: Running
+- button "Ask question waiting"
 - text: "Interjection: include the word BANANA in your final reply."
 - button "Copy"
 - text: "Interjection: include the word ORANGE in your final reply."
@@ -20,3 +22,5 @@
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek · DeepSeek-V4-Flash": DeepSeek · DeepSeek-V4-Flash
 - button "Stop generating"
+- button "20 tok · Cache hit 0%": 20 tokCache hit 0%
+- button "0% of context used": 0%

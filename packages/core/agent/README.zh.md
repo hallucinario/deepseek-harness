@@ -44,7 +44,7 @@ await handle.dispose()   // stops the loop, unregisters, removes the session, un
 
 ### 驱动 agent 的对话
 
-句柄的方法把带标识的 user 角色消息路由进 agent 的收件箱。`followup()` 排队一条普通的下一个轮次提示词并唤醒驱动器；`steer()` 提交下一步输入并唤醒它；`inject()` 添加面向模型的上下文但不唤醒驱动器，因此它落在下一个被接纳的步骤中。`cancel(cause)` 中止当前活动，并在未设置 `keepInbox` 时清除待处理工作；`whenIdle()` 会在整个 agent 达到完全停稳后完成。
+句柄的方法把带标识的 user 角色消息路由进 agent 的收件箱。`followup()` 排队一条普通的下一个轮次提示词并唤醒驱动器；`steer()` 提交下一步输入、中断活跃模型流并唤醒驱动器；`inject()` 添加面向模型的上下文但不唤醒驱动器，因此它落在下一个被接纳的步骤中。steering 保留已交付的文本和推理内容，在同一轮次内优先于排队提示词继续，但会等待正在执行的工具。`cancel(cause)` 中止当前活动，并在未设置 `keepInbox` 时清除待处理工作；`whenIdle()` 会在整个 agent 达到完全停稳后完成。
 
 ```text
 handle.agent.followup({
@@ -174,7 +174,7 @@ await handle.agent.whenIdle()
 - **发起方作用域只存在于进程内**：worker、子进程、HTTP、持久队列和重启必须显式传递所需身份。
 - **环境身份可能比存活状态更久**：消费方在生命周期敏感工作前，仍要检查 `agent.status`、取消状态和所属能力约定。
 - **创建监听器共享初始化生命周期。** `agent/created` 监听器不得等待 `agent.whenIdle()` 或自身所有者的 dispose：这些操作要等待创建完成。所需的异步工具与提示词安装完成后，监听器才可返回。
-- **`cancel()` 默认清空收件箱**：它会中止正在处理的轮次以及排队和 steering 工作；`cancel(cause, { keepInbox: true })` 只中止轮次并保留待处理项，且不存在让轮次继续运行、只中止步骤的操作。
+- **`cancel()` 默认清空收件箱**：它会中止正在处理的轮次以及排队和 steering 工作；`cancel(cause, { keepInbox: true })` 只中止轮次并保留待处理项。使用 `steer()` 可中断模型流并在同一轮次内根据新输入继续。
 - **每条附加 `UserMessage` 恰好携带一个 `MessageSource`**：多个插件合并到一条消息上的贡献会归入同一来源，因此该消息无法列出多个生产者。
 
 <a id="dev-note"></a>

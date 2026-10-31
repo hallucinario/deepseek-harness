@@ -1,0 +1,29 @@
+- banner:
+  - navigation "Session hierarchy": Consider the implementation before answe
+  - text: Standard mode
+  - button "More actions"
+  - button "Open right sidebar"
+  - tablist:
+    - tab "Chat" [selected]
+    - tab "Trajectory"
+- text: Consider the implementation before answering. {{clock}}
+- button "Copy"
+- status: Completed
+- button "Completed in {{duration}}" [disabled]
+- button "Analysis completed"
+- text: Use the revised requirements and answer with REVISION_ACCEPTED. {{clock}}
+- button "Copy"
+- paragraph: REVISION_ACCEPTED
+- text: {{clock}}
+- button "Copy"
+- button "Good response"
+- button "Bad response"
+- button "Branch into a new conversation"
+- textbox "Message or run a task, / commands, @ files or sessions"
+- button "Add files or run commands"
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current DeepSeek · DeepSeek-V4-Flash": DeepSeek · DeepSeek-V4-Flash
+- button "Send message" [disabled]
+- button "1 turns 2 steps · {{throughput}} tok/s": 1 turns 2 steps{{throughput}} tok/s
+- button "34 tok · Cache hit 0%": 34 tokCache hit 0%
+- button "0% of context used": 0%

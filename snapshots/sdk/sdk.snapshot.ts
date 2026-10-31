@@ -127,6 +127,7 @@ interface SdkAssertions {
 }
 
 const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
+  'steer-thinking': { expectedFinalResponse: 'STEERING_OK' },
   'minimal-image-compaction': {
     expectedFinalResponse: 'MINIMAL_IMAGE_OK',
     expectedTools: { bash: ['command'], read_image: ['file_path'], working_directory: [] },
@@ -950,6 +951,20 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
       )
       reconcileCatalogCreationTimes(ordered.map(log => log.content), 'validate')
       const actualContext = contextOf(ordered, cwd)
+      if (scenario.name === 'steer-thinking') {
+        const events = results.flatMap(result => result.events)
+        expect(events.filter(event => event.type === 'step/start').map(event => event.data))
+          .toEqual([{ turn: 1, step: 1 }, { turn: 1, step: 2 }])
+        expect(events.filter(event => event.type === 'assistant/message')).toMatchObject([
+          { data: { turn: 1, step: 1, interrupted: true, message: {
+            content: [{ type: 'reasoning', text: 'Thinking before the correction.' }],
+          } } },
+          { data: { turn: 1, step: 2, message: { content: [{ type: 'text', text: 'STEERING_OK' }] } } },
+        ])
+        expect(events.filter(event => event.type === 'tool/call')).toEqual([])
+        expect(events.filter(event => event.type === 'user/message'
+          && event.data.source.kind === 'user')).toHaveLength(2)
+      }
       if (scenario.name === 'minimal-image-compaction') {
         const events = results.flatMap(result => result.events)
         const image = events.find(event => event.type === 'tool/result')
