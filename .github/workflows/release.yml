@@ -9,6 +9,7 @@ name: Release (dsh)
 
 on:
   pull_request:
+    branches-ignore: [hallucinario]
   push:
     branches: [master]
   workflow_dispatch:
