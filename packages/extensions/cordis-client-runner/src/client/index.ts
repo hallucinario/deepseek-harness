@@ -187,20 +187,27 @@ export const inject = ['loader', 'modules', 'slots', 'remote', 'remote.dynamicCo
  */
 export function apply(ctx: Context): void {
   provideClientTimer(ctx)
+  const syncInspectManifest = ctx.remote.dynamicCordisRunner.syncInspectManifest
+  const resolveInspectQuery = ctx.remote.dynamicCordisRunner.resolveInspectQuery
   const inspect = new ClientCordisInspectRegistry({
     sync: async (providers) => {
-      const answered = await ctx.remote.dynamicCordisRunner.syncInspectManifest(providers)
+      const answered = await syncInspectManifest(providers)
       if (!answered.ok) throw new Error(`${answered.error.code}: ${answered.error.message}`)
     },
     resolve: async (agentId, requestId, resolution) => {
-      const answered = await ctx.remote.dynamicCordisRunner.resolveInspectQuery(agentId, requestId, resolution)
+      const answered = await resolveInspectQuery(agentId, requestId, resolution)
       if (!answered.ok) throw new Error(`${answered.error.code}: ${answered.error.message}`)
     },
   })
   provideClientCordisInspect(ctx, inspect)
-  for (const provider of clientInspectProviders(ctx)) {
-    ctx.effect(() => inspect.register(provider), `cordis-client-runner: inspect ${provider.manifest.id}`)
-  }
+  ctx.effect(() => {
+    const unregister = clientInspectProviders(ctx).map(provider => inspect.register(provider))
+    return async () => {
+      const stopped = inspect.dispose()
+      for (const remove of unregister) remove()
+      await stopped
+    }
+  }, 'cordis-client-runner: inspect providers')
   ctx.on('connection/reset', () => { inspect.publish() })
 
   const runner = new DynamicCordisPackageRunner({

@@ -39,6 +39,8 @@ export interface ClientCordisInspectHost {
 export class ClientCordisInspectRegistry {
   private readonly providers = new Map<string, ClientCordisInspectProviderRegistration>()
   private readonly active = new Map<CordisInspectRequestId, AbortController>()
+  private readonly pending = new Set<Promise<void>>()
+  private readonly lifetime = new AbortController()
   private publishQueued = false
   private syncChain = Promise.resolve()
 
@@ -51,6 +53,7 @@ export class ClientCordisInspectRegistry {
    * @returns idempotent disposer.
    */
   register(registration: ClientCordisInspectProviderRegistration): () => void {
+    if (this.lifetime.signal.aborted) throw new Error('Client Cordis inspect registry is disposed')
     const { manifest } = registration
     if (manifest.id.trim() === '') throw new Error('Client Cordis inspect provider id must not be empty')
     if (this.providers.has(manifest.id)) throw new Error(`Client Cordis inspect provider "${manifest.id}" is already registered`)
@@ -74,15 +77,16 @@ export class ClientCordisInspectRegistry {
 
   /** Publish the current complete manifest, including after reconnect. */
   publish(): void {
-    if (this.publishQueued) return
+    if (this.lifetime.signal.aborted || this.publishQueued) return
     this.publishQueued = true
     queueMicrotask(() => {
       this.publishQueued = false
+      if (this.lifetime.signal.aborted) return
       const manifests = [...this.providers.values()].map(provider => provider.manifest)
       this.syncChain = this.syncChain.then(async () => {
-        await this.host.sync(manifests)
+        if (!this.lifetime.signal.aborted) await this.host.sync(manifests)
       }).catch((error: unknown) => {
-        console.error('[cordis-client-runner] syncing inspect providers failed:', error)
+        if (!this.lifetime.signal.aborted) console.error('[cordis-client-runner] syncing inspect providers failed:', error)
       })
     })
   }
@@ -92,8 +96,16 @@ export class ClientCordisInspectRegistry {
    * @param request - exact provider query and Session correlation received from Host.
    * @returns after the first local result has been sent back to Host.
    */
-  async query(request: CordisInspectQueryRequest): Promise<void> {
-    if (this.active.has(request.requestId)) return
+  query(request: CordisInspectQueryRequest): Promise<void> {
+    if (this.lifetime.signal.aborted || this.active.has(request.requestId)) return Promise.resolve()
+    const task = this.answer(request)
+    this.pending.add(task)
+    const settled = (): void => { this.pending.delete(task) }
+    void task.then(settled, settled)
+    return task
+  }
+
+  private async answer(request: CordisInspectQueryRequest): Promise<void> {
     const controller = new AbortController()
     this.active.set(request.requestId, controller)
     let resolution: CordisInspectQueryResolution
@@ -130,6 +142,14 @@ export class ClientCordisInspectRegistry {
   close(requestId: CordisInspectRequestId): void {
     this.active.get(requestId)?.abort()
     this.active.delete(requestId)
+  }
+
+  /** Stop publication, cancel queries, and wait for started provider and Remote calls to settle. */
+  async dispose(): Promise<void> {
+    this.lifetime.abort()
+    for (const controller of this.active.values()) controller.abort()
+    this.providers.clear()
+    await Promise.allSettled([this.syncChain, ...this.pending])
   }
 }
 

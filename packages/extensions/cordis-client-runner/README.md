@@ -68,7 +68,7 @@ The browser half is built on one principle: a dynamic package must ride the same
 
 ### Inspecting slot inputs
 
-The Slots provider's exact `listSubTree` lookup includes documented owner fields and top-level alias, intersection, and union declarations. Nested field-value types remain named references, so inspecting a Tool view exposes its shared callbacks and stage union without expanding the full Session graph.
+The Slots provider's exact `listSubTree` lookup includes documented owner fields and top-level alias, intersection, and union declarations. Nested field-value types remain named references, so inspecting a Tool view exposes its shared callbacks and stage union without expanding the full Session graph. The plugin owns manifest publication and provider queries: unload cancels pending work and waits for started calls to settle before releasing the registry; reconnect republishes only while the plugin is active.
 
 ### How a run is carried out
 
