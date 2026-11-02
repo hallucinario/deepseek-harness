@@ -974,6 +974,20 @@ describe('bubblewrap preparation script', () => {
   })
 })
 
+describe('HLC reconnect workflow', () => {
+  it('prepares the enforced sandbox before replaying real tool calls', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/hlc-reconnect.yml'), 'reconnect')
+    if (!Array.isArray(job.steps)) throw new TypeError('HLC reconnect workflow must define steps')
+
+    const steps = job.steps.filter(isRecord)
+    const sandbox = steps.findIndex(step => step.run === 'bash scripts/prepare-ci-bubblewrap.sh')
+    const replay = steps.findIndex(step => step.name === 'Keyless Host restart and saved Session recovery')
+    expect(sandbox).toBeGreaterThanOrEqual(0)
+    expect(replay).toBeGreaterThan(sandbox)
+    expect(steps[replay]).not.toHaveProperty('continue-on-error', true)
+  })
+})
+
 describe('DeepSeek e2e workflow', () => {
   it('prepares bubblewrap from the pinned payload without a package transaction', () => {
     const workflow = loadWorkflow('.github/workflows/e2e.yml')
@@ -1380,7 +1394,7 @@ describe('Issue lifecycle workflow', () => {
     expect(preflightStep?.run).toContain('if [ -f .github/issue-management/selective-preflight.json ]; then')
     expect(preflightStep?.run).toContain('node .github/issue-management/policy.mjs pr-preflight')
     expect(preflightStep?.if).toBeUndefined()
-    expect(policyJob.if).toBeUndefined()
+    expect(policyJob.if).toBe("github.repository == 'deepseek-harness/deepseek-harness'")
     expect(validateStep?.if).toBe("${{ steps.preflight.outputs.legacy-automated != 'true' }}")
 
     expect(tokenStep).toMatchObject({

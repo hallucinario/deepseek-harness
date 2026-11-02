@@ -34,6 +34,7 @@ jobs:
       - name: Reconnect lifetime regressions
         run: >-
           pnpm exec vitest run
+          scripts/ci-workflow.spec.ts
           packages/client/ui-conversation/tests/apply-inject.client.spec.tsx
           packages/client/ui-sidebar-right/tests/session-views.client.spec.ts
           packages/extensions/cordis-client-runner/tests/plugin.client.spec.ts
@@ -41,6 +42,8 @@ jobs:
       - run: pnpm run build:artifacts
       - run: pnpm run build:check
       - run: pnpm --dir apps/web exec playwright install --with-deps chromium webkit
+      - name: Prepare bubblewrap (unrestrict userns)
+        run: bash scripts/prepare-ci-bubblewrap.sh
       - name: Keyless Host restart and saved Session recovery
         run: >-
           pnpm exec vitest run --config vitest.web.config.ts
