@@ -112,3 +112,17 @@ it('reports opening failure and releases Views even when committed roots are sti
   unmount()
   expect(release).toHaveBeenCalledOnce()
 })
+
+it('cancels an unready View when selection changes without reporting an opening failure', async () => {
+  const r = await runtime()
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const views = new SidebarSessionViews(r.sessions)
+  owners.push(views)
+  views.select(A)
+  const previous = views.source.getSnapshot()[0]!
+  views.select(B)
+  await expect(previous.reference.ready).rejects.toThrow('is released')
+  await views.source.getSnapshot()[0]!.reference.ready
+  expect(error).not.toHaveBeenCalled()
+  expect(views.source.getSnapshot().map(view => view.sessionId)).toEqual([B])
+})

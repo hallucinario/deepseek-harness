@@ -297,6 +297,23 @@ describe('Conversation inject API', () => {
     await b.runtime.dispose()
   })
 
+  it('refreshes locale while the last reference retires without addressing its ended binding', async () => {
+    const b = await bench()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    onTestFinished(() => { error.mockRestore() })
+    b.slots.register({ name: 'conversation.view', id: 'chat', order: 0 }, (() => null) as never)
+    b.runtime.ctx.uiSession.adapter.bindingSource(b.rootReference).getSnapshot()
+    const stop = b.runtime.sessions.retainInfo(ROOT).subscribe(() => {
+      b.runtime.ctx.locale.setLocale('en')
+    })
+    onTestFinished(stop)
+    b.rootReference.release()
+    expect(b.runtime.sessions.binding(ROOT)).toBeUndefined()
+    await b.runtime.flush()
+    expect(error).not.toHaveBeenCalled()
+    await b.runtime.dispose()
+  })
+
   it('restores the selected View when a cached Session becomes Provider-bound', async () => {
     const b = await bench()
     const binding = b.runtime.ctx.uiConversation.binding(ROOT)

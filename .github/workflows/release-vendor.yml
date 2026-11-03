@@ -10,6 +10,7 @@ name: Release (vendor)
 
 on:
   pull_request:
+    branches-ignore: [hallucinario]
   push:
     branches: [master]
   workflow_dispatch:

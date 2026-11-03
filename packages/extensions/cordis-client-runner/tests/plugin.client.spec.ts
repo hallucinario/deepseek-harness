@@ -6,12 +6,11 @@
  * always reaches the console, the fiber owns the runner's teardown, and the
  * node half remains inert.
  */
-/* oxlint-disable typescript/no-unsafe-assignment -- Vitest asymmetric matchers are typed as any. */
 
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import type {
-  ApprovalRequestId, CordisDynamicPackageId, CordisDynamicPluginId, CordisDynamicPluginRunId,
+  ApprovalRequestId, CordisDynamicPackageId, CordisDynamicPluginId, CordisDynamicPluginRunId, CordisInspectProviderManifest,
   DynamicCordisInvokeResult, SessionId,
 } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: resolves the `ctx.remote.$on` surface.
@@ -30,6 +29,7 @@ const USER_RUN = {
 
 interface Bench {
   ctx: Context
+  inspectManifests: Array<readonly CordisInspectProviderManifest[]>
   /** Source the host hands over for the next run. */
   source: { current: {
     code: string
@@ -111,8 +111,12 @@ async function boot(): Promise<Bench> {
   // Every generated Remote method resolves to a RemoteResult: the carrier folds
   // its own failures into the error branch, and only an assembly fault rejects.
   const answered = <T>(value: T): Promise<{ ok: true; value: T }> => Promise.resolve({ ok: true as const, value })
+  const inspectManifests: Bench['inspectManifests'] = []
   const namespace = {
-    syncInspectManifest: () => answered(null),
+    syncInspectManifest: (providers: readonly CordisInspectProviderManifest[]) => {
+      inspectManifests.push(providers)
+      return answered(null)
+    },
     resolveInspectQuery: () => answered({ accepted: true }),
     runHostHalf: () => answered({
       ok: true, pluginId: PLUGIN, packageId: PACKAGE, pluginRunId: RUN, waitingFor: [], startedHere: true,
@@ -142,7 +146,6 @@ async function boot(): Promise<Bench> {
     ) => {
       invoked.push({ pluginId, pluginRunId, method, args })
       const refusal = invokeThrow.current
-      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- the non-Error rejection is a case under test
       if (refusal !== undefined) return Promise.reject(refusal)
       return answered(invokeResult.current)
     },
@@ -174,6 +177,7 @@ async function boot(): Promise<Bench> {
   await fiber
   return {
     ctx,
+    inspectManifests,
     source,
     resolved,
     invoked,
@@ -194,6 +198,21 @@ async function boot(): Promise<Bench> {
 }
 
 describe('browser half', () => {
+  it('withdraws inspect providers without publishing through an unloaded plugin', async () => {
+    const bench = await boot()
+    await bench.settle()
+    const count = bench.inspectManifests.length
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await bench.dispose()
+      await bench.settle()
+      expect(error).not.toHaveBeenCalled()
+      expect(bench.inspectManifests).toHaveLength(count)
+    } finally {
+      error.mockRestore()
+    }
+  })
+
   it('provides the load engine as the page run-state face', async () => {
     const bench = await boot()
     expect(bench.ctx.dynamicCordisRunner.getSnapshot()).toEqual([])

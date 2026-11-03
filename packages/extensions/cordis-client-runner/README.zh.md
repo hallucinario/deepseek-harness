@@ -68,7 +68,7 @@ kind: "package-reference"
 
 ### 查询槽位输入
 
-Slots provider 的精确 `listSubTree` 查询包含带说明的 owner 字段及顶层别名、交叉类型和联合类型声明。嵌套字段的值类型只列出引用名称，因此查询 Tool 视图可以获得共享回调和阶段联合，而不会展开完整 Session 类型图。
+Slots provider 的精确 `listSubTree` 查询包含带说明的 owner 字段及顶层别名、交叉类型和联合类型声明。嵌套字段的值类型只列出引用名称，因此查询 Tool 视图可以获得共享回调和阶段联合，而不会展开完整 Session 类型图。插件拥有 manifest 发布与 provider 查询的生命周期：卸载会取消待执行工作，并等待已开始的调用完成后释放 registry；重连只在插件活动时重新发布。
 
 ### 一次 run 如何执行
 

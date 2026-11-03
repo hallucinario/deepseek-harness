@@ -32,6 +32,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    branches-ignore: [hallucinario]
   schedule:
     # 00:17 UTC nightly = 08:17 Asia/Shanghai — off the top-of-hour cron stampede.
     - cron: '17 0 * * *'

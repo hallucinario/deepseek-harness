@@ -2,6 +2,7 @@ name: Issue policy
 
 on:
   pull_request:
+    branches-ignore: [hallucinario]
     types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review, review_requested]
   pull_request_review:
     types: [submitted]
@@ -13,6 +14,7 @@ permissions:
 
 jobs:
   policy:
+    if: github.repository == 'deepseek-harness/deepseek-harness'
     name: Issue policy
     runs-on: ubuntu-latest
     steps:

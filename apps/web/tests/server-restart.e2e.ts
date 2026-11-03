@@ -1,8 +1,8 @@
 /** Persisted Session recovery across two real dsh server processes on the same port. */
-import { spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -87,15 +87,33 @@ class RestartableServer {
 it.each([false, true])('keeps the same revision, Session and page across a server restart (delayed startup: %s)', async (holdStartup) => {
   const world = await mkdtemp(join(tmpdir(), 'dsh-server-restart-'))
   onTestFinished(() => rm(world, { recursive: true, force: true }))
+  const written: string[] = []
   const model = createServer((request, response) => {
-    request.resume()
+    let body = ''
+    request.on('data', (chunk: Buffer) => { body += chunk.toString() })
     request.once('end', () => {
+      const payload = JSON.parse(body) as {
+        tools?: { name: string }[]
+        messages: { content: string | { type: string }[] }[]
+      }
+      const last = payload.messages.at(-1)?.content
+      const toolResult = Array.isArray(last) && last.some(block => block.type === 'tool_result')
+      const write = payload.tools?.some(tool => tool.name === 'write') === true && !toolResult
+      const file = `restart-result-${String(written.length + 1)}.txt`
+      if (write) written.push(file)
       response.writeHead(200, { 'content-type': 'text/event-stream' })
       const events = [
         { type: 'message_start', message: { id: 'restart-fixture', model: 'mock-model', usage: { input_tokens: 3, output_tokens: 0 } } },
-        { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'Persisted server restart fixture.' } },
+        ...write ? [
+          { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: file, name: 'write', input: {} } },
+          { type: 'content_block_delta', index: 0, delta: {
+            type: 'input_json_delta', partial_json: JSON.stringify({ file_path: file, content: 'Keyless tool execution.\n' }),
+          } },
+        ] : [
+          { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'Persisted server restart fixture.' } },
+        ],
         { type: 'content_block_stop', index: 0 },
-        { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
+        { type: 'message_delta', delta: { stop_reason: write ? 'tool_use' : 'end_turn' }, usage: { output_tokens: 1 } },
         { type: 'message_stop' },
       ]
       response.end(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''))
@@ -115,6 +133,7 @@ it.each([false, true])('keeps the same revision, Session and page across a serve
   onTestFinished(() => server.stop())
   const workspacePath = join(world, 'workspace')
   await mkdir(workspacePath)
+  execFileSync('git', ['init', '--quiet', workspacePath])
 
   const url = await server.start(0)
   const port = Number(new URL(url).port)
@@ -143,6 +162,14 @@ it.each([false, true])('keeps the same revision, Session and page across a serve
   let sessionBaselines = 0
   let navigations = 0
   page.on('pageerror', (error) => { errors.push(String(error)) })
+  page.on('console', (message) => {
+    const text = message.text()
+    const bindingError = /uiConversation\.binding:|Session reference .* is released/u
+    const serviceError = /SlotAssemblyError|conversation\.input: sessions service unavailable|syncInspectManifest is not a function/u
+    if (bindingError.test(text) || serviceError.test(text)) {
+      errors.push(text)
+    }
+  })
   page.on('websocket', (socket) => {
     const endpoints = new Map<string, string>()
     socket.on('framesent', ({ payload }) => {
@@ -174,10 +201,13 @@ it.each([false, true])('keeps the same revision, Session and page across a serve
   const notice = page.getByRole('button', { name: 'Continue', exact: true })
   await notice.click({ timeout: 15_000 })
   const composer = page.locator('[data-composer-input][contenteditable="true"]')
+  const firstSummary = page.waitForResponse(response => new URL(response.url()).pathname === '/api/changes.summary' && response.status() === 200)
   await writeComposerDraft(page, composer, 'Create a completed turn for the server restart test.')
   await composer.press('Enter')
   const response = page.getByRole('paragraph').filter({ hasText: /^Persisted server restart fixture\.$/u })
   await response.last().waitFor({ timeout: 20_000 })
+  const oldSummary = await firstSummary
+  expect(await readFile(join(workspacePath, written[0]!), 'utf8')).toBe('Keyless tool execution.\n')
   const draft = 'Unsent draft across a server restart'
   await writeComposerDraft(page, composer, draft)
   await expect.poll(() => graphs.length).toBeGreaterThan(0)
@@ -227,9 +257,21 @@ it.each([false, true])('keeps the same revision, Session and page across a serve
   expect(await originalRoot!.evaluate(element => element.isConnected)).toBe(true)
   expect(await composer.textContent()).toBe(draft)
   expect(await response.isVisible()).toBe(true)
+  expect((await page.request.get(oldSummary.url())).status()).toBe(404)
 
+  const nextSummary = page.waitForResponse(answer => new URL(answer.url()).pathname === '/api/changes.summary' && answer.status() === 200)
   await composer.press('Enter')
   await expect.poll(() => response.count(), { timeout: 20_000 }).toBe(2)
+  expect((await nextSummary).status()).toBe(200)
+  expect(written).toHaveLength(2)
+  expect(await readFile(join(workspacePath, written[1]!), 'utf8')).toBe('Keyless tool execution.\n')
+
+  await page.getByRole('button', { name: 'New session', exact: true }).last().click()
+  await writeComposerDraft(page, composer, 'Execute the keyless tool in a new conversation after restart.')
+  await composer.press('Enter')
+  await response.last().waitFor({ timeout: 20_000 })
+  expect(written).toHaveLength(3)
+  expect(await readFile(join(workspacePath, written[2]!), 'utf8')).toBe('Keyless tool execution.\n')
   expect(errors).toEqual([])
   expect(streamErrors).toEqual([])
   expect(navigations).toBe(0)

@@ -7,6 +7,7 @@ name: Build PR preview
 
 on:
   pull_request:
+    branches-ignore: [hallucinario]
     types: [opened, synchronize, reopened]
 
 # Within one pull request the newest build wins. Across pull requests there is
