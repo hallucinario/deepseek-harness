@@ -229,6 +229,6 @@ const handle = await ctx.agents.create({
 <details>
 <summary>维护者的工作上下文——点击展开</summary>
 
-无。
+[运行时上下文诊断](tests/runtime-context.perf.ts)测量 1,000 次固定输入接纳。使用 `node --expose-gc --import tsx/esm`、源码模块路径和 `before` 或 `current` 运行；输出运行时间、进程峰值 RSS 和 GC 后的保留堆内存。
 
 </details>

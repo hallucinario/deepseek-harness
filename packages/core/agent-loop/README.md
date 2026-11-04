@@ -229,6 +229,6 @@ These limits define when the loop needs special care. They are current package c
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-None.
+The [runtime-context diagnostic](tests/runtime-context.perf.ts) measures 1,000 fixed-input admissions. Run it with `node --expose-gc --import tsx/esm`, a source module path, and `before` or `current`; it reports runtime, process peak RSS, and retained heap after GC.
 
 </details>
