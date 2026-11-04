@@ -17,7 +17,7 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
-declare module '@deepseek-ai/dsh-session' {
+declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /** Required-on-read marker for section-level current-context retention. */
     'runtime-context/current-enabled': { retention: 'current' }
@@ -122,7 +122,7 @@ export class SystemPromptProjection {
 export class RuntimeContextProjection {
   /** `undefined` means no snapshot ever existed; `null` means none is retained. */
   private retained: { seq: SessionSeq; message: UserMessage } | null | undefined
-  private readonly currentSnapshots = new Map<SessionSeq, UserMessage>()
+  private readonly currentSnapshots = new Map<SessionSeq, readonly ContextSnapshotSection[]>()
   private currentEnabled = false
 
   /**
@@ -170,7 +170,7 @@ export class RuntimeContextProjection {
   private rememberCurrent(seq: SessionSeq, message: UserMessage): void {
     const source = message.source
     if (source.kind === SOURCE && source.form === 'snapshot'
-      && source.sections.some(section => section.retention === 'current')) this.currentSnapshots.set(seq, message)
+      && source.sections.some(section => section.retention === 'current')) this.currentSnapshots.set(seq, source.sections)
   }
 
   /**
@@ -215,10 +215,7 @@ export class RuntimeContextProjection {
     const replacements: { message: UserMessage; intent: SurfaceIntent<'user/message'> }[] = []
     for (const [seq, previous] of this.currentSnapshots) {
       if (seq === keep) continue
-      const source = previous.source
-      if (source.kind !== SOURCE || source.form !== 'snapshot'
-        || !source.sections.some(section => section.retention === 'current')) continue
-      const history = source.sections.filter(section => section.retention !== 'current')
+      const history = previous.filter(section => section.retention !== 'current')
       replacements.push({
         message: createUserMessage({
           content: [{ type: 'text', text: history.length === 0 ? CLEARED : renderRuntimeContextSnapshot(history) }],

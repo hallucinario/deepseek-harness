@@ -1,0 +1,10 @@
+# Bilingual-pair consistency record for experience-memory.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/experience-memory.md
+/execution-experience-memory:
+  en: 81a6818355df78ed
+  zh: c7f6fd9c75bf55e7
+/execution-experience-memory/records-and-status:
+  en: 63b5aa8ea09feb33
+  zh: cc13ab9aa73b8681

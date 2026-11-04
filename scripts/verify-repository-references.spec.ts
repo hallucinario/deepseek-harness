@@ -140,6 +140,15 @@ describe('maintained repository reference policy', () => {
     expect(scanRepositoryReferences(fixture.root)).toEqual([])
   })
 
+  it('accepts uv artifact byte counts that coincide with a commit prefix but still checks its URLs', () => {
+    const byteCount = String(6_344_383)
+    const commits = new Set([byteCount, 'abcdef1234567'])
+    expect(findRepositoryReferences('python/sdk/uv.lock', `{ size = ${byteCount}, hash = "sha256:0123" }`, commits)).toEqual([])
+    expect(findRepositoryReferences('python/sdk/uv.lock', 'source = "https://github.com/org/repo/commit/abcdef1234567"', commits))
+      .toEqual([{ file: 'python/sdk/uv.lock', line: 1, kind: 'commit-hash' }])
+    expect(findRepositoryReferences('docs/example.md', `size = ${byteCount}`, commits)).toHaveLength(1)
+  })
+
   it('accepts a prefix that two available commits share and rejects a longer unique prefix', (test) => {
     const fixture = repository(test)
     const [first, second] = collidingCommitBodies(fixture.tree, 7).map(body =>

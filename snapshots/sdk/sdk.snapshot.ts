@@ -61,7 +61,7 @@ import {
   type RunResult,
   type SdkPromptContentBlock,
 } from '@deepseek-ai/dsh-sdk-client'
-import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import { deriveReplayScript, parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
 
 const corpusRoot = fileURLToPath(new URL('../', import.meta.url))
@@ -127,6 +127,9 @@ interface SdkAssertions {
 }
 
 const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
+  'current-context': {
+    patches: [fileURLToPath(new URL('./current-context/runtime.cordis.yml', import.meta.url))],
+  },
   'steer-thinking': { expectedFinalResponse: 'STEERING_OK' },
   'minimal-image-compaction': {
     expectedFinalResponse: 'MINIMAL_IMAGE_OK',
@@ -712,6 +715,10 @@ async function runScenario(scenario: CorpusScenario): Promise<{
             observe(notification)
           },
         })
+        if (scenario.name === 'current-context') {
+          expect(result.events.filter(event => event.type === 'turn/end'))
+            .toMatchObject([{ data: { reason: { kind: 'completed' } } }])
+        }
         results.push(result)
         if (titleSubscription !== undefined) {
           const expected = expectedTitles[results.length - 1]?.data as JsonObject | undefined
@@ -951,6 +958,26 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
       )
       reconcileCatalogCreationTimes(ordered.map(log => log.content), 'validate')
       const actualContext = contextOf(ordered, cwd)
+      if (scenario.name === 'current-context') {
+        const parent = ordered[0]
+        if (parent === undefined) throw new Error('current-context requires its recorded parent Session')
+        const events = parseSessionLog(parent.content)
+        const responses = events.filter(event => event.type === 'assistant/message')
+        expect(responses).toHaveLength(2)
+        for (const [index, response] of responses.entries()) {
+          const session = Session.create(SessionId('current-context-oracle'), events.filter(event => event.seq < response.seq))
+          const text = session.deriveMessages().flatMap(message => message.content
+            .flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n')
+          expect(text).toContain(index === 0 ? 'Experience for work A:' : 'Experience for work B:')
+          expect(text).not.toContain(index === 0 ? 'Experience for work B:' : 'Experience for work A:')
+          expect(text).toContain('Current working directory:')
+          expect(text).toContain('Current DSH file policy:')
+        }
+        expect(events.filter(event => event.type === 'user/message'
+          && event.data.source.kind === 'runtime-context'
+          && event.data.source.form === 'snapshot'
+          && event.data.source.sections.some(section => section.retention === 'current'))).toHaveLength(2)
+      }
       if (scenario.name === 'steer-thinking') {
         const events = results.flatMap(result => result.events)
         expect(events.filter(event => event.type === 'step/start').map(event => event.data))

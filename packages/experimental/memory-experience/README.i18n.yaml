@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/memory-experience/README.md
+/:
+  en: 75f807aa9ad3dcdb
+  zh: d42741f30ce1a84f
+/deepseek-ai-dsh-experimental-memory-experience:
+  en: d571bfe2df556ec2
+  zh: 6fe1d8a0137a3c7a
+/deepseek-ai-dsh-experimental-memory-experience/summary:
+  en: b21e34ae7b2475e6
+  zh: 62cd18b7129571a4
+/deepseek-ai-dsh-experimental-memory-experience/table-of-contents:
+  en: fc8978bfedd07c73
+  zh: 06cd16157f1105dc
+/deepseek-ai-dsh-experimental-memory-experience/use-this-package:
+  en: bca9adebd23827d5
+  zh: 065a774b2c56a995
+/deepseek-ai-dsh-experimental-memory-experience/stored-evidence:
+  en: 88fb194730cef566
+  zh: dfeaa76353555479
+/deepseek-ai-dsh-experimental-memory-experience/recall-and-recovery:
+  en: cc5d6cfd85510447
+  zh: e1e55d16ed518d8f
+/deepseek-ai-dsh-experimental-memory-experience/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-memory-experience/model-experience/execution-experiences:
+  en: cba8310eb8ada393
+  zh: dbe424ea43bf9a03
+/deepseek-ai-dsh-experimental-memory-experience/model-experience/execution-experiences/what-the-model-sees:
+  en: 2c9bce95c9a879cb
+  zh: 7ab3422383778d03
+/deepseek-ai-dsh-experimental-memory-experience/model-experience/execution-experiences/token-effect:
+  en: 7fd41e5b2b1e50a0
+  zh: c2e0bc2d697df188
+/deepseek-ai-dsh-experimental-memory-experience/model-experience/execution-experiences/kv-cache-effect:
+  en: d0393678ef7520a4
+  zh: 1e839e355b5d02c0
+/deepseek-ai-dsh-experimental-memory-experience/known-limitations-and-deferred-work:
+  en: 7adeea7e1fe5202c
+  zh: f33572eec38eb884
+/deepseek-ai-dsh-experimental-memory-experience/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

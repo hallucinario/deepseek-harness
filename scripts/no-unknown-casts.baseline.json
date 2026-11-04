@@ -2063,17 +2063,14 @@
     "366f13ff1ff2522ad824a1d4333085e2c771c0b7ca22783aa41ca2e23233b259": 1
   },
   "packages/web/web-search-deepseek/tests/deepseek.spec.ts": {
-    "37c9617ff75d6a383f58dd63f939a88803e4ff5e1676bfe7e1c0cc340fc65014": 5,
+    "37c9617ff75d6a383f58dd63f939a88803e4ff5e1676bfe7e1c0cc340fc65014": 1,
     "598014dcfe77101781e3c6a02709097e3b0151a335e909c44719fac08fdea433": 2
   },
   "packages/web/web-search-exa/tests/exa.spec.ts": {
-    "37c9617ff75d6a383f58dd63f939a88803e4ff5e1676bfe7e1c0cc340fc65014": 7,
     "598014dcfe77101781e3c6a02709097e3b0151a335e909c44719fac08fdea433": 2
   },
   "packages/web/web-search-perplexity/tests/perplexity.spec.ts": {
-    "37c9617ff75d6a383f58dd63f939a88803e4ff5e1676bfe7e1c0cc340fc65014": 5,
-    "598014dcfe77101781e3c6a02709097e3b0151a335e909c44719fac08fdea433": 2,
-    "ed2fec09418bc1a78fde5097fd01d5aabf903166ed1bf480a5e38bccdd3948a6": 1
+    "598014dcfe77101781e3c6a02709097e3b0151a335e909c44719fac08fdea433": 2
   },
   "packages/workflow/tool-workflow/tests/tool-workflow.spec.ts": {
     "061944ebda38f8da144d88cfa668e6336efc68c33441a9fe3215d8c001124526": 2

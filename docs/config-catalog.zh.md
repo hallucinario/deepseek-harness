@@ -1131,6 +1131,37 @@ export interface InspectorOptions {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-experience -->
+<a id="deepseek-aidsh-experimental-memory-experience"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-experience`
+
+- `inject`: `sessions` · `sessionQuery` · `storageDomain` · `systemPrompt` · `workingDirectory` · `tokenMeter` · `commands`
+- `source`: [`packages/experimental/memory-experience/src/index.ts:29`](../packages/experimental/memory-experience/src/index.ts)
+
+```ts config-catalog
+/** Deployment limits; omitted fields use the defaults declared by Config. */
+export interface Config {
+  /** Retrieval also enables automatic capture; off keeps inspection and retirement available. */
+  mode?: 'off' | 'retrieval'
+  /** Complete rendered recall-message token budget, including warning and references. */
+  maxTokens?: number
+  /** Maximum recalled root work groups per request. */
+  maxEpisodes?: number
+  /** Maximum characters in one serialized episode, including metadata. */
+  maxRecordChars?: number
+  /** Maximum operation/result observations retained in an episode. */
+  maxObservations?: number
+  /** Maximum Session observations reconciled for one project recovery or lineage walk. */
+  maxRecoverSessions?: number
+  /** Maximum stored records examined by one listing or retrieval. */
+  maxCandidates?: number
+  /** Runtime-context contribution order. */
+  contextOrder?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-experience -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 
@@ -3588,7 +3619,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:258`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:263`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */

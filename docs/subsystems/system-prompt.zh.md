@@ -185,9 +185,10 @@ variable(name: string, provider: (context: AssembleContext) => string | undefine
 
 /**
  * Refresh accepted registered runtime facts for request admission. Contexts
- * added only by the assembly waterfall retain their accepted values. Current
- * suppression removes optional contexts, and missing required registrations
- * are restored in registry order. Sections, tools, and interpolation variables
+ * added only by the assembly waterfall retain accepted historical values.
+ * Missing current providers are removed; active current and required providers
+ * are restored in registry order. Suppression removes optional contexts.
+ * Sections, tools, and interpolation variables
  * retain the accepted assembly; their providers and waterfall do not rerun.
  * @param assembly - accepted assembly for this scope and step.
  * @param context - the same scope and current plugin-defined assembly fields.

@@ -108,6 +108,13 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'experienceMemory',
+    pkg: 'experimental-memory-experience',
+    title: 'Scoped execution experience recall',
+    mode: 'service',
+    note: 'Stores source-referenced observations and fixed current-context selections; human commands inspect and retire records within the host directory scope.',
+  },
+  {
     key: 'cotTranslation',
     pkg: 'experimental-client-ui-cot-translation',
     title: 'Reasoning translation Remote',

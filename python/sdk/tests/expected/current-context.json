@@ -1,0 +1,21 @@
+{
+  "responses": ["ONE", "TWO"],
+  "markers": 1,
+  "contexts": [
+    {
+      "operation": "append",
+      "current": ["Experience for work A: inspect alpha.ts."],
+      "history": ["working-directory:current", "sandbox:policy", "approval:policy"]
+    },
+    {
+      "operation": "replace",
+      "current": [],
+      "history": ["working-directory:current", "sandbox:policy", "approval:policy"]
+    },
+    {
+      "operation": "append",
+      "current": ["Experience for work B: inspect beta.ts."],
+      "history": ["working-directory:current", "sandbox:policy", "approval:policy"]
+    }
+  ]
+}

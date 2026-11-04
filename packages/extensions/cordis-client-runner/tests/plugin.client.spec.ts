@@ -146,6 +146,7 @@ async function boot(): Promise<Bench> {
     ) => {
       invoked.push({ pluginId, pluginRunId, method, args })
       const refusal = invokeThrow.current
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Exercises a non-Error Remote rejection.
       if (refusal !== undefined) return Promise.reject(refusal)
       return answered(invokeResult.current)
     },
@@ -311,17 +312,19 @@ describe('browser half', () => {
     await bench.ctx.dynamicCordisRunner.startUserRun(USER_RUN)
     const [entry] = bench.ctx.slots.entries('root')
     bench.crash('root', entry, true, new Error('Cannot read properties of undefined'))
-    expect(bench.renderFailures).toEqual([{
+    expect(bench.renderFailures).toMatchObject([{
       agentId: AGENT,
       pluginId: PLUGIN,
       pluginRunId: RUN,
       failure: {
         slot: 'root',
         message: 'your entry in slot "root" crashed while React rendered it: Cannot read properties of undefined',
-        stack: expect.any(String),
         abdicated: true,
       },
     }])
+    const failure = bench.renderFailures[0]?.failure
+    if (typeof failure !== 'object' || failure === null || !('stack' in failure)) throw new Error('render failure omitted its stack')
+    expect(failure.stack).toBeTypeOf('string')
     // The same observation also reaches the page's own surface, so a row can show
     // it without reading the host back.
     expect(bench.ctx.dynamicCordisRunner.renderFailures.getSnapshot().get(PLUGIN)).toEqual(bench.renderFailures[0]?.failure)

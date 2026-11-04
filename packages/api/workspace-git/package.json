@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-api-workspace-git",
   "description": "Workspace git service: the branch or detached HEAD the session workspace currently has checked out over the workspaceGit Remote namespace",
-  "version": "0.2.1-alpha.5",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },

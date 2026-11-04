@@ -1053,6 +1053,43 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'experienceMemory',
+    summary: 'Local experimental memory; its storage writes precede every visible state update.',
+    description: 'Local experimental memory; its storage writes precede every visible state update.',
+    methods: [
+      {
+        signature: 'async flush(): Promise<void>',
+        description: 'Await all capture, recovery, selection, and retirement operations already accepted.',
+        parameters: [],
+        returns: 'after the current owned queue has settled; failures are available in status.',
+      },
+      {
+        signature: 'status(): ExperienceStatus',
+        description: 'Report local runtime state without querying Session history or invoking a model.',
+        parameters: [],
+        returns: 'current counts, configured mode, exhaustion flags, and the latest operation error.',
+      },
+      {
+        signature: 'async list(agent: Agent): Promise<Episode[]>',
+        description: 'List bounded experiences visible from an Agent\'s current host directory scope.',
+        parameters: [{ name: 'agent', description: 'receiving Agent; absent original project identity yields no records.' }],
+        returns: 'stored active and retired records in the current scope, after pending writes settle.',
+      },
+      {
+        signature: 'async inspect(agent: Agent, id: string): Promise<Episode | undefined>',
+        description: 'Inspect one same-scope source record, including its retirement tombstone.',
+        parameters: [{ name: 'agent', description: 'receiving Agent whose host directories authorize the read.' }, { name: 'id', description: 'one opaque episode identity.' }],
+        returns: 'the stored record, or absent for an unknown or other-scope identity.',
+      },
+      {
+        signature: 'retire(agent: Agent, id: string): Promise<boolean>',
+        description: 'Retire a same-scope record atomically; later recovery can never overwrite the tombstone.',
+        parameters: [{ name: 'agent', description: 'receiving Agent whose host directories authorize the mutation.' }, { name: 'id', description: 'one opaque episode identity.' }],
+        returns: 'whether a visible record exists, after its retirement is durable.',
+      },
+    ],
+  },
+  {
     key: 'fileReferences',
     summary: 'Host capability for cancellable file-reference discovery.',
     description: 'Host capability for cancellable file-reference discovery.',
@@ -3197,7 +3234,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'refreshContext(assembly: PromptAssembly, context: AssembleContext = {}): PromptAssembly',
-        description: 'Refresh accepted registered runtime facts for request admission. Contexts added only by the assembly waterfall retain their accepted values. Current suppression removes optional contexts, and missing required registrations are restored in registry order. Sections, tools, and interpolation variables retain the accepted assembly; their providers and waterfall do not rerun.',
+        description: 'Refresh accepted registered runtime facts for request admission. Contexts added only by the assembly waterfall retain accepted historical values. Missing current providers are removed; active current and required providers are restored in registry order. Suppression removes optional contexts. Sections, tools, and interpolation variables retain the accepted assembly; their providers and waterfall do not rerun.',
         parameters: [{ name: 'assembly', description: 'accepted assembly for this scope and step.' }, { name: 'context', description: 'the same scope and current plugin-defined assembly fields.' }],
         returns: 'the accepted assembly with current runtime-context provider text.',
       },
@@ -4864,7 +4901,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AssembledContext',
-    declaration: 'export interface AssembledContext {\n    name: string;\n    text: string;\n    interpolate?: boolean;\n}',
+    declaration: 'export interface AssembledContext {\n    name: string;\n    text: string;\n    interpolate?: boolean;\n    retention?: \'history\' | \'current\';\n}',
   },
   {
     name: 'AssembledSection',
@@ -5471,6 +5508,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
+    name: 'Episode',
+    declaration: 'export type Episode = z.infer<typeof episodeSchema>;',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    tools?: ToolSchema[];\n    system?: never;\n}',
   },
@@ -5485,6 +5526,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EveryScheduleRecord',
     declaration: 'export interface EveryScheduleRecord {\n    readonly id: ScheduleId;\n    readonly kind: \'every\';\n    readonly title: string;\n    readonly prompt: string;\n    readonly everySeconds: number;\n    readonly scheduledAt: string;\n}',
+  },
+  {
+    name: 'ExperienceStatus',
+    declaration: 'export interface ExperienceStatus {\n    mode: \'off\' | \'retrieval\';\n    episodes: number;\n    selections: number;\n    pending: number;\n    recoveryExhausted: boolean;\n    candidatesExhausted: boolean;\n    lastError?: string;\n}',
   },
   {
     name: 'FeedbackCategory',
@@ -6568,7 +6613,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PromptContext',
-    declaration: 'export interface PromptContext {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly interpolate?: boolean;\n    readonly required?: boolean;\n}',
+    declaration: 'export interface PromptContext {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n    readonly interpolate?: boolean;\n    readonly required?: boolean;\n    readonly retention?: \'history\' | \'current\';\n}',
   },
   {
     name: 'PromptContextOrderName',

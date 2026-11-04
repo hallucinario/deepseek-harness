@@ -975,6 +975,16 @@ describe('bubblewrap preparation script', () => {
 })
 
 describe('HLC reconnect workflow', () => {
+  it('builds the native persistence addon before the experience memory regressions', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/hlc-reconnect.yml'), 'reconnect')
+    if (!Array.isArray(job.steps)) throw new TypeError('HLC reconnect workflow must define steps')
+    const steps = job.steps.filter(isRecord)
+    const build = steps.findIndex(step => step.run === 'pnpm run build:artifacts')
+    const memory = steps.findIndex(step => step.name === 'Experience memory and current context regressions')
+    expect(build).toBeGreaterThanOrEqual(0)
+    expect(memory).toBeGreaterThan(build)
+  })
+
   it('prepares the enforced sandbox before replaying real tool calls', () => {
     const job = workflowJob(loadWorkflow('.github/workflows/hlc-reconnect.yml'), 'reconnect')
     if (!Array.isArray(job.steps)) throw new TypeError('HLC reconnect workflow must define steps')

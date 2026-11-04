@@ -30,6 +30,9 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.13.6'
       - run: pnpm install --frozen-lockfile
       - name: Reconnect lifetime regressions
         run: >-
@@ -41,9 +44,33 @@ jobs:
           packages/extensions/cordis-client-runner/tests/inspect-registry.client.spec.ts
       - run: pnpm run build:artifacts
       - run: pnpm run build:check
+      - name: Experience memory and current context regressions
+        run: >-
+          pnpm exec vitest run
+          packages/experimental/memory-experience/tests
+          packages/core/agent-loop/tests
+          packages/core/system-prompt/tests
+          packages/compaction/compaction-basic/tests
+          packages/llm/llm/tests
+          --coverage
+          --coverage.include='packages/experimental/memory-experience/src/**/*.ts'
+          --coverage.include='packages/core/agent-loop/src/runtime-context.ts'
+      - run: pnpm run doc-sync
+      - name: Keyless SDK current context lifetime
+        run: >-
+          pnpm run test:snapshot snapshots/sdk/sdk.snapshot.ts
+          -t 'current-context'
+      - name: Python SDK current context projection
+        run: >-
+          uv run --frozen --group test --project python/sdk python -m pytest
+          python/sdk/tests/test_current_context_snapshot.py
       - run: pnpm --dir apps/web exec playwright install --with-deps chromium webkit
       - name: Prepare bubblewrap (unrestrict userns)
         run: bash scripts/prepare-ci-bubblewrap.sh
+      - name: Built experience memory capture, recall and retirement
+        run: >-
+          pnpm run test:e2e apps/cli/tests/profiles/sdk/memory-experience.e2e.ts
+          --retry=0
       - name: Keyless Host restart and saved Session recovery
         run: >-
           pnpm exec vitest run --config vitest.web.config.ts

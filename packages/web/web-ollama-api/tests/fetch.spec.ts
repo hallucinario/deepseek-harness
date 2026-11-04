@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('OllamaFetchProvider', () => {
   it('posts the URL to /api/web_fetch and returns its Markdown body', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => jsonResponse({
       title: 'Ollama',
       content: '[Cloud models](https://ollama.com/blog/cloud-models) are now available.',
       links: ['https://ollama.com/'],
@@ -34,7 +34,7 @@ describe('OllamaFetchProvider', () => {
 
     const result = await providerOf(options).fetch({ url: 'https://ollama.com' })
 
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBe('https://ollama.test/api/web_fetch')
     expect(init).toMatchObject({ method: 'POST', redirect: 'error' })
     expect((init.headers as Record<string, string>)['authorization']).toBe('Bearer ollama-key')
@@ -49,10 +49,10 @@ describe('OllamaFetchProvider', () => {
   })
 
   it('uses a configured full endpoint as-is instead of appending the operation path twice', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ content: 'body' }))
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => jsonResponse({ content: 'body' }))
     vi.stubGlobal('fetch', fetchMock)
     await providerOf({ ...options, fetchBaseURL: 'https://ollama.test/api/web_fetch' }).fetch({ url: 'https://a.test' })
-    const [url] = fetchMock.mock.calls[0] as unknown as [string]
+    const [url] = fetchMock.mock.calls[0]!
     expect(url).toBe('https://ollama.test/api/web_fetch')
   })
 
@@ -87,14 +87,14 @@ describe('OllamaFetchProvider', () => {
   })
 
   it('registers as ollama-cloud-fetch and resolves through the web service', async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ content: '# Page' }))
+    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => jsonResponse({ content: '# Page' }))
     vi.stubGlobal('fetch', fetchMock)
     const ctx = new Context()
     await ctx.plugin(WebRuntime, { fetchProvider: OLLAMA_FETCH_PROVIDER_ID })
     const fiber = await ctx.plugin(ollamaPlugin, { apiKey: 'ollama-key' })
     const result = await ctx.web.fetch({ url: 'https://a.test' })
     expect(result.body).toEqual({ kind: 'text', content: '# Page' })
-    const [url] = fetchMock.mock.calls[0] as unknown as [string]
+    const [url] = fetchMock.mock.calls[0]!
     expect(url).toBe(`${OLLAMA_DEFAULT_BASE_URL}/api/web_fetch`)
     await fiber.dispose()
   })
@@ -103,13 +103,13 @@ describe('OllamaFetchProvider', () => {
     const previous = process.env.OLLAMA_FETCH_BASE_URL
     process.env.OLLAMA_FETCH_BASE_URL = 'https://fetch-env.test'
     try {
-      const fetchMock = vi.fn(async () => jsonResponse({ content: 'body' }))
+      const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => jsonResponse({ content: 'body' }))
       vi.stubGlobal('fetch', fetchMock)
       const ctx = new Context()
       await ctx.plugin(WebRuntime, { fetchProvider: OLLAMA_FETCH_PROVIDER_ID })
       ollamaPlugin.apply(ctx, ollamaPlugin.Config({ apiKey: 'k' }))
       await ctx.web.fetch({ url: 'https://a.test' })
-      const [url] = fetchMock.mock.calls[0] as unknown as [string]
+      const [url] = fetchMock.mock.calls[0]!
       expect(url).toBe('https://fetch-env.test/api/web_fetch')
       await ctx.fiber.dispose()
     } finally {
