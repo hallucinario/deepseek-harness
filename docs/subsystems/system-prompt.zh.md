@@ -78,7 +78,7 @@ interface PromptSection {
 ```ts type-equiv
 /** Dynamic model context materialized as a durable user-role snapshot. */
 interface PromptContext {
-  /** Unique name — a duplicate registration throws (see {@link SystemPrompt.context}). */
+  /** Unique registration name and stable owner for current retention across resume; duplicates throw. */
   readonly name: string
   /** Contexts are joined in ascending order. */
   readonly order: number
@@ -88,10 +88,12 @@ interface PromptContext {
   readonly interpolate?: boolean
   /** Keep this operational context when optional runtime context is disabled. */
   readonly required?: boolean
+  /** `current` replaces previous values and stays out of compaction input; absent or `history` retains history. */
+  readonly retention?: 'history' | 'current'
 }
 ```
 
-`required: true` 在可选运行时上下文被抑制时保留操作所需的贡献。`interpolate: false` 原样保留文本，包括看起来像变量的目录名。`AssembledContext` 将已求值文本及其插值选择传给渲染过程。
+`required: true` 在可选运行时上下文被抑制时保留操作所需的贡献。`interpolate: false` 原样保留文本，包括看起来像变量的目录名。`retention` 默认为 `history`；`current` 只保留有效的已注册值，并从压缩输入中排除这些值。必需的 `name` 在会话恢复后继续标识该贡献归属。`AssembledContext` 将已求值文本、插值与保留策略传给渲染过程。
 
 ```ts type-equiv
 /** One resolved dynamic context contribution. */
@@ -102,6 +104,8 @@ interface AssembledContext {
   text: string
   /** Whether to interpolate prompt variables. Defaults to true; false preserves literal text. */
   interpolate?: boolean
+  /** Retention inherited from the registration; absent means history. */
+  retention?: 'history' | 'current'
 }
 ```
 

@@ -414,8 +414,10 @@ export class ReactLoopAgent implements Agent {
       const { config, preparedCall } = await this.prepareRequest(turn, step, signal)
       const currentContext = this.loopCtx.systemPrompt.refreshContext(assembly, assembleContextFor(this, signal))
       const sections = renderContextSections(currentContext)
-      const context = this.runtimeContext.project(joinContextSections(sections), sections)
+      const { enableCurrent, replacements, message: context } = this.runtimeContext.reconcile(joinContextSections(sections), sections)
       signal.throwIfAborted()
+      if (enableCurrent) this.session.append('runtime-context/current-enabled', { retention: 'current' })
+      for (const { message, intent } of replacements) this.session.append('user/message', message, intent)
       const startsRequestSeries = firstAttempt && decision.startsRequestSeries === true
       const commits = this.systemPrompt.project(renderedPrompt, {
         inHistory: preparedCall?.systemPromptUpdate === 'in-history',

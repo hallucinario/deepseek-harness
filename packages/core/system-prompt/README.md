@@ -65,7 +65,9 @@ ctx.systemPrompt.section({
 
 Set `interpolate: false` on a section or dynamic context to preserve its text literally, including `{{…}}` groups in generated tool documentation or directory names. Other contributions interpolate variables by default.
 
-`refreshContext(assembly, context)` refreshes registered runtime facts after pre-step and route preparation. It preserves accepted sections, tools, variables, and contexts contributed only by the assembly waterfall, applies current optional-context suppression, and restores missing required entries. Put changing facts in context providers; registered context text is read again before admission.
+Dynamic contexts registered with `ctx.systemPrompt.context()` default to `retention: 'history'`. Set `retention: 'current'` when only the latest value should remain in model history and the value must stay out of compaction summaries. The required registration `name` is its stable owner identity across resume; keep it stable when reloading a provider. Empty text, removal, or optional-context suppression clears that provider's old current text at the next admitted request. A provider error prevents that request rather than sending its previous value.
+
+`refreshContext(assembly, context)` refreshes registered runtime facts after pre-step and route preparation, including each retry. It preserves accepted sections, tools, variables, and historical contexts contributed only by the assembly waterfall, applies optional-context suppression, removes missing current providers, and restores active current and required entries. Put changing facts in context providers; registered context text is read again before admission.
 
 ### Contribute a prompt variable
 

@@ -38,7 +38,7 @@ class CompactionAdapter extends LlmAdapter {
   }
 }
 
-it('retains required cwd in the first request after proactive compaction with optional context disabled', async () => {
+it.each([false, true])('retains required cwd after proactive compaction with optional context disabled and current-only memory=%s', async (memory) => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-compaction-admission-')))
   const ctx = new Context()
   try {
@@ -46,10 +46,17 @@ it('retains required cwd in the first request after proactive compaction with op
       workingDirectory: true, systemPrompt: { includeHarnessIdentity: false, includeRuntimeContext: false },
     })
     await ctx.plugin(TokenMeter)
+    let experience = 'Experience before compaction.'
+    if (memory) ctx.systemPrompt.context({
+      name: 'memory-experience', order: 300, retention: 'current', required: true, text: () => experience,
+    })
     const adapter = new CompactionAdapter()
     ctx.llm.registerAdapter(['mock'], adapter)
     ctx.tools.register(defineContentToolFixture({
-      name: 'work', description: 'Do work.', parameters: {}, async execute() { return [{ type: 'text', text: 'work done' }] },
+      name: 'work', description: 'Do work.', parameters: {}, async execute() {
+        experience = 'Experience after compaction.'
+        return [{ type: 'text', text: 'work done' }]
+      },
     }))
     await ctx.plugin(BasicCompaction, {
       auto: true, thresholdRatio: 0.5, headroomTokens: 0, retainTokens: 20, maxTokens: 32, compactionRetries: 0,
@@ -67,6 +74,14 @@ it('retains required cwd in the first request after proactive compaction with op
     expect(snapshots).toHaveLength(2)
     expect(adapter.summaries).toHaveLength(1)
     expect(adapter.conversation).toHaveLength(2)
+    if (memory) {
+      const texts = (request: GenerateOptions) => request.messages.flatMap(message => message.content.flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n')
+      expect(texts(adapter.summaries[0]!)).not.toContain('Experience before compaction.')
+      expect(texts(adapter.summaries[0]!)).not.toContain('Experience after compaction.')
+      expect(texts(adapter.summaries[0]!)).toContain(JSON.stringify(root))
+      expect(texts(adapter.conversation[1]!)).not.toContain('Experience before compaction.')
+      expect(texts(adapter.conversation[1]!).match(/Experience after compaction\./g)).toHaveLength(1)
+    }
     for (const request of adapter.conversation) {
       expect(request.messages.some(message => message.role === 'user' && message.source?.kind === 'runtime-context'
         && message.content.some(block => block.type === 'text' && block.text.includes(JSON.stringify(root))))).toBe(true)
