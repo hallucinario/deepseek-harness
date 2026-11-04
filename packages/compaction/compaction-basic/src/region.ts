@@ -16,8 +16,8 @@ import {
 } from '@deepseek-ai/dsh-compaction'
 import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
-import type { Message, UserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, errorChain, renderRuntimeContextSnapshot } from '@deepseek-ai/dsh-llm'
+import type { ContextFormed, Message, UserMessage } from '@deepseek-ai/dsh-llm'
 import type { TokenMeasurement, TokenMeter } from '@deepseek-ai/dsh-token-meter'
 import { SessionSeq, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -43,8 +43,8 @@ interface PreparedCompaction extends SurfaceSelection {
   readonly measurement: TokenMeasurement
   readonly selectedNodes: TokenMeasurement['nodes']
   readonly shadowedTokenCount: number
-  /** Route-priced total of the selected span; the shrink comparison's unit. */
-  readonly shadowedRouteTokenCount: number
+  /** Route-priced history input after current-context exclusion; the shrink comparison's unit. */
+  readonly summarizableRouteTokenCount: number
   readonly input: SummarizationInput
 }
 
@@ -378,8 +378,7 @@ function prepareCompaction(
     // retention, range selection, and the shrink comparison read the
     // route-priced `tokens` instead.
     shadowedTokenCount: selectedNodes.reduce((total, node) => total + node.heuristicTokens, 0),
-    shadowedRouteTokenCount: selectedNodes.reduce((total, node) => total + node.tokens, 0),
-    input: buildSummarizationInput(session, selection.shadowedSeqs),
+    ...buildSummarizationInput(session, selection.shadowedSeqs, selectedNodes, dependencies.meter),
   }
 }
 
@@ -415,9 +414,9 @@ async function summarizeCompaction(
   // price; comparing it against the span's route price asks the real
   // question — does the replacement lower the next request's pressure.
   const framedSummaryTokenCount = dependencies.meter.estimateMessage(checkpointMessage)
-  if (framedSummaryTokenCount >= prepared.shadowedRouteTokenCount) {
+  if (framedSummaryTokenCount >= prepared.summarizableRouteTokenCount) {
     throw new Error(
-      `summary is not smaller than the shadowed content (${framedSummaryTokenCount} estimated framed tokens >= ${prepared.shadowedRouteTokenCount})`,
+      `summary is not smaller than the summarized history (${framedSummaryTokenCount} estimated framed tokens >= ${prepared.summarizableRouteTokenCount})`,
     )
   }
   return {
@@ -533,33 +532,64 @@ function completeCompaction(
  * Reconstruct the last routed request's cacheable prefix for the shadowed
  * region: the system prompt held by the `system/message` at surface node 0,
  * the header's tool schemas, then the region's own derived messages in surface
- * order. The summarizer appends only the compaction instruction after this, so
- * the call is a genuine prefix of the conversation and reuses the provider's
- * KV cache. A surface without a system head, or whose head projects to no
+ * order, excluding current-retention runtime sections. Other messages remain
+ * unchanged, preserving cache reuse up to the first excluded section.
+ * A surface without a system head, or whose head projects to no
  * message, contributes no leading system message.
  * @param session - session supplying the surface head, request header, and per-node projection.
  * @param shadowedSeqs - the surface-node seqs, in order, being compacted.
- * @returns the replayed conversation prefix to condense.
+ * @param selectedNodes - prices for those same nodes under the conversation route.
+ * @param meter - prices rebuilt text-only runtime snapshots.
+ * @returns the history input and its route-priced size, excluding the system head.
  */
 function buildSummarizationInput(
   session: Session,
   shadowedSeqs: readonly SessionSeq[],
-): SummarizationInput {
+  selectedNodes: TokenMeasurement['nodes'],
+  meter: TokenMeter,
+): { input: SummarizationInput; summarizableRouteTokenCount: number } {
   const header = session.requestHeader()
   // shadowedSeqs are current surface seqs, so the surface has a node 0.
   // oxlint-disable-next-line typescript/no-non-null-assertion
   const head = systemHead(session, session.surface.nodes[0]!)
   const system = head === undefined ? null : session.deriveEventMessage(head)
-  const regionMessages = shadowedSeqs
-    // shadowedSeqs are current surface seqs, so each is a valid log index.
-    // Existing Session history read; migration deferred.
+  const regionMessages: Message[] = []
+  let summarizableRouteTokenCount = 0
+  for (const [index, seq] of shadowedSeqs.entries()) {
+    // Selected surface positions and their prices were validated together.
     // oxlint-disable-next-line typescript/no-non-null-assertion, typescript/no-deprecated
-    .map(seq => session.deriveEventMessage(session.eventAt(seq)!))
-    .filter((message): message is Message => message !== null)
-  return {
-    ...header?.tools === undefined ? {} : { tools: header.tools },
-    messages: system === null ? regionMessages : [system, ...regionMessages],
+    const original = session.deriveEventMessage(session.eventAt(seq)!)
+    if (original === null) continue
+    const retained = historicalRuntimeContext(original)
+    if (retained === null) continue
+    regionMessages.push(retained)
+    // Rebuilt runtime snapshots contain text only, whose heuristic equals its route price.
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    summarizableRouteTokenCount += retained === original ? selectedNodes[index]!.tokens : meter.estimateMessage(retained)
   }
+  return {
+    input: {
+      ...header?.tools === undefined ? {} : { tools: header.tools },
+      messages: system === null ? regionMessages : [system, ...regionMessages],
+    },
+    summarizableRouteTokenCount,
+  }
+}
+
+/** Current-retention contributions are restored by the loop, never by a summary. */
+function historicalRuntimeContext(message: Message): Message | null {
+  if (message.role !== 'user') return message
+  const source: { readonly kind: string } & ContextFormed = message.source
+  if (source.kind !== 'runtime-context' || source.form !== 'snapshot') return message
+  const sections = source.sections.filter(section => section.retention !== 'current')
+  if (sections.length === source.sections.length) return message
+  if (sections.length === 0) return null
+  const retained = {
+    ...message,
+    content: [{ type: 'text' as const, text: renderRuntimeContextSnapshot(sections) }],
+    source: { ...message.source, sections },
+  }
+  return retained
 }
 
 /** Inspect open-turn, unmatched-compaction, and latest seed-boundary state independently. */

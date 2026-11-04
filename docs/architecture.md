@@ -89,8 +89,8 @@ turn/start
      reject, or a first enter rewritten empty -> close the turn with no step
      step/start
      agent/request -> prepareCall (cancellation commits neither system nor users)
-     reconcile system/message using the prepared call capability
-     append entered messages as user/message; reconcile retained runtime context
+     reconcile current runtime sections and system/message
+     append entered messages and the refreshed runtime snapshot as user/message
      log request/header and request/context as needed
      derive and freeze model history from the log
      stream the bound prepared call -> llm/stream -> agent/assistant-stream start

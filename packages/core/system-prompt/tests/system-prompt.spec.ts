@@ -33,6 +33,39 @@ function contributed(assembly: PromptAssembly): PromptAssembly['sections'] {
 }
 
 describe('SystemPrompt', () => {
+  it('carries current retention and stable registration names into rendered sections', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin(SystemPrompt)
+      ctx.systemPrompt.context({ name: 'history', order: 0, text: 'historical' })
+      ctx.systemPrompt.context({ name: 'memory-experience', order: 1, retention: 'current', text: '{{literal}}', interpolate: false })
+      expect(renderContextSections(await ctx.systemPrompt.assemble())).toEqual([
+        { name: 'history', text: 'historical' },
+        { name: 'memory-experience', text: '{{literal}}', retention: 'current' },
+      ])
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('drops missing current providers and restores newly registered current providers at admission', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin(SystemPrompt)
+      const dispose = ctx.systemPrompt.context({ name: 'old-current', order: 0, retention: 'current', text: 'old' })
+      const accepted = await ctx.systemPrompt.assemble()
+      accepted.contexts.push({ name: 'expert-history', text: 'retained history' })
+      dispose()
+      ctx.systemPrompt.context({ name: 'new-current', order: 1, retention: 'current', text: 'new' })
+      expect(ctx.systemPrompt.refreshContext(accepted).contexts).toEqual([
+        { name: 'expert-history', text: 'retained history' },
+        { name: 'new-current', text: 'new', retention: 'current' },
+      ])
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('retains required user context when optional context is suppressed', async () => {
     const ctx = new Context()
     try {

@@ -19,6 +19,11 @@ A turn flows through the six packages in one loop: the driver in [`agent-loop`](
 
 `scope/` is the one non-service package: a dependency-free library (`createScope`/`scopeOf`/`scopeTarget`) that sits below `session/` and `system-prompt/` in the module graph precisely so they can consume it without a cycle. `agent-loop` is the one concrete implementation of the public `Agent` contract and lives here because it is the harness's default product loop; it runs each driver inside `ctx.agents.withInitiator()`. Extension plugins depend on `agent` — including when they need the initiating Agent — and never on `agent-loop` directly, so the loop stays swappable. [`dsh-base`](../../packages/bundle/base/README.md) is the default product composition, while [`dsh-sdk-minimal`](../../packages/bundle/sdk-minimal/README.md) declares a smaller standalone tree.
 
+<a id="runtime-context-retention"></a>
+## Runtime context retention
+
+The loop logs `runtime-context/current-enabled` with `{ retention: 'current' }` once before it first admits nonempty current context. This log-only event is required on read: it is never marked `ignorable`, so a reader without the event type refuses the session before execution or repair. Cancellation during route preparation commits neither this marker nor context. Resume retains the marker without emitting another one. Snapshot sections without retention metadata keep historical semantics; the [system-prompt reference](system-prompt.md) owns contribution registration, and [agent-loop](../../packages/core/agent-loop/README.md#understand-the-implementation) owns request reconciliation.
+
 ## Creation and ownership
 
 Consumers create agents through `ctx.agents` — `create()` builds a fresh session and agent under one caller-supplied `SessionId`, `resume()` loads a persisted session first — or declaratively through the loop's config entries. Programmatic creation returns the owner's handle:

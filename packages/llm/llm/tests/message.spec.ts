@@ -10,9 +10,18 @@ import {
   createUserMessage,
   freezeMessage,
   MessageId,
+  renderRuntimeContextSnapshot,
 } from '@deepseek-ai/dsh-llm'
 
 describe('message construction', () => {
+  it('renders the same runtime snapshot framing for attributed history and current sections', () => {
+    expect(renderRuntimeContextSnapshot([])).toBe('')
+    expect(renderRuntimeContextSnapshot([{ name: 'history', text: '' }])).toBe('')
+    expect(renderRuntimeContextSnapshot([
+      { name: 'history', text: 'past' }, { name: 'memory-experience', text: 'now', retention: 'current' },
+    ])).toBe('Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\npast\n\nnow')
+  })
+
   it('detaches and freezes developer tool names without copying their definitions', () => {
     const content = [{ type: 'tool-addition' as const, toolName: 'search' }]
     const message = createDeveloperMessage({ content, source: { kind: 'test' } })

@@ -108,6 +108,7 @@
     "@deepseek-ai/dsh-experimental-plugin-market-bundle": "workspace:*"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-experimental-memory-experience": "workspace:*",
     "@deepseek-ai/dsh-skill-badge": "workspace:*",
     "@deepseek-ai/dsh-webhook-github": "workspace:*",
     "@deepseek-ai/dsh-webhook": "workspace:*",

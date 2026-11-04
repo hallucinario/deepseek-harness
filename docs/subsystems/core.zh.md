@@ -21,6 +21,11 @@
 
 <a id="creation-and-ownership"></a>
 
+<a id="runtime-context-retention"></a>
+## 运行时上下文保留
+
+循环在首次接纳非空当前上下文之前，将 `runtime-context/current-enabled` 与 `{ retention: 'current' }` 记录一次。此仅日志事件是读取时的必需事件：它绝不标记为 `ignorable`，因此不认识该事件类型的读取方会在执行或修复之前拒绝会话。路由准备期间取消不会提交此标记或上下文。会话恢复保留标记，不重复发出。没有保留策略元数据的快照段继续使用历史语义；[system-prompt 参考](system-prompt.zh.md)负责贡献注册，[agent-loop](../../packages/core/agent-loop/README.zh.md#understand-the-implementation)负责请求协调。
+
 ## 创建与所有权
 
 消费方通过 `ctx.agents` 创建 agent——`create()` 在一个调用方提供的 `SessionId` 下构建全新会话与 agent，`resume()` 先加载持久会话——或者通过循环的声明式配置条目创建。编程式创建返回归属所有者的句柄：

@@ -21,6 +21,18 @@ function contextMessage(text: string) {
 }
 
 describe('RuntimeContextProjection', () => {
+  it('restores the latest of multiple historical snapshots and admits changed retention metadata', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId('runtime-context-retention-change'))
+    session.append('user/message', contextMessage('older'), { surfaceOp: 'append' })
+    session.append('user/message', contextMessage('unchanged text'), { surfaceOp: 'append' })
+    const projection = new RuntimeContextProjection(ctx, session)
+    const sections = [{ name: 'current-owner', text: 'unchanged text', retention: 'current' as const }]
+    expect(projection.project('unchanged text', sections)?.source).toEqual({ kind: SOURCE, form: 'snapshot', sections })
+    await ctx.fiber.dispose()
+  })
+
   it('restores the latest visible owned snapshot and ignores other sessions', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)

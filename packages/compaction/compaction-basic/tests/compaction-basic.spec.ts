@@ -1063,6 +1063,62 @@ describe('compaction region transaction', () => {
     expect(replay.deriveMessages()).toEqual(session.deriveMessages())
   })
 
+  it('excludes only current runtime sections from mixed summarization input', async () => {
+    const ctx = createContext()
+    const compact = service({ auto: false }, ctx)
+    const session = conversation(2)
+    const mixed = session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Historical runtime detail. '.repeat(150) + 'Private current memory.' }],
+      source: {
+        kind: 'runtime-context', form: 'snapshot', sections: [
+          { name: 'history', text: 'Historical runtime detail. '.repeat(150) },
+          { name: 'memory-experience', text: 'Private current memory.', retention: 'current' },
+        ],
+      },
+    }), { surfaceOp: 'append' })
+    const currentOnly = session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Current-only runtime detail.' }],
+      source: { kind: 'runtime-context', form: 'snapshot', sections: [{ name: 'other-current', text: 'Current-only runtime detail.', retention: 'current' }] },
+    }), { surfaceOp: 'append' })
+    const other = session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Unrelated snapshot producer.' }],
+      source: { kind: 'test', form: 'snapshot', sections: [{ name: 'other', text: 'Unrelated snapshot producer.', retention: 'current' }] },
+    }), { surfaceOp: 'append' })
+    try {
+      await compact.compactRegion(mixed.seq, other.seq, agent(session, MODEL), SIGNAL)
+      const input = compact.calls[0]!.input
+      expect(summarizedText(input)).toContain('Historical runtime detail.')
+      expect(summarizedText(input)).toContain('Unrelated snapshot producer.')
+      expect(summarizedText(input)).not.toContain('Private current memory.')
+      expect(summarizedText(input)).not.toContain('Current-only runtime detail.')
+      expect(input.messages.some(message => message.id === currentOnly.data.id)).toBe(false)
+      expect(input.messages.find(message => message.id === mixed.data.id)?.source).toEqual({
+        kind: 'runtime-context', form: 'snapshot', sections: [{ name: 'history', text: 'Historical runtime detail. '.repeat(150) }],
+      })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('does not count excluded current runtime text as summary shrink capacity', async () => {
+    const ctx = createContext()
+    const compact = service({ auto: false }, ctx)
+    const session = conversation(1, 'small history')
+    const memory = 'Large current memory. '.repeat(500)
+    const snapshot = session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: memory }],
+      source: { kind: 'runtime-context', form: 'snapshot', sections: [{ name: 'memory-experience', text: memory, retention: 'current' }] },
+    }), { surfaceOp: 'append' })
+    const before = [...session.surface.nodes]
+    try {
+      await expect(compact.compactRegion(before[0]!, snapshot.seq, agent(session, MODEL), SIGNAL)).rejects.toThrow(/summary is not smaller/)
+      expect(session.surface.nodes).toEqual(before)
+      expect(session.snapshotEvents().some(event => event.type === 'compaction/summary')).toBe(false)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('replays the system head and latest routed tools so the summarizer reuses the cache', async () => {
     const compact = service()
     const session = conversation(3, undefined, 'CONVERSATION SYSTEM')

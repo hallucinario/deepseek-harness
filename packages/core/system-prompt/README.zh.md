@@ -65,7 +65,9 @@ ctx.systemPrompt.section({
 
 在段或动态上下文上设置 `interpolate: false` 可原样保留文本，包括生成的工具文档或目录名中的 `{{…}}` 组。其他贡献默认执行变量插值。
 
-`refreshContext(assembly, context)` 在 pre-step 与路由准备之后刷新已注册的运行时事实。它保留已接纳的段、工具、变量及仅由组装 waterfall 添加的上下文，应用当前的可选上下文抑制，并恢复缺失的必需条目。将变化的事实放在上下文 provider 中；已注册上下文的文本会在准入前再次读取。
+通过 `ctx.systemPrompt.context()` 注册的动态上下文默认为 `retention: 'history'`。当模型历史只应保留最新值，且该值不应进入压缩摘要时，设置 `retention: 'current'`。必需的注册 `name` 是跨会话恢复的稳定归属标识；重新加载 provider 时必须保持稳定。空文本、移除或可选上下文抑制会在下一次接纳请求时清除该 provider 的旧当前文本。Provider 出错会阻止该请求，而不会发送旧值。
+
+`refreshContext(assembly, context)` 在 pre-step 与路由准备之后刷新已注册的运行时事实，包括每次重试。它保留已接纳的段、工具、变量及仅由组装 waterfall 添加的历史上下文，应用可选上下文抑制，移除缺失的 current provider，并恢复有效的 current 与必需条目。将变化的事实放在上下文 provider 中；已注册上下文的文本会在准入前再次读取。
 
 ### 贡献提示词变量
 

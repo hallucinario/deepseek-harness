@@ -78,7 +78,7 @@ interface PromptSection {
 ```ts type-equiv
 /** Dynamic model context materialized as a durable user-role snapshot. */
 interface PromptContext {
-  /** Unique name — a duplicate registration throws (see {@link SystemPrompt.context}). */
+  /** Unique registration name and stable owner for current retention across resume; duplicates throw. */
   readonly name: string
   /** Contexts are joined in ascending order. */
   readonly order: number
@@ -88,10 +88,12 @@ interface PromptContext {
   readonly interpolate?: boolean
   /** Keep this operational context when optional runtime context is disabled. */
   readonly required?: boolean
+  /** `current` replaces previous values and stays out of compaction input; absent or `history` retains history. */
+  readonly retention?: 'history' | 'current'
 }
 ```
 
-`required: true` keeps an operational contribution when optional runtime context is suppressed. `interpolate: false` preserves literal text, including variable-like directory names. `AssembledContext` carries the resolved text and that interpolation choice into rendering.
+`required: true` keeps an operational contribution when optional runtime context is suppressed. `interpolate: false` preserves literal text, including variable-like directory names. `retention` defaults to `history`; `current` keeps only live registered values and excludes them from compaction input. The required `name` identifies that owner across resume. `AssembledContext` carries resolved text, interpolation, and retention into rendering.
 
 ```ts type-equiv
 /** One resolved dynamic context contribution. */
@@ -102,6 +104,8 @@ interface AssembledContext {
   text: string
   /** Whether to interpolate prompt variables. Defaults to true; false preserves literal text. */
   interpolate?: boolean
+  /** Retention inherited from the registration; absent means history. */
+  retention?: 'history' | 'current'
 }
 ```
 
@@ -181,9 +185,10 @@ variable(name: string, provider: (context: AssembleContext) => string | undefine
 
 /**
  * Refresh accepted registered runtime facts for request admission. Contexts
- * added only by the assembly waterfall retain their accepted values. Current
- * suppression removes optional contexts, and missing required registrations
- * are restored in registry order. Sections, tools, and interpolation variables
+ * added only by the assembly waterfall retain accepted historical values.
+ * Missing current providers are removed; active current and required providers
+ * are restored in registry order. Suppression removes optional contexts.
+ * Sections, tools, and interpolation variables
  * retain the accepted assembly; their providers and waterfall do not rerun.
  * @param assembly - accepted assembly for this scope and step.
  * @param context - the same scope and current plugin-defined assembly fields.

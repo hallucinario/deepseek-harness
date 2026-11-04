@@ -9,6 +9,7 @@ import z from '@deepseek-ai/schemastery'
 import { AnonymousEntries, NamedEntries, ScopedLayers, scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer, Scoped } from '@deepseek-ai/dsh-scope'
 import type { ContextSnapshotSection, ToolSchema } from '@deepseek-ai/dsh-llm'
+import { renderRuntimeContextSnapshot } from '@deepseek-ai/dsh-llm'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -77,7 +78,7 @@ export interface PromptSection {
 
 /** Dynamic model context materialized as a durable user-role snapshot. */
 export interface PromptContext {
-  /** Unique name — a duplicate registration throws (see {@link SystemPrompt.context}). */
+  /** Unique registration name and stable owner for current retention across resume; duplicates throw. */
   readonly name: string
   /** Contexts are joined in ascending order. */
   readonly order: number
@@ -87,6 +88,8 @@ export interface PromptContext {
   readonly interpolate?: boolean
   /** Keep this operational context when optional runtime context is disabled. */
   readonly required?: boolean
+  /** `current` replaces previous values and stays out of compaction input; absent or `history` retains history. */
+  readonly retention?: 'history' | 'current'
 }
 
 /** One section of an assembly: {@link PromptSection} with its text resolved. */
@@ -107,6 +110,8 @@ export interface AssembledContext {
   text: string
   /** Whether to interpolate prompt variables. Defaults to true; false preserves literal text. */
   interpolate?: boolean
+  /** Retention inherited from the registration; absent means history. */
+  retention?: 'history' | 'current'
 }
 
 /** Tool schemas visible in one assembly and their pre-restriction name set. */
@@ -312,9 +317,7 @@ export function renderContextSnapshot(assembly: PromptAssembly): string {
  * @returns the current full snapshot, or `''` when no context is active.
  */
 export function joinContextSections(sections: readonly ContextSnapshotSection[]): string {
-  const body = sections.map(section => section.text).join('\n\n')
-  if (body.length === 0) return ''
-  return `Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n${body}`
+  return renderRuntimeContextSnapshot(sections)
 }
 
 /**
@@ -332,6 +335,7 @@ export function renderContextSections(assembly: PromptAssembly): ContextSnapshot
     .map(context => ({
       name: context.name,
       text: context.interpolate === false ? context.text : interpolate(context, assembly.variables, 'context'),
+      ...context.retention === undefined ? {} : { retention: context.retention },
     }))
     .filter(section => section.text.length > 0)
 }
@@ -382,6 +386,7 @@ function resolveContext(entry: PromptContext, context: AssembleContext): Assembl
     name: entry.name,
     text: typeof entry.text === 'function' ? entry.text(context) : entry.text,
     ...entry.interpolate !== undefined ? { interpolate: entry.interpolate } : {},
+    ...entry.retention !== undefined ? { retention: entry.retention } : {},
   }
 }
 
@@ -571,9 +576,10 @@ export class SystemPrompt extends Service {
 
   /**
    * Refresh accepted registered runtime facts for request admission. Contexts
-   * added only by the assembly waterfall retain their accepted values. Current
-   * suppression removes optional contexts, and missing required registrations
-   * are restored in registry order. Sections, tools, and interpolation variables
+   * added only by the assembly waterfall retain accepted historical values.
+   * Missing current providers are removed; active current and required providers
+   * are restored in registry order. Suppression removes optional contexts.
+   * Sections, tools, and interpolation variables
    * retain the accepted assembly; their providers and waterfall do not rerun.
    * @param assembly - accepted assembly for this scope and step.
    * @param context - the same scope and current plugin-defined assembly fields.
@@ -583,15 +589,17 @@ export class SystemPrompt extends Service {
     const providers = this.layers.merge(context.scope, layer => layer.contexts)
     const suppressed = !this.layers.global.runtimeContextSuppressors.isEmpty()
       || this.layers.chainLayers(context.scope).some(layer => !layer.runtimeContextSuppressors.isEmpty())
-    const required = new Map([...providers].filter(([, entry]) => entry.required === true))
+    const restored = new Map([...providers].filter(([, entry]) => entry.required === true || entry.retention === 'current'))
     const contexts: AssembledContext[] = []
     for (const accepted of assembly.contexts) {
       const provider = providers.get(accepted.name)
-      required.delete(accepted.name)
+      restored.delete(accepted.name)
       if (suppressed && provider?.required !== true) continue
+      if (provider === undefined && accepted.retention === 'current') continue
       contexts.push(provider === undefined ? accepted : resolveContext(provider, context))
     }
-    for (const provider of required.values()) {
+    for (const provider of restored.values()) {
+      if (suppressed && provider.required !== true) continue
       const index = contexts.findIndex((entry) => {
         const next = providers.get(entry.name)
         return next !== undefined && next.order > provider.order
