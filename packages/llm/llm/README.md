@@ -60,6 +60,8 @@ After a successful mount, `ctx.llm.listProviders()` reports the registered route
 
 `GenerateOptions.messages` accepts durable `Message` values and request-only `RequestUserInput` values. Request-only inputs carry user-role content with no `id` or `source`; Session writes and Agent delivery still require durable messages. Callers keep auxiliary inputs unchanged until the stream settles. A caller that records its exact request, such as session-title generation, must use durable messages.
 
+`ContextSnapshotSection` records each contribution's stable `name`, rendered `text`, and optional `retention`. Runtime snapshots interpret absent retention as history; `current` opts into [the loop's current-context handling](../../core/agent-loop/README.md#understand-the-implementation). `renderRuntimeContextSnapshot(sections)` supplies the shared text framing for a rendered section list and returns an empty string when no text is active.
+
 `prepareCall(config, signal, configure?)` accepts concrete `LlmCallConfig` values. The optional synchronous, pure `ConfigureCall` function receives detached, deeply frozen `LlmCallControls` and model metadata from the captured adapter generation. Callers can compose ordinary functions to choose concrete controls; later writes replace earlier ones. Preparation retains the captured route, applies defaults to omitted controls, validates the result, and returns a frozen configuration for recording and dispatch. Callback failures or cancellation reject before dispatch. Preparation requires a registered adapter.
 
 Configuration functions select controls before adapter defaults are materialized. For example, combine least-effort selection with an explicit output cap, then pass `configure(maxTokens)` as the third argument:

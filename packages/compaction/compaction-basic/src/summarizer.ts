@@ -25,9 +25,8 @@ const SUMMARY_CLOSE_TAG = '</compacted-summary>'
 /**
  * The summarization directive, delivered as the FINAL user message after the
  * replayed conversation rather than as a distinct summarizer system prompt.
- * Keeping the conversation's own system prompt, tools, and message prefix in
- * front of it makes the auxiliary call a genuine prefix of the last routed
- * request, so the provider's KV cache is reused instead of invalidated.
+ * Keeping the conversation's system prompt, tools, and retained history before
+ * it preserves prefix-cache reuse up to the first excluded current-context section.
  */
 const COMPACTION_INSTRUCTION = [
   'You are now acting as a compaction engine for this AI coding assistant. Condense the conversation ABOVE into a structured checkpoint that lets another model resume the work with no loss of essential context.',
@@ -72,9 +71,9 @@ const CHECKPOINT_PREAMBLE =
 
 /**
  * The replayed conversation surface the summarizer condenses. Reproducing the
- * last routed request's system prompt, tools, and leading messages verbatim
- * lets the auxiliary call reuse the provider's warm prefix cache; the trailing
- * compaction instruction is then the only novel input.
+ * last routed request's system prompt, tools, and leading history preserves
+ * prefix-cache reuse up to the first excluded current-context section. The
+ * compaction instruction follows that retained input.
  */
 export interface SummarizationInput {
   /** The conversation's tool schemas, reused for prefix-cache alignment; absent when the request carried none. */
@@ -107,9 +106,9 @@ export type SummaryResult = {
 )
 
 /**
- * Run the default cache-reusing `ctx.llm.stream()` summarization call: replay
- * the conversation prefix, then append the compaction instruction as the final
- * user message so the provider's warm prefix cache is reused.
+ * Run the default `ctx.llm.stream()` summarization call: replay retained
+ * conversation history, then append the compaction instruction as the final
+ * user message. Current runtime sections are excluded by the region caller.
  * @param ctx - context providing the LLM service.
  * @param config - resolved backend configuration.
  * @param input - replayed conversation prefix (system, tools, and leading messages) to condense.

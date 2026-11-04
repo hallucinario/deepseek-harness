@@ -5,14 +5,22 @@
  * @module @deepseek-ai/dsh-agent-loop/runtime-context
  */
 
-import { createSystemMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { isDeepStrictEqual } from 'node:util'
+import { createSystemMessage, createUserMessage, renderRuntimeContextSnapshot } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, ContextSnapshotSection, Message } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionSeq, SurfaceIntent, SystemMessage, UserMessage } from '@deepseek-ai/dsh-session'
-import { isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
+import { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
 import type { Context } from '@deepseek-ai/cordis'
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     'runtime-context': { kind: 'runtime-context' } & ContextFormed
+  }
+}
+
+declare module '@deepseek-ai/dsh-session' {
+  interface SessionEventMap {
+    /** Required-on-read marker for section-level current-context retention. */
+    'runtime-context/current-enabled': { retention: 'current' }
   }
 }
 
@@ -110,10 +118,12 @@ export class SystemPromptProjection {
   }
 }
 
-/** Tracks the last retained runtime-context snapshot without owning its commit. */
+/** Tracks surviving runtime-context snapshots without owning their commits. */
 export class RuntimeContextProjection {
   /** `undefined` means no snapshot ever existed; `null` means none is retained. */
-  private retained: { seq: SessionSeq; text: string | undefined } | null | undefined
+  private retained: { seq: SessionSeq; message: UserMessage } | null | undefined
+  private readonly currentSnapshots = new Map<SessionSeq, UserMessage>()
+  private currentEnabled = false
 
   /**
    * Restore projection state once, then follow authoritative session events.
@@ -121,26 +131,46 @@ export class RuntimeContextProjection {
    * @param session - session receiving projected messages.
    */
   constructor(ctx: Context, session: Session) {
-    const surface = new Set(session.surface.nodes)
+    const surface = new Map(session.surface.nodes.map((seq, index) => [seq, index]))
+    let latestPosition = -1
     for (const event of eventsNewestFirst(session)) {
+      if (event.type === 'runtime-context/current-enabled') this.currentEnabled = true
       if (event.type !== 'user/message' || !isOwned(event.data)) continue
       this.retained ??= null
-      if (surface.has(event.seq)) {
-        this.retained = { seq: event.seq, text: textOf(event.data) }
-        break
+      const position = surface.get(event.seq)
+      if (position === undefined) continue
+      this.rememberCurrent(event.seq, event.data)
+      if (position > latestPosition) {
+        this.retained = { seq: event.seq, message: event.data }
+        latestPosition = position
       }
     }
 
     ctx.on('session/event', (subject, event) => {
       if (subject !== session) return
+      if (event.type === 'runtime-context/current-enabled') this.currentEnabled = true
+      const replacement = isReplacementSurfaceEvent(event)
+      if (replacement) {
+        const surviving = session.surface.nodes
+        for (const seq of this.currentSnapshots.keys()) {
+          if (!surviving.includes(seq)) this.currentSnapshots.delete(seq)
+        }
+        if (this.retained && !surviving.includes(this.retained.seq)) this.retained = null
+      }
       if (event.type === 'user/message' && isOwned(event.data)) {
-        this.retained = { seq: event.seq, text: textOf(event.data) }
-      } else if (this.retained
-        && isReplacementSurfaceEvent(event)
-        && event.sourceEventSeqs?.includes(this.retained.seq) === true) {
-        this.retained = null
+        this.retained ??= null
+        this.rememberCurrent(event.seq, event.data)
+        if (isAppendSurfaceEvent(event) || (replacement && this.retained === null)) {
+          this.retained = { seq: event.seq, message: event.data }
+        }
       }
     })
+  }
+
+  private rememberCurrent(seq: SessionSeq, message: UserMessage): void {
+    const source = message.source
+    if (source.kind === SOURCE && source.form === 'snapshot'
+      && source.sections.some(section => section.retention === 'current')) this.currentSnapshots.set(seq, message)
   }
 
   /**
@@ -152,7 +182,12 @@ export class RuntimeContextProjection {
   project(current: string, sections: readonly ContextSnapshotSection[]): UserMessage | undefined {
     if (this.retained === undefined && current.length === 0) return
     const snapshot = current.length === 0 ? CLEARED : current
-    if (this.retained?.text === snapshot) return
+    if (this.retained !== undefined && this.retained !== null && textOf(this.retained.message) === snapshot) {
+      const source = this.retained.message.source
+      const previous = source.kind === SOURCE && source.form === 'snapshot' ? source.sections : []
+      if (!previous.some(section => section.retention === 'current') && !sections.some(section => section.retention === 'current')) return
+      if (isDeepStrictEqual(previous, sections)) return
+    }
     return createUserMessage({
       content: [{ type: 'text', text: snapshot }],
       // The cleared marker has no contributions left to attribute.
@@ -160,5 +195,42 @@ export class RuntimeContextProjection {
         ? { kind: SOURCE }
         : { kind: SOURCE, form: 'snapshot', sections },
     })
+  }
+
+  /**
+   * Plan request admission after providers refresh. Old current sections are
+   * replaced per node; historical sections and raw log events remain intact.
+   * The latest unchanged complete snapshot can stay in place.
+   * @param current - fully rendered refreshed context.
+   * @param sections - refreshed named contributions, including retention.
+   * @returns logged replacements and the optional fresh snapshot to admit.
+   */
+  reconcile(current: string, sections: readonly ContextSnapshotSection[]): {
+    enableCurrent: boolean
+    replacements: { message: UserMessage; intent: SurfaceIntent<'user/message'> }[]
+    message: UserMessage | undefined
+  } {
+    const message = this.project(current, sections)
+    const keep = message === undefined ? this.retained?.seq : undefined
+    const replacements: { message: UserMessage; intent: SurfaceIntent<'user/message'> }[] = []
+    for (const [seq, previous] of this.currentSnapshots) {
+      if (seq === keep) continue
+      const source = previous.source
+      if (source.kind !== SOURCE || source.form !== 'snapshot'
+        || !source.sections.some(section => section.retention === 'current')) continue
+      const history = source.sections.filter(section => section.retention !== 'current')
+      replacements.push({
+        message: createUserMessage({
+          content: [{ type: 'text', text: history.length === 0 ? CLEARED : renderRuntimeContextSnapshot(history) }],
+          source: { kind: SOURCE, form: 'snapshot', sections: history },
+        }),
+        intent: { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: [seq] },
+      })
+    }
+    return {
+      enableCurrent: !this.currentEnabled && sections.some(section => section.retention === 'current'),
+      replacements,
+      message,
+    }
   }
 }

@@ -68,10 +68,23 @@ export type ContextForm =
 
 /** One named contribution to a `snapshot`-form context, in assembly order. */
 export interface ContextSnapshotSection {
-  /** The contributing subsystem's name. */
+  /** The contributing subsystem's stable name; identifies its current context across resume. */
   readonly name: string
   /** That contribution's model-facing text, exactly as assembled. */
   readonly text: string
+  /** Runtime snapshots use `current` to replace old values and exclude compaction input; absent or `history` retains history. */
+  readonly retention?: 'history' | 'current'
+}
+
+/**
+ * Render the loop-owned runtime snapshot from its attributed contributions.
+ * @param sections - rendered contributions in assembly order.
+ * @returns the framed snapshot, or an empty string without active text.
+ */
+export function renderRuntimeContextSnapshot(sections: readonly ContextSnapshotSection[]): string {
+  const body = sections.map(section => section.text).join('\n\n')
+  if (body.length === 0) return ''
+  return `Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n${body}`
 }
 
 /**

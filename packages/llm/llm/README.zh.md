@@ -60,6 +60,8 @@ for await (const chunk of ctx.llm.stream({
 
 `GenerateOptions.messages` 接受持久 `Message` 值和仅供请求使用的 `RequestUserInput` 值。仅供请求使用的输入包含 user-role 内容，不含 `id` 或 `source`；Session 写入和 Agent 投递仍然要求持久消息。调用方必须在流结束前保持辅助输入不变。会记录完整请求的调用方（例如会话标题生成）必须使用持久消息。
 
+`ContextSnapshotSection` 记录每个贡献的稳定 `name`、已渲染的 `text` 与可选的 `retention`。运行时快照将未指定的保留策略视为历史；`current` 启用[循环的当前上下文处理](../../core/agent-loop/README.zh.md#understand-the-implementation)。`renderRuntimeContextSnapshot(sections)` 为已渲染的段列表提供共享文本框架；没有有效文本时返回空字符串。
+
 `prepareCall(config, signal, configure?)` 接受具体的 `LlmCallConfig` 值。可选的同步纯函数 `ConfigureCall` 接收已分离且深度冻结的 `LlmCallControls`，以及捕获的适配器代次所提供的模型元数据。调用方可组合普通函数来选择具体控制项；后执行的写入替换先前的值。准备操作保留捕获的路由，为省略的控制项应用默认值，校验结果，再返回用于记录与分发的冻结配置。回调失败或取消会在分发前拒绝。准备操作要求注册适配器。
 
 配置函数在适配器默认值物化之前选择控制项。例如，将最低强度选择与显式输出上限组合，再将 `configure(maxTokens)` 作为第三个参数传入：

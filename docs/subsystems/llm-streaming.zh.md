@@ -127,10 +127,12 @@ type ContextForm =
 ```ts type-equiv
 /** One named contribution to a `snapshot`-form context, in assembly order. */
 interface ContextSnapshotSection {
-  /** The contributing subsystem's name. */
+  /** The contributing subsystem's stable name; identifies its current context across resume. */
   readonly name: string
   /** That contribution's model-facing text, exactly as assembled. */
   readonly text: string
+  /** Runtime snapshots use `current` to replace old values and exclude compaction input; absent or `history` retains history. */
+  readonly retention?: 'history' | 'current'
 }
 ```
 
