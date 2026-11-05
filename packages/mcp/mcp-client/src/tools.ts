@@ -366,7 +366,7 @@ async function resolveImageAdmission(ctx: Context, exec: ToolExecution): Promise
     throw new Error('the current model route could not be verified')
   }
   if (info.inputModalities === undefined || !info.inputModalities.includes('image')) {
-    throw new Error(`model "${model}" does not declare image input`)
+    throw new Error(`model "${model}" on provider "${provider}" does not declare image input`)
   }
   if (exec.signal.aborted) throw new Error('the tool call was canceled before image storage')
   return attachments

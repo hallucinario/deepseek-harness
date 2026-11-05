@@ -553,7 +553,7 @@ describe('tool execution', () => {
     })
 
     expect(rich.attachments.saved).toEqual([])
-    expect(textAt(result.content)).toContain('does not declare image input')
+    expect(textAt(result.content)).toContain('model "text" on provider "visual" does not declare image input')
   })
 
   it('refuses images when the exact route is missing, unverifiable, or canceled', async () => {
@@ -614,7 +614,7 @@ describe('tool execution', () => {
       arguments: {},
       agent: agentOn() as never,
     })
-    expect(textAt(unknown.content)).toContain('does not declare image input')
+    expect(textAt(unknown.content)).toContain('model "vision" on provider "visual" does not declare image input')
 
     const controller = new AbortController()
     vi.spyOn(rich.ctx.llm, 'resolveModelInfo').mockImplementationOnce(async (provider, model) => {

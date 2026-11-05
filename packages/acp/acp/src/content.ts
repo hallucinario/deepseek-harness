@@ -74,7 +74,7 @@ async function assertImageRoute(ctx: Context, route: ModelSelection | undefined,
     throw new AcpContentError('the current model route could not be verified for image input', 'internal', { cause: error })
   }
   if (info.inputModalities === undefined || !info.inputModalities.includes('image')) {
-    throw new AcpContentError(`model "${model}" does not declare image input`, 'invalid')
+    throw new AcpContentError(`model "${model}" on provider "${provider}" does not declare image input`, 'invalid')
   }
 }
 
