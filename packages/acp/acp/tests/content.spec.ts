@@ -135,13 +135,13 @@ describe('ACP rich content codec', () => {
     const unknown = admissionFixture()
     unknown.resolveModelInfo.mockResolvedValueOnce({ provider: 'mock', id: 'vision', name: 'vision' })
     await expect(admitAcpPrompt(unknown.ctx, unknown.route, prompt, true, new AbortController().signal))
-      .rejects.toThrow(/does not declare image input/)
+      .rejects.toThrow(/model "vision" on provider "mock" does not declare image input/)
     const textOnly = admissionFixture()
     textOnly.resolveModelInfo.mockResolvedValueOnce({
       provider: 'mock', id: 'vision', name: 'vision', inputModalities: ['text'],
     })
     await expect(admitAcpPrompt(textOnly.ctx, textOnly.route, prompt, true, new AbortController().signal))
-      .rejects.toThrow(/does not declare image input/)
+      .rejects.toThrow(/model "vision" on provider "mock" does not declare image input/)
 
     const routed = admissionFixture({ provider: 'live', model: 'vision-2' })
     await expect(admitAcpPrompt(routed.ctx, routed.route, prompt, true, new AbortController().signal)).resolves.toHaveLength(1)
