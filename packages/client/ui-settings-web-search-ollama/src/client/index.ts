@@ -23,7 +23,7 @@ import {
   WEB_OLLAMA_NS, WEB_NS, OllamaSearchCardController,
 } from './ollama-search-card-controller.ts'
 import type { OllamaSearchSettings, WebProviderSelection } from './ollama-search-card-controller.ts'
-import { en, zh, type OllamaSearchSettingsLocaleKey } from './locales.ts'
+import { en, ja, zh, type OllamaSearchSettingsLocaleKey } from './locales.ts'
 
 export type { OllamaSearchCardProps } from './OllamaSearchCard.tsx'
 export type {
@@ -51,7 +51,7 @@ export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'confi
  */
 export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(NS)
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-web-search-ollama: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja }), 'ui-settings-web-search-ollama: dictionaries')
   const card = new OllamaSearchCardController({
     web: ctx.configForms.get<WebProviderSelection>(WEB_NS),
     provider: ctx.configForms.get<OllamaSearchSettings>(WEB_OLLAMA_NS),

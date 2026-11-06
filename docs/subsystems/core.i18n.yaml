@@ -12,11 +12,11 @@
   en: 2bc04de9aa47140a
   zh: 78eac687ec48331c
 /core/creation-and-ownership:
-  en: ab09a38b4e1f0883
-  zh: 81e2d14c4036ab6c
+  en: e516e14228c6bd35
+  zh: dba25d7da1d5a44e
 /core/the-agent-handle:
-  en: bcaddd90972e33bc
-  zh: 855e00effa654495
+  en: a796642bd5f972a6
+  zh: 5331d6a16a68098b
 /core/initiating-agent:
   en: 6c8c47ac78de2dde
   zh: c9d527a25a85d1d9
@@ -33,8 +33,11 @@
   en: 057db6d8bf356c0f
   zh: 1441b39e5142b0bf
 /core/repo-wide-type-patterns/the-map-derived-union-pattern:
-  en: 84c039e929edb897
-  zh: 84241bb993f23ef2
+  en: 87a19311e2a97270
+  zh: 8df92c72793e8275
 /core/repo-wide-type-patterns/branded-ids:
   en: 10f8ac0f97e7c54a
   zh: 75cd2311aabfe464
+/core/turnboundaryprojection:
+  en: 3892ad06e90b25c1
+  zh: ee6f592230ad89df

@@ -30,9 +30,6 @@
       "path": "../../session/session-persistence"
     },
     {
-      "path": "../../session/session-projection"
-    },
-    {
       "path": "../../session/working-directory"
     },
     {

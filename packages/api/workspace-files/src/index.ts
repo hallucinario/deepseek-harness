@@ -27,7 +27,6 @@ import type { FsDirEntry, FsInfo, FsPathInfo, FsTarget } from '@deepseek-ai/dsh-
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
-import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { Remote, RemoteError, TypertRemoteService, type TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
@@ -216,11 +215,11 @@ export class WorkspaceFiles extends TypertRemoteService {
           const header = live?.header ?? stored?.header
           if (header === undefined) return undefined
           // The Session may have moved since its header was written; the
-          // projected working directory wins over the header, and only a cold
+          // owning working-directory service wins over the header, and only a cold
           // Session, whose events are not loaded, falls back to the header.
           const current = live === undefined
             ? undefined
-            : scope.get('sessionProjections')?.stateOf(live, 'workingDirectory')
+            : scope.get('workingDirectory')?.get(live)
           return {
             sessionId,
             workspaceRoot: current ?? header.cwd ?? scope.sandboxPolicy.workspaceRoot,

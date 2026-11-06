@@ -27,7 +27,13 @@
   flex: none;
 }
 
-.chip:hover,
+@media (hover: hover) {
+  .chip:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+
 .chip[aria-expanded='true'] {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);

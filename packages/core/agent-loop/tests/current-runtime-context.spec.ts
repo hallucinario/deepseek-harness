@@ -8,6 +8,7 @@ import { SessionFormatUnsupportedError, validateStoredEvents } from '@deepseek-a
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
 
 declare module '@deepseek-ai/dsh-llm' {
@@ -30,6 +31,7 @@ async function harness(adapter = new MockAdapter(Array.from({ length: 8 }, () =>
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentLoop, { agents: [] })
   ctx.llm.registerAdapter(['mock'], adapter)

@@ -223,6 +223,7 @@ export default class ExperienceMemory extends Service {
    * @returns whether a visible record exists, after its retirement is durable.
    */
   retire(agent: Agent, id: string): Promise<boolean> {
+    if (!this.accepting) return Promise.reject(new Error('memory-experience: service is disposing'))
     const episodeId = episodeIdSchema.parse(id)
     const scope = this.scope(agent.session)
     if (scope === undefined) return Promise.resolve(false)

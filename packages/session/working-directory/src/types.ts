@@ -16,9 +16,4 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     /** Recorded current directory for Session observations, or null when none is recorded. */
     workingDirectory: string | null
   }
-
-  interface SessionProjectionStateMap {
-    /** Last committed working directory, or null before an explicit value exists. */
-    workingDirectory: string | null
-  }
 }
