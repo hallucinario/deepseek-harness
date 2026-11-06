@@ -775,6 +775,7 @@ export class LlmRuntime extends TypertRemoteService {
       seen.add(model.id)
       const inputModalities = this.detachedModalities(model.inputModalities)
       const routing = this.detachedRouting(model.routing, 'INVALID_CATALOG', `provider "${provider}"`)
+      const badge = model.badge
       return {
         provider: model.provider,
         id: model.id,
@@ -782,6 +783,9 @@ export class LlmRuntime extends TypertRemoteService {
         ...model.description === undefined ? {} : { description: model.description },
         ...inputModalities === undefined ? {} : { inputModalities },
         ...routing === undefined ? {} : { routing },
+        ...badge === undefined ? {} : {
+          badge: { text: typeof badge.text === 'string' ? badge.text : { ...badge.text }, tone: badge.tone },
+        },
       }
     })
   }

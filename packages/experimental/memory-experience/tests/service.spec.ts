@@ -75,7 +75,7 @@ function persistedQueries(ctx: Context, records: SessionLogSnapshot[]) {
 
 async function enter(ctx: Context, agent: Agent, number: number, text: string) {
   const messages = [createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })]
-  return agentEvents(ctx, agent).waterfall('agent/pre-step', { messages, turn: number, step: 1, signal: new AbortController().signal },
+  return agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages, turn: number, step: 1, signal: new AbortController().signal },
     () => Promise.resolve({ kind: 'enter' as const, messages, startsRequestSeries: true }))
 }
 
@@ -192,7 +192,7 @@ describe('experience memory service', () => {
     expect(await enter(ctx, agent, 3, 'build failure')).toEqual({ kind: 'reject' })
     expect(await prompt(ctx, agent)).toBe('')
     stop()
-    await agentEvents(ctx, agent).waterfall('agent/pre-step', { messages: [], turn: 4, step: 1, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages: [] }))
+    await agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages: [], turn: 4, step: 1, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages: [] }))
     expect(await prompt(ctx, agent)).toBe('')
   })
 
@@ -204,7 +204,7 @@ describe('experience memory service', () => {
     await vi.waitFor(() =>{  expect(release).toBeTypeOf('function') })
     const abort = new AbortController()
     const messages = [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'build failure' }] })]
-    const entered = agentEvents(ctx, agent).waterfall('agent/pre-step', { messages, turn: 2, step: 1, signal: abort.signal }, () => Promise.resolve({ kind: 'enter' as const, messages }))
+    const entered = agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages, turn: 2, step: 1, signal: abort.signal }, () => Promise.resolve({ kind: 'enter' as const, messages }))
     abort.abort('cancelled work')
     stop()
     release?.()
@@ -373,7 +373,7 @@ describe('experience memory service', () => {
     await ctx.experienceMemory.flush()
     expect(await prompt(ctx, agent)).toBe(selected)
     const messages = [createUserMessage({ content: [{ type: 'text', text: 'continue' }], source: { kind: 'goal', goalId: goal.id, revision: 1, round: 2 } })]
-    await agentEvents(ctx, agent).waterfall('agent/pre-step', { messages, turn: 3, step: 1, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages }))
+    await agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages, turn: 3, step: 1, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages }))
     expect(await prompt(ctx, agent)).toBe(selected)
     agent.session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
     agent.session.append('turn/start', { turn: 3 })
@@ -410,7 +410,7 @@ describe('experience memory service', () => {
     expect(selected).not.toBe('')
     agent.session.append('turn/start', { turn: 2 })
     agent.session.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'build failure' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
-    await agentEvents(ctx, agent).waterfall('agent/pre-step', { messages: [], turn: 2, step: 2, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages: [] }))
+    await agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages: [], turn: 2, step: 2, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages: [] }))
     expect(await prompt(ctx, agent)).toBe(selected)
   })
 

@@ -1,7 +1,8 @@
 {
   "name": "@deepseek-ai/dsh-experimental-memory-experience",
   "description": "Source-referenced local experience recall scoped to host working directories",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.2-rc.1",
+  "engines": { "node": ">=24.9.0" },
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",

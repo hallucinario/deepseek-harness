@@ -35,3 +35,18 @@ export const en: Record<GitBranchKey, string> = {
 
 /** Key domain of the `gitBranch` namespace (zh is the source of truth). */
 export type GitBranchKey = keyof typeof zh
+
+/** Japanese copy owned by this plugin. */
+export const ja: Record<GitBranchKey, string> ={
+  'branch.tooltip': 'ブランチ {ref}',
+  'detached.tooltip': 'detached HEAD {ref}',
+  'worktree.tooltip': '（ワークツリー {name}）',
+  'path.tooltip': 'パス {path}',
+  'dialog.title': 'チェックアウト',
+  'dialog.branch': 'ブランチ',
+  'dialog.commit': 'コミット',
+  'dialog.worktree': 'ワークツリー',
+  'dialog.path': 'パス',
+  'dialog.repository': 'リポジトリ',
+  'dialog.none': '—',
+}

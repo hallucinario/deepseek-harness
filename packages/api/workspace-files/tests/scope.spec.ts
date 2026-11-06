@@ -31,9 +31,9 @@ describe('Workspace Files Session scope lookup', () => {
     const ctx = new Context()
     ctx.provide('fs', {} as never)
     ctx.provide('sandboxPolicy', { workspaceRoot: movedRoot } as never)
-    ctx.provide('sessionProjections', {
-      stateOf: (session: { header: SessionHeader }, key: string) =>
-        key === 'workingDirectory' && session.header.id === movedId ? movedRoot : undefined,
+    ctx.provide('workingDirectory', {
+      get: (session: { header: SessionHeader }) =>
+        session.header.id === movedId ? movedRoot : session.header.cwd,
     } as never)
     const sessions = await ctx.plugin(SessionStore)
     const typert = await ctx.plugin(TypertRegistry)
