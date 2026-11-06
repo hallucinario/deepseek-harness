@@ -196,7 +196,7 @@ describe('experience memory service', () => {
     expect(await prompt(ctx, agent)).toBe('')
   })
 
-  it('honors cancellation while waiting for its owned queue and rejects mutations after disposal', async () => {
+  it('honors cancellation while waiting for its owned queue and rejects mutations and late pre-step work after disposal', async () => {
     const { ctx, agent, fiber } = await setup()
     let release: (() => void) | undefined
     const stop = ctx.on('session/flush', () => new Promise<void>((resolve) => { release = resolve }))
@@ -212,7 +212,21 @@ describe('experience memory service', () => {
     expect(await prompt(ctx, agent)).toBe('')
     await ctx.experienceMemory.flush()
     const service = ctx.experienceMemory
+    const warnings = vi.spyOn(ctx.logger, 'warn')
+    const downstreamStarted = Promise.withResolvers<undefined>()
+    const continueDownstream = Promise.withResolvers<undefined>()
+    const decision = { kind: 'enter' as const, messages }
+    const lateEntry = agentEvents(ctx, agent).waterfall('agent/pre-step', { modelSelection: { provider: 'mock', model: 'mock' }, messages, turn: 3, step: 1, signal: new AbortController().signal }, async () => {
+      downstreamStarted.resolve(undefined)
+      await continueDownstream.promise
+      return decision
+    })
+    await downstreamStarted.promise
     await fiber.dispose()
+    continueDownstream.resolve(undefined)
+    expect(await lateEntry).toBe(decision)
+    await service.flush()
+    expect(warnings).not.toHaveBeenCalled()
     await expect(service.retire(agent, 'present:turn:1')).rejects.toThrow('service is disposing')
   })
 
