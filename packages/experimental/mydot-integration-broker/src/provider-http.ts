@@ -4,12 +4,12 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import { BrokerError } from './errors.ts'
 import type { Connection } from './schema.ts'
-import type { BrokerRequest, JsonValue } from './types.ts'
+import type { BrokerJsonValue, BrokerRequest } from './types.ts'
 
 /** Provider response with JSON fields validated at the HTTP boundary. */
-export type ProviderObject = { [key: string]: JsonValue }
+export type ProviderObject = { [key: string]: BrokerJsonValue }
 /** Bounded provider read or write result, optionally carrying an opaque continuation. */
-export interface ProviderResult { data: JsonValue; nextCursor?: string }
+export interface ProviderResult { data: BrokerJsonValue; nextCursor?: string }
 
 /**
  * Encode a provider identifier as one path segment, rejecting URL dot segments.
@@ -26,7 +26,7 @@ export function segment(value: string): string {
  * @param value - Parsed provider value.
  * @returns Its object fields, or a sanitized provider-data failure.
  */
-export function object(value: JsonValue | undefined): ProviderObject {
+export function object(value: BrokerJsonValue | undefined): ProviderObject {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new BrokerError('provider_data_invalid', 'The provider returned incomplete resource metadata.', 502)
   return value
 }
@@ -208,9 +208,10 @@ export class ProviderHttp {
       }
     } else if (url.pathname.endsWith('/calendars')) fields = google ? ['summary'] : ['name']
     else if (/\/create(?:Reply|ReplyAll|Forward)$/u.test(url.pathname)) {
-      fields = ['comment', 'message']
-      if (body.message !== undefined && Object.keys(object(body.message)).some(key => key !== 'toRecipients')) {
-        throw new BrokerError('write_fields_denied', 'Only the draft comment and forward recipients are permitted.', 403)
+      fields = ['message']
+      const draftFields = url.pathname.endsWith('/createForward') ? ['body', 'toRecipients'] : ['body']
+      if (body.message === undefined || Object.keys(object(body.message)).some(key => !draftFields.includes(key))) {
+        throw new BrokerError('write_fields_denied', 'Only the draft body and explicit forward recipients are permitted.', 403)
       }
     } else fields = ['subject', 'body', 'toRecipients', 'ccRecipients', 'bccRecipients', 'categories', 'flag']
     if (Object.keys(body).some(key => !fields.includes(key))) throw new BrokerError('write_fields_denied', 'This payload contains fields outside the no-send policy.', 403)

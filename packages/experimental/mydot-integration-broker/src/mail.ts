@@ -35,8 +35,8 @@ export async function mailOperation(http: ProviderHttp, request: MailRequest): P
   if (request.operation === 'mail.replyDraft' || request.operation === 'mail.forwardDraft') {
     if (message.isDraft !== false) throw new BrokerError('source_not_received', 'Choose an existing received message as the draft source.')
     const action = request.operation === 'mail.forwardDraft' ? 'createForward' : request.arguments.replyAll ? 'createReplyAll' : 'createReply'
-    const body: ProviderObject = { comment: request.arguments.body }
-    if (request.operation === 'mail.forwardDraft') body.message = { toRecipients: request.arguments.to.map(address => ({ emailAddress: { address } })) }
+    // Graph's draft actions omit comment from the returned body; use the documented message.body.
+    const body: ProviderObject = { message: draftFields(request.arguments) }
     const draft = await http.json('POST', `${target}/${action}`, body)
     if (draft.isDraft !== true) throw new BrokerError('draft_result_unknown', 'The provider did not confirm a draft. Inspect Outlook before requesting another change.', 502, 'unknown')
     return { data: draft }

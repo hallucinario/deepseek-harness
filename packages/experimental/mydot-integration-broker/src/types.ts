@@ -17,7 +17,7 @@ export type Operation = 'connections.list' | 'resources.list' | 'calendar.list' 
   | 'calendar.create' | 'calendar.update' | 'calendar.delete' | 'mail.list' | 'mail.get'
   | 'mail.createDraft' | 'mail.updateDraft' | 'mail.replyDraft' | 'mail.forwardDraft' | 'mail.organize'
 /** Bounded JSON returned by providers; content is untrusted data, never instructions. */
-export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
+export type BrokerJsonValue = null | boolean | number | string | BrokerJsonValue[] | { [key: string]: BrokerJsonValue }
 /** Typed operation arguments accepted at the broker wire parser. */
 export interface OperationArguments {
   'connections.list': Record<string, never>
@@ -77,7 +77,7 @@ export interface BrokerSuccess {
   resourceId?: ResourceId
   requestId?: RequestId
   accountLabel?: string
-  data: JsonValue
+  data: BrokerJsonValue
   nextCursor?: string
   warnings: string[]
 }

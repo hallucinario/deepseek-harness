@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto'
 import { BrokerError } from './errors.ts'
 import { object, ProviderHttp, segment, type ProviderObject, type ProviderResult } from './provider-http.ts'
-import type { BrokerRequest, JsonValue } from './types.ts'
+import type { BrokerJsonValue, BrokerRequest } from './types.ts'
 
 type CalendarRequest = Extract<BrokerRequest, { operation: `calendar.${string}` }>
 
@@ -130,7 +130,7 @@ export function assertPersonalEvent(event: ProviderObject, google: boolean, emai
   if (!safe) throw new BrokerError('event_may_notify', 'This event is a meeting, recurrence, all-day event or has incomplete safety metadata. It is read-only under the no-send policy.', 403)
 }
 
-function eventTime(value: JsonValue | undefined, google: boolean): string {
+function eventTime(value: BrokerJsonValue | undefined, google: boolean): string {
   const time = object(value)
   if (typeof time.dateTime !== 'string') throw new BrokerError('event_time_unknown', 'The existing event time cannot be safely changed.')
   if (google) return time.dateTime

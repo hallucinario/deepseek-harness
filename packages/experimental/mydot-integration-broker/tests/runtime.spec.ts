@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { authorize, checkScopes, visibleConnections } from '../src/policy.ts'
-import { parseRequest } from '../src/schema.ts'
+import { connectionSchema, grantSchema, parseRequest } from '../src/schema.ts'
 import { BrokerStore } from '../src/store.ts'
 import { IntegrationBroker } from '../src/runtime.ts'
 import { fixture, google, googleEvent, googleResponder, key, microsoftResponder, options, request, transportFixture } from './support.ts'
@@ -35,6 +35,35 @@ describe('no-send request admission', () => {
 })
 
 describe.skipIf(process.platform === 'win32')('account and Session permissions with private POSIX storage', () => {
+  it.each(['connections.list', 'resources.list'])('bounds the complete %s discovery envelope without provider access', async (operation) => {
+    const upstream = transportFixture(googleResponder)
+    const setup = await fixture('google', upstream.transport, { maxResponseBytes: 4096 })
+    cleanup.push(() => setup.close())
+    const connection = connectionSchema.parse({
+      ...setup.connection,
+      resources: Array.from({ length: 10 }, (_, index) => ({
+        id: `calendar-${index}`, label: '予定'.repeat(250), capabilities: ['calendar.read'],
+      })),
+    })
+    setup.store.state.connections[0] = connection
+    setup.store.state.grants[0] = grantSchema.parse({
+      ...setup.store.state.grants[0], resources: connection.resources.map(resource => resource.id),
+    })
+    setup.store.save()
+    const input = { version: 1, sessionId: 'session-a', operation, arguments: {},
+      ...(operation === 'resources.list' ? { connectionId: connection.id } : {}) }
+    const response = await setup.broker.execute(input)
+    expect(response).toMatchObject({ ok: false, error: { code: 'response_too_large', outcome: 'not_started', retryable: false } })
+    expect(Buffer.byteLength(JSON.stringify(response))).toBeLessThanOrEqual(4096)
+    expect(upstream.calls).toHaveLength(0)
+    setup.store.state.grants[0].resources = [connection.resources[0]!.id]
+    setup.store.save()
+    const narrowed = await setup.broker.execute(input)
+    expect(narrowed).toMatchObject({ ok: true, operation })
+    expect(Buffer.byteLength(JSON.stringify(narrowed))).toBeLessThanOrEqual(4096)
+    expect(upstream.calls).toHaveLength(0)
+  })
+
   it('honors revocation during token acquisition and rejects already queued work before any provider access', async () => {
     const upstream = transportFixture(googleResponder)
     const setup = await fixture('google', upstream.transport)
@@ -104,6 +133,22 @@ describe.skipIf(process.platform === 'win32')('account and Session permissions w
     expect(first).toMatchObject({ ok: false, error: { code: 'provider_unreachable', outcome: 'unknown' } })
     expect(JSON.stringify(first)).not.toContain('secret')
     expect(await setup.broker.execute(request('calendar.create', event))).toEqual(first)
+    expect(upstream.calls.filter(call => call.method === 'POST')).toHaveLength(1)
+  })
+
+  it('bounds a saved mutation receipt after a lower response limit without repeating the provider mutation', async () => {
+    const upstream = transportFixture(call => call.method === 'POST'
+      ? { ...googleEvent(), description: 'x'.repeat(6000) } : googleResponder(call))
+    const setup = await fixture('google', upstream.transport)
+    cleanup.push(() => setup.close())
+    expect(await setup.broker.execute(request('calendar.create', event))).toMatchObject({ ok: true })
+    await setup.broker.close()
+    const limited = new IntegrationBroker(setup.store, async () => 'provider-access-token',
+      { ...options, maxResponseBytes: 4096 }, key, upstream.transport)
+    cleanup.push(() => limited.close())
+    const response = await limited.execute(request('calendar.create', event))
+    expect(response).toMatchObject({ ok: false, error: { code: 'response_too_large', outcome: 'unknown', retryable: false } })
+    expect(Buffer.byteLength(JSON.stringify(response))).toBeLessThanOrEqual(4096)
     expect(upstream.calls.filter(call => call.method === 'POST')).toHaveLength(1)
   })
 

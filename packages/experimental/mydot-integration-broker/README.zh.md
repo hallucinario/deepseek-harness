@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 概要
+## 概述
 
 此可选 Host 插件在专用 `dsh` 配置和操作系统账户中运行 MyDot 集成代理服务。它负责提供方 OAuth 凭据、账户与资源权限、提供方 API 请求及持久化修改回执。[MyDot 集成工具](../mydot-integrations/README.zh.md) 只接收独立的执行凭据和可展示的结果。不要将代理服务加载到启用了 agent（智能体）的配置中。
 
@@ -20,6 +20,7 @@ kind: "package-reference"
 - [提供方行为](#provider-behavior)
 - [模型体验](#model-experience)
 - [已知限制与后续工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
 
 <a id="security-boundary"></a>
 ## 安全边界
@@ -146,3 +147,13 @@ Outlook 支持搜索和读取、创建及编辑草稿、回复/回复全部/转�
 - 不提供 webhook/delta 邮箱镜像、附件下载工具、文件夹移动工具、授权继承、批量操作或自动重试。精确授权在配置的最长 24 小时内过期。
 - 实际 Google/Microsoft 同意和特定租户的通知及并发行为，需要操作人员使用专用测试账户验证。本地 fixture（测试前置数据）不能证明生产提供方行为。
 - 修改日志和审计表没有自动保留清理。应备份并监控私有状态卷，维护时保留未解决的操作回执。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者工作上下文 — 点击展开</summary>
+
+无。
+
+</details>

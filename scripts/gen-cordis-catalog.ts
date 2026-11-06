@@ -163,10 +163,11 @@ export const SERVICE_PAGE: Record<string, string> = {
  * or names itself here. Client-face keys (the projection analyzes the host
  * face only) name the package README that owns their surface.
  *
- * Two categories remain, and neither is a projection gap a scanning rule could
- * close. An OPTIONAL key (`key?: X`) is a value the launcher or boot code
+ * These keys do not expose a renderable Host service class. An OPTIONAL key
+ * (`key?: X`) is a value the launcher or boot code
  * installs before the tree mounts, which the analyzer skips by rule because no
- * plugin provides it and `inject` cannot reach it. A client-face key belongs to
+ * plugin provides it and `inject` cannot reach it. A scalar readiness signal can
+ * gate a runner through `inject` without exposing a service API. A client-face key belongs to
  * the browser Context, which this host-face program never sees; the browser
  * surface has its own generated catalog (`scripts/gen-client-catalog.ts`, served
  * to a model as `cordis_runtime_inspect what:"client"`).
@@ -175,6 +176,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   invocation: 'not a service: per-call accessor (RemoteInvocation | undefined) the Gateway derives for each Remote call — packages/api/gateway/README.md owns the contract',
   webTerminals: 'client-side terminal view models — packages/api/terminal-controller/README.md owns the API',
   appReady: 'not a service: launcher-provided successful-startup signal — packages/boot/cmdline/README.md owns the launcher contract',
+  mydotIntegrationsReady: 'not a service: generation-owned scalar (true) published after MyDot config validation and tool registration — packages/experimental/mydot-integrations/README.md#understand-the-implementation owns this startup signal',
   appExit: 'not a service: launcher-provided bounded process-exit callback — packages/boot/cmdline/README.md owns the launcher contract',
   cmdlineArgs: 'not a service: launcher-provided immutable app argument accessor — packages/boot/cmdline/README.md owns the launcher contract',
   configuredAgentIdentities: 'not a service: launcher-provided boot-context value (ConfiguredAgentIdentities | undefined) — packages/core/agent-loop/README.md owns this launcher contract',

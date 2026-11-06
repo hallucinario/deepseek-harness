@@ -20,6 +20,7 @@ This optional Host plugin runs the MyDot integration broker in a dedicated `dsh`
 - [Provider behavior](#provider-behavior)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
 
 ## Security boundary
 
@@ -139,3 +140,13 @@ The broker does not change the consumer's stable tool schemas or earlier request
 - There is no webhook/delta mailbox mirror, attachment download tool, folder-move tool, grant inheritance, bulk operation or automatic retry. Exact grants expire within the configured maximum of 24 hours.
 - Live Google/Microsoft consent and tenant-specific notification/concurrency behavior require operator verification with dedicated test accounts. Local fixtures do not establish production-provider behavior.
 - The journal and audit table have no automatic retention purge. Back up and monitor the private state volume; retain unresolved operation receipts when maintaining it.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+None.
+
+</details>

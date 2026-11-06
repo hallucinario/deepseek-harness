@@ -10,10 +10,10 @@
   zh: 9ba8e7073350c13f
 /deepseek-ai-dsh-experimental-mydot-integration-broker/summary:
   en: 8558e9fdc26c35bd
-  zh: 565c9af7b1cd5d5c
+  zh: f1b97241853da82f
 /deepseek-ai-dsh-experimental-mydot-integration-broker/table-of-contents:
-  en: 463258cd05027472
-  zh: 9bce1f2bab93984d
+  en: 8ead41339c8bc654
+  zh: 2442e0eeb09bd367
 /deepseek-ai-dsh-experimental-mydot-integration-broker/security-boundary:
   en: 9f34da8142d7aa83
   zh: 6a7f73fc9c09e5ea
@@ -45,5 +45,8 @@
   en: e3c6708a0623bdbd
   zh: 753d8c8c1f475633
 /deepseek-ai-dsh-experimental-mydot-integration-broker/known-limitations-and-deferred-work:
-  en: 527a266239c869a9
-  zh: f0dcb1d20ed0b130
+  en: c0596ad5143b8d9b
+  zh: 3367b8ea691e5598
+/deepseek-ai-dsh-experimental-mydot-integration-broker/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

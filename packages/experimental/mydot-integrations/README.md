@@ -80,6 +80,8 @@ A denied operation requires correcting the specific account, resource or Session
 
 The Host registers a closed set of semantic operations and validates each operation's exact fields before making one authenticated request. The separately running broker revalidates the protocol, current permissions and provider state. The Host holds only the executor credential; provider tokens, encryption keys and the human administrator credential stay outside this package. Operating-system isolation must also keep these credentials outside agent-accessible files and processes.
 
+The Host publishes the scalar `ctx.mydotIntegrationsReady: true` only after configuration validation and registration of all fourteen tools. The restricted profile's headless runner injects this signal, so invalid configuration cannot start an agent.
+
 [Input validation](src/input.ts) binds trusted Session and call identities. [Transport](src/transport.ts) enforces private credential files, socket-only routing when configured, redirect refusal, cancellation, bounded responses and safe error reporting. It waits for the owned Unix HTTP request to close before disposal completes. [Client status](src/client/status.ts) projects only readiness and a validated console URL. [Composition tests](tests/composition.spec.ts) exercise the real Loader, Agent and tool registry against an external HTTP fixture.
 
 </details>

@@ -4,14 +4,14 @@ import { constants } from 'node:fs'
 import { open } from 'node:fs/promises'
 import http from 'node:http'
 import { z } from 'zod'
-import type { BrokerFailure, BrokerRequest, BrokerResponse, JsonValue, Operation } from '@deepseek-ai/dsh-experimental-mydot-integration-broker/types'
+import type { BrokerFailure, BrokerJsonValue, BrokerRequest, BrokerResponse, Operation } from '@deepseek-ai/dsh-experimental-mydot-integration-broker/types'
 import type { ResolvedConfig } from './config.ts'
 import { argumentSchemas } from './input.ts'
 
 type UnixRequester = (options: http.RequestOptions, response: (value: http.IncomingMessage) => void) => http.ClientRequest
 
 const operationSchema = z.enum(Object.keys(argumentSchemas) as [Operation, ...Operation[]])
-const jsonValue: z.ZodType<JsonValue> = z.lazy(() => z.union([
+const jsonValue: z.ZodType<BrokerJsonValue> = z.lazy(() => z.union([
   z.null(), z.boolean(), z.number(), z.string(), z.array(jsonValue), z.record(z.string(), jsonValue),
 ]))
 const responseSchema = z.discriminatedUnion('ok', [

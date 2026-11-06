@@ -80,6 +80,8 @@ kind: "package-reference"
 
 Host 注册一组封闭的语义操作，在发出一次已认证请求之前验证每种操作的确切字段。独立运行的代理重新验证协议、当前权限与提供方状态。Host 仅持有执行凭据；提供方令牌、加密密钥与人工管理员凭据都位于此包之外。操作系统隔离也必须将这些凭据放在 agent 无法访问的文件和进程中。
 
+Host 只有在验证配置并注册全部十四个工具后，才提供标量 `ctx.mydotIntegrationsReady: true`。受限配置的 headless runner 注入该信号，因此无效配置无法启动 agent。
+
 [输入验证](src/input.ts)绑定可信的 Session 和调用标识。[传输](src/transport.ts)执行私有凭据文件检查、配置后的 socket 专用路由、拒绝重定向、取消、响应大小限制和安全错误报告。它会等待自己拥有的 Unix HTTP 请求关闭，然后才完成资源释放。[Client 状态](src/client/status.ts)仅投影就绪状态和经过验证的控制台 URL。[组合测试](tests/composition.spec.ts)以外部 HTTP fixture（测试前置数据）检验实际 Loader、Agent 与工具注册表。
 
 </details>
