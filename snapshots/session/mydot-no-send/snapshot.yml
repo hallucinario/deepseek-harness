@@ -1,0 +1,10 @@
+version: 1
+scenario: mydot-no-send
+profile: headless
+composition: mydot-no-send
+recording: authored
+header:
+  class: mydot-no-send
+  pin: true
+replay:
+  override: true

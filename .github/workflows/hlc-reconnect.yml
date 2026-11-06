@@ -44,6 +44,20 @@ jobs:
           packages/extensions/cordis-client-runner/tests/inspect-registry.client.spec.ts
       - run: pnpm run build:artifacts
       - run: pnpm run build:check
+      - name: MyDot account isolation and no-send regressions
+        run: >-
+          pnpm exec vitest run
+          packages/experimental/mydot-integration-broker/tests
+          packages/experimental/mydot-integrations/tests
+      - name: MyDot private Unix execution transport
+        run: >-
+          pnpm run test:e2e
+          packages/experimental/mydot-integrations/tests/unix-transport.e2e.ts
+          --retry=0
+      - name: MyDot keyless recorded Session
+        run: >-
+          pnpm run test:snapshot snapshots/session/headless.snapshot.ts
+          -t 'mydot-no-send'
       - name: Experience memory and current context regressions
         run: >-
           pnpm exec vitest run

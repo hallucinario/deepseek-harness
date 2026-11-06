@@ -1160,6 +1160,87 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-experience -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integration-broker -->
+<a id="deepseek-aidsh-experimental-mydot-integration-broker"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot-integration-broker`
+
+- `source`: [`packages/experimental/mydot-integration-broker/src/index.ts:18`](../packages/experimental/mydot-integration-broker/src/index.ts)
+
+```ts config-catalog
+/** Required protected deployment paths and explicit service bounds. */
+export interface Config extends RuntimeOptions, ServerOptions {
+  /** Private, broker-user-owned directory containing encrypted SQLite records. */
+  stateDirectory: string
+  /** Protected file containing a 64-character hexadecimal AES-256 key. */
+  encryptionKeyFile: string
+  /** Protected execution credential shared only with the trusted Harness Host. */
+  executorTokenFile: string
+  /** Independent human administrator credential, unavailable to the agent process. */
+  adminTokenFile: string
+  /** Protected JSON configuration containing dedicated Google and/or Microsoft OAuth clients. */
+  oauthConfigFile: string
+}
+
+/** Explicit deployment bounds used by provider requests and the admission queue. */
+export interface RuntimeOptions {
+  /** Maximum duration of provider operations in milliseconds, including credential acquisition. */
+  requestTimeoutMs: number
+  /** Maximum encoded bytes accepted from providers or returned to the Harness. */
+  maxResponseBytes: number
+  /** Maximum number of admitted operations, including the active operation. */
+  maxQueuedRequests: number
+  /** Operator qualification of Microsoft event If-Match behavior; defaults to false. */
+  microsoftConditionalWritesVerified: boolean
+}
+
+/** HTTP-only deployment settings; all externally advertised callbacks use publicOrigin. */
+export interface ServerOptions {
+  /** Exact loopback address; remote access requires an authenticated deployment boundary. */
+  host: '127.0.0.1'
+  /** TCP listener port; zero permits an OS-assigned port for tests. */
+  port: number
+  /** Exact external HTTPS origin used by administrative forms and OAuth callbacks. */
+  publicOrigin: string
+  /** Maximum bytes in an incoming execution request or administrative form. */
+  maxBodyBytes: number
+  /** Maximum request duration in milliseconds. */
+  requestTimeoutMs: number
+  /** Maximum lifetime of a human-issued Session grant in milliseconds. */
+  maxGrantLifetimeMs: number
+  /** Protected Unix execution socket; omission starts an administrative-only broker. */
+  executorSocketPath?: string
+  /** Private administrative Unix socket; when configured, no TCP listener is opened. */
+  adminSocketPath?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integration-broker -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integrations -->
+<a id="deepseek-aidsh-experimental-mydot-integrations"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot-integrations`
+
+- `inject`: `tools` · `systemPrompt`
+- `source`: [`packages/experimental/mydot-integrations/src/config.ts:7`](../packages/experimental/mydot-integrations/src/config.ts)
+
+```ts config-catalog
+/** Settings resolved once per plugin generation. */
+export interface Config {
+  /** Broker origin; HTTPS, or loopback HTTP on 127.0.0.1. */
+  brokerUrl: string
+  /** Private regular file containing only the Host executor credential. */
+  executorTokenFile: string
+  /** Protected Unix executor socket; when present, HTTP execution is never attempted. */
+  executorSocketPath?: string
+  /** Entire request deadline in milliseconds; defaults to 30000. */
+  requestTimeoutMs?: number
+  /** Complete model-visible UTF-8 result budget; defaults to 65536 bytes. */
+  maxResultBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integrations -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 
@@ -3617,7 +3698,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:263`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:264`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */

@@ -1,0 +1,21 @@
+- id: llm
+  name: cordis:llm
+- id: sessions
+  name: cordis:sessions
+- id: session-projections
+  name: cordis:projections
+- id: system-prompt
+  name: cordis:prompt
+- id: tools
+  name: cordis:tools
+- id: agents
+  name: cordis:agents
+- id: agent-loop
+  name: cordis:loop
+  config:
+    agents: []
+- id: mydot-integrations
+  name: cordis:mydot
+  config:
+    brokerUrl: BROKER_ORIGIN
+    executorTokenFile: EXECUTOR_TOKEN_FILE

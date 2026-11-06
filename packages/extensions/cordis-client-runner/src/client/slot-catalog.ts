@@ -1303,6 +1303,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ownerPropsReferences: [
       'ModelCatalogModel',
       'ModelProviderGroup',
+      'Provider',
     ],
     standardProps: [
       'useRemoteAccess: (action: RemoteEndpoint) => boolean',
@@ -2662,6 +2663,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-settings-subagent SubagentCard id \'subagent\'',
       'client-ui-settings-web-search-ollama OllamaSearchCard id \'web-ollama-api\'',
       'client-ui-settings-web-search WebSearchCard id \'web-search\'',
+      'experimental-mydot-integrations IntegrationCard',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'plugins.item\', () => ctx.slots.register(\n      { name: \'plugins.item\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -3542,6 +3544,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       '/** Owner currency of one quota notice offered to the frame-wide chain. */\nexport interface QuotaNoticeOwnerProps {\n  /** Stable failure code retained in the Session log. */\n  code: QuotaNoticeCode\n  /** Provider-neutral notice copy in the active locale. */\n  message: string\n  /** Take the notice down. */\n  dismiss: () => void\n  /**\n   * Prevent later quota failures from replacing this notice. Dismissal clears\n   * all holds; releasing the last hold resumes future notices without replay.\n   * Callers must release on unmount.\n   * @returns idempotent release that cannot clear another hold.\n   */\n  keepOpen: () => () => void\n}',
     ],
     ownerPropsReferences: [
+      'Provider',
       'QuotaNoticeCode',
     ],
     standardProps: [
