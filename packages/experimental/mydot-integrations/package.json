@@ -18,9 +18,7 @@
   "license": "MIT",
   "files": ["lib/index.js", "lib/client.js", "lib/types/**/*.d.ts", "examples/**/*"],
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:~",
-    "@deepseek-ai/dsh-tools": "workspace:*",
-    "@deepseek-ai/dsh-system-prompt": "workspace:*"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~",
