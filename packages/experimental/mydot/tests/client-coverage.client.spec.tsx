@@ -3,9 +3,10 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
-import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector, makeTranslate, workspaceSnapshot } from '@deepseek-ai/dsh-client-test-runtime'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { FsVersion } from '@deepseek-ai/dsh-fs/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SpaceId, MyDotSnapshot, SpaceInput } from '../src/types.ts'
 import { MyDotDock } from '../src/client/Dock.tsx'
@@ -28,7 +29,7 @@ function bench() {
   const read = { kind: 'text' as const, path: '/report', content: 'Original', version: FsVersion('v1') }
   const commands = { retry: vi.fn(), newRequestId: vi.fn(() => 'request'), presentResults: vi.fn(async () => {}), releaseDesktop: vi.fn(async () => {}), saveSpace: vi.fn(async (input: SpaceInput) => ({ ...snapshot.spaces[0]!, ...input })),
     createConversation: vi.fn(async () => {}), attach: vi.fn(async () => {}), startJob: vi.fn(async () => {}), send: vi.fn(async () => {}), stop: vi.fn(async () => {}), open: vi.fn(), openConversation: vi.fn(), preview: vi.fn(), flushPreview: vi.fn(), readFile: vi.fn(async () => read), saveFile: vi.fn(async () => ({ ...read, kind: 'saved' as const, content: 'Saved' })), readMemory: vi.fn(async () => read), saveMemory: vi.fn(async () => ({ ...read, kind: 'saved' as const })), continueFile: vi.fn(async () => {}), handoff: vi.fn(async () => {}), resume: vi.fn(async () => {}) } satisfies Omit<Commands, 'hooks'>
-  const common = { ...commands, useMydot: bindSnapshotSelector(source), t: makeTranslate(ja) }
+  const common = { ...commands, useWorkspaces: bindSnapshotSelector(createSnapshotStore({ ...workspaceSnapshot(), items: [{ workspaceId: 'workspace' as WorkspaceId, title: 'Workspace', path: '/work', sessionIds: [], createdAt: '2026-11-07T00:00:00Z', updatedAt: '2026-11-07T00:00:00Z' }] })), useMydot: bindSnapshotSelector(source), t: makeTranslate(ja) }
   return { snapshot, source, dock, editor, commands, common,
     dockProps: {
       ...common, sessionId: parent, useStore: bindSnapshotSelector(dock), actions: dock.actions,

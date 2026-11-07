@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { FsVersion } from '@deepseek-ai/dsh-fs/types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector, makeTranslate, workspaceSnapshot } from '@deepseek-ai/dsh-client-test-runtime'
 import { MyDotPanel } from '../src/client/Panel.tsx'
 import { createEditorStore } from '../src/client/editor-store.ts'
 import type { ViewState } from '../src/client/props.ts'
@@ -17,7 +17,9 @@ it('keeps a Japanese memory draft and the current conflicting version across nav
   const source = createSnapshotStore<ViewState>({ phase: 'ready', value: { spaces: [], conversations: [], jobs: [], artifacts: [], desktop: { phase: 'free', inFlight: 0 } } })
   const saveMemory = vi.fn().mockResolvedValueOnce({ kind: 'conflict', draft: '私の草稿', path: '/MyDot/MEMORY.md', current: { kind: 'text', path: '/MyDot/MEMORY.md', content: '別タブの変更', version: FsVersion('current') } })
     .mockResolvedValueOnce({ kind: 'saved', content: '統合した内容', path: '/MyDot/MEMORY.md', version: FsVersion('saved') })
-  const props = { useMydot: bindSnapshotSelector(source), useStore: bindSnapshotSelector(state),
+  const props = {
+    useWorkspaces: bindSnapshotSelector(createSnapshotStore(workspaceSnapshot())),
+    useMydot: bindSnapshotSelector(source), useStore: bindSnapshotSelector(state),
     actions: state.actions, t: makeTranslate(ja),
     readMemory: vi.fn(async () => ({ kind: 'text', path: '/MyDot/MEMORY.md', content: 'original', version: FsVersion('original') })),
     saveMemory, saveSpace: vi.fn(), retry: vi.fn(), handoff: vi.fn(),

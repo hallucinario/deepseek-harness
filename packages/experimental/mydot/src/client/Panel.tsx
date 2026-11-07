@@ -1,5 +1,6 @@
 /** Space management and source-linked global work/artifact lists. */
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
 import { Button, IconFolderOpenOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -12,13 +13,50 @@ import type { NS } from './locales.ts'
 import css from './MyDot.module.css'
 
 type GlobalProps = PanelProps & PropsStore<ReturnType<typeof createEditorStore>>
-type FormProps = PropsLocale<typeof NS> & {
+type WorkspaceProps = PropsLocale<typeof NS> & Pick<PanelProps, 'useWorkspaces'> & {
+  workspaceId: WorkspaceId | undefined
+  onChange?: (id: WorkspaceId | undefined) => void
+  disabled?: boolean
+}
+
+/** Select only registered execution directories; retain unavailable saved associations. */
+function SpaceWorkspace({ workspaceId, onChange, disabled, useWorkspaces, t }: WorkspaceProps) {
+  const snapshot = useWorkspaces(value => value)
+  const noticeId = useId()
+  const selected = snapshot.items.find(item => item.workspaceId === workspaceId)
+  const unavailable = workspaceId !== undefined && selected === undefined
+  const label = selected === undefined
+    ? t(workspaceId === undefined ? 'workspaceNone' : snapshot.phase === 'pending' ? 'workspaceLoading' : 'workspaceUnavailable')
+    : `${workspaceDisplayTitle(selected.title, t('workspaceDefault'))} · ${selected.path}`
+  if (onChange === undefined) return <p className={css.text}>{label}</p>
+  const notice = snapshot.state === 'error' ? 'workspaceFailed'
+    : snapshot.phase === 'pending' ? 'workspaceLoading' : snapshot.items.length === 0 ? 'workspaceEmpty' : undefined
+  return <>
+    <label className={css.field}>{t('workspace')}<select className={css.input} value={workspaceId ?? ''}
+      disabled={disabled || snapshot.phase === 'pending' || snapshot.state === 'error'}
+      aria-describedby={notice === undefined ? undefined : noticeId}
+      onChange={(event) => {
+        if (event.target.value === '') { onChange(undefined); return }
+        const workspace = snapshot.items.find(item => item.workspaceId === event.target.value)
+        if (workspace !== undefined) onChange(workspace.workspaceId)
+      }}>
+      <option value="">{t('workspaceNone')}</option>
+      {unavailable && <option value={workspaceId} disabled>{label}</option>}
+      {snapshot.items.map(item => <option key={item.workspaceId} value={item.workspaceId}>
+        {workspaceDisplayTitle(item.title, t('workspaceDefault'))} · {item.path}
+      </option>)}
+    </select></label>
+    {notice !== undefined && <p id={noticeId} role={snapshot.state === 'error' ? 'alert' : 'status'}>{t(notice)}</p>}
+  </>
+}
+
+type FormProps = PropsLocale<typeof NS> & Pick<PanelProps, 'useWorkspaces'> & {
   space: Space | undefined
   save: (input: SpaceInput) => Promise<Space>
   onError: (message: string) => void
 }
 
-function SpaceForm({ space, save, t, onError }: FormProps) {
+function SpaceForm({ space, save, t, onError, useWorkspaces }: FormProps) {
   const [draft, setDraft] = useState<SpaceInput>(space ?? { name: '', purpose: '', instructions: '', materials: [] })
   const [pending, setPending] = useState(false)
   return <div className={css.card}>
@@ -28,8 +66,8 @@ function SpaceForm({ space, save, t, onError }: FormProps) {
     </label>)}
     <label className={css.field}>{t('materials')}<textarea className={css.input} value={draft.materials.join('\n')}
       onChange={(event) =>{  setDraft(value => ({ ...value, materials: event.target.value.split('\n').map(path => path.trim()).filter(Boolean) })) }} /></label>
-    <label className={css.field}>{t('workspace')}<input className={css.input} value={draft.workspaceId ?? ''}
-      onChange={(event) =>{  setDraft(value => ({ ...value, workspaceId: event.target.value === '' ? undefined : event.target.value as WorkspaceId })) }} /></label>
+    <SpaceWorkspace workspaceId={draft.workspaceId} useWorkspaces={useWorkspaces} t={t} disabled={pending}
+      onChange={(workspaceId) => { setDraft(value => ({ ...value, workspaceId })) }} />
     <div className={css.row}>
       <Button disabled={pending || draft.name.trim() === ''} onClick={() => {
         setPending(true)
@@ -74,10 +112,10 @@ export function MyDotPanel(props: GlobalProps) {
     <label>{t('spaces')}<select className={css.input} value={state.spaceId ?? ''} onChange={(event) =>{  actions.select(event.target.value === '' ? null : event.target.value as SpaceId) }}>
       <option value="">{t('newSpace')}</option>{data.spaces.map(item => <option key={item.id} value={item.id}>{item.name}{item.archived ? ` · ${t('archived')}` : ''}</option>)}
     </select></label>
-    <SpaceForm key={space?.id ?? 'new'} space={space} save={props.saveSpace} t={t} onError={report} />
+    <SpaceForm key={space?.id ?? 'new'} space={space} save={props.saveSpace} t={t} onError={report} useWorkspaces={props.useWorkspaces} />
     {space !== undefined && <div className={css.card}>
       <p className={css.text}>{space.purpose}</p><p className={css.text}>{space.instructions}</p>
-      <p className={css.text}>{space.workspaceId ?? t('none')}</p><p className={css.text}>{space.materials.join('\n')}</p>
+      <SpaceWorkspace workspaceId={space.workspaceId} useWorkspaces={props.useWorkspaces} t={t} /><p className={css.text}>{space.materials.join('\n')}</p>
       <Button disabled={space.archived} onClick={() => { void props.createConversation(space.id).catch(report) }}>{t('start')}</Button>
     </div>}
     {conversations.map(conversation => <Button key={conversation.sessionId}
