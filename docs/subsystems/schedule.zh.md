@@ -331,7 +331,7 @@ type ScheduleCatalogEntry = ScheduleRecord & {
   /** Session receiving this reminder when it becomes due. */
   readonly sessionId: SessionId
   /** Inactive reminders remain visible but never schedule another delivery. */
-  readonly status: 'active' | 'inactive'
+  readonly status: 'active' | 'paused' | 'inactive'
   /** Most recent durably acknowledged inbox delivery, when available. */
   readonly lastDelivery?: ScheduleDeliveryReceipt
 }
@@ -437,6 +437,26 @@ type ScheduleDeliveryHistoryResult =
 
 Session 获取、消息入队或持久化确认失败时，任务继续保存在存储中，并报告宿主警告。后续管理变更或宿主重启会重试。Session 持久化与任务 put 不具有跨存储原子性。收件箱已持久化、任务尚未 put 时发生崩溃，可能重复投递；回执并未消除这一间隔。Schedule 不提供模型结果回执、执行取消或外部通知渠道。
 
+## `SchedulePauseRequest`
+
+```ts type-equiv
+/** Change future admission without changing the reminder identity or inbox history. */
+interface SchedulePauseRequest {
+  readonly id: ScheduleId
+  readonly sessionId: SessionId
+  readonly paused: boolean
+}
+```
+
+## `SchedulePauseResult`
+
+```ts type-equiv
+/** Pausing never cancels an already delivered inbox item or active turn. */
+type SchedulePauseResult =
+  | { readonly id: ScheduleId; readonly status: 'active' | 'paused' }
+  | { readonly id: ScheduleId; readonly code: 'schedule_not_found' | 'schedule_ended' }
+```
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -523,6 +543,15 @@ async create(sessionId: SessionId, request: ScheduleCreateRequest, signal?: Abor
  * Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.
  */
 @Remote('update') async update(request: ScheduleUpdateRequest, signal?: AbortSignal): Promise<ScheduleUpdateResult>
+
+/**
+ * Suspend or resume future deliveries, preserving identity and delivery history.
+ * Pausing is serialized with delivery: a delivery already admitted completes first.
+ * Resume skips missed recurring occurrences and delivers an overdue one-shot once.
+ * @param request - Exact Session binding and desired pause state.
+ * @returns Committed admission state or a non-mutating lookup/ended result.
+ */
+@Remote('setPaused') async setPaused(request: SchedulePauseRequest): Promise<SchedulePauseResult>
 ```
 
 Types: [SessionId](core.zh.md)

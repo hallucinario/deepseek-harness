@@ -214,7 +214,7 @@ export type ScheduleCatalogEntry = ScheduleRecord & {
   /** Session receiving this reminder when it becomes due. */
   readonly sessionId: SessionId
   /** Inactive reminders remain visible but never schedule another delivery. */
-  readonly status: 'active' | 'inactive'
+  readonly status: 'active' | 'paused' | 'inactive'
   /** Most recent durably acknowledged inbox delivery, when available. */
   readonly lastDelivery?: ScheduleDeliveryReceipt
 }
@@ -478,3 +478,15 @@ declare module '@deepseek-ai/cordis' {
     'schedule/changed'(): void
   }
 }
+
+/** Change future admission without changing the reminder identity or inbox history. */
+export interface SchedulePauseRequest {
+  readonly id: ScheduleId
+  readonly sessionId: SessionId
+  readonly paused: boolean
+}
+
+/** Pausing never cancels an already delivered inbox item or active turn. */
+export type SchedulePauseResult =
+  | { readonly id: ScheduleId; readonly status: 'active' | 'paused' }
+  | { readonly id: ScheduleId; readonly code: 'schedule_not_found' | 'schedule_ended' }

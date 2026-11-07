@@ -50,6 +50,8 @@ cron 输入携带 `expression` 和 `time_zone`。表达式是标准五字段 Vix
 
 `history({sessionId, id, limit, before?})` 读取一个已存储任务的已保存发送记录。调用方必须提供 1 至 100 的整数 `limit`；非法值以 `invalid_rule` 拒绝。记录按追加顺序从新到旧返回，即使实际时间回拨也不改变顺序。可选的 `before` 消息 id 游标不包含自身；`nextBefore` 是本页最早记录的消息 id，仅在还有更早的已保存记录时出现。任务不存在或会话绑定不符时返回 `schedule_not_found`；未知游标返回 `delivery_cursor_not_found`。查询成功的空页与这两类失败相互区分。
 
+`setPaused({sessionId, id, paused})` 只改变后续接收状态，保留提醒 ID、Session 关联及已保存投递历史。暂停任务仍可通过 `catalog` 和 `history` 查看，但不出现在活动 `list` 中。已排队或运行的轮次继续执行。恢复逾期循环任务会跳过已过时段并保留时区，已结束的一次性记录不能恢复。
+
 `update(ScheduleUpdateRequest)` 使用活动任务的原始 `sessionId` 和 `id`、编辑前捕获的完整 `expected: ScheduleRecord`，以及可选的 `title`、可选的 `prompt` 和可选的带判别字段的 `change`（`at`、`every`、`daily`、`weekly` 或 `cron`）的任意组合，修改任务名称、指令和时间。提供的 `title` 去除首尾空白后必须非空且不超过 120 个字符；提供的 `prompt` 去除首尾空白后必须非空。省略的字段保留已存储的值：提供名称或指令，或省略 `change`，都保留已存储的规则种类和已提交目标，而时间变更会重新确定起算时间。change 的种类可与已存记录的种类不同；所有组合均被接受，新规则按创建时相同的方式、以接受保存的时间计算目标。Daily、Weekly 与 Cron 的时间或时区变化时，按相同的夏令时缺失跳过、重叠选较早时点规则选择首个未来目标；Weekly 变更还会携带完整的星期集合，Cron 变更携带完整表达式。Every 的新间隔必须是至少 60 秒的安全整数；新的首个目标为宿主接受保存的时间加上该间隔。绝对 `at` 目标必须严格未来，并以相同 id 保存为 `kind: "at"`。一次性记录只存储 UTC 时点，不保留输入时区。同一种类内规范化后等价的规则不产生变更：不写入或重设目标，目标不变的一次性记录保留原 `after`/`at` 拼写，Cron 变更比较规范化表达式与时区，相同的 Every 间隔也不会重新确定起算时间。
 
 每次更新都是与创建、删除共用同一 FIFO 的完整记录 compare-and-set，并保留任务 id、原会话绑定、状态、最近一次回执和全部已保存历史。任务不存在或绑定不符返回 `schedule_not_found`；未运行任务返回 `schedule_ended`。若投递、目标推进或其他编辑改变了预期记录，更新返回 `schedule_conflict`，不覆盖该记录。名称、指令和时间校验错误保留各自的错误码；存储失败会拒绝，而非报告持久化成功。冲突后应刷新目录并重新捕获预期记录，再尝试修改。分阶段表单的保存和取消行为见[任务页面](../../client/ui-schedule/README.zh.md)。

@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for mydot.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/mydot.md
+/mydot-spaces-and-local-work:
+  en: 8a97b457596c491a
+  zh: 1cda701bf6788067
+/mydot-spaces-and-local-work/spaceid:
+  en: 24f01f60887d2188
+  zh: 24f01f60887d2188
+/mydot-spaces-and-local-work/space:
+  en: b8b2c586f8e1ba60
+  zh: b8b2c586f8e1ba60
+/mydot-spaces-and-local-work/spaceinput:
+  en: 536dc693e5f8bcbc
+  zh: 536dc693e5f8bcbc
+/mydot-spaces-and-local-work/startjob:
+  en: 54b1879ccfb0a8ff
+  zh: 54b1879ccfb0a8ff
+/mydot-spaces-and-local-work/memoryscope:
+  en: 01e8aaf9af154ba0
+  zh: 01e8aaf9af154ba0
+/mydot-spaces-and-local-work/desktopstate:
+  en: 6bf2363946c2f1e9
+  zh: 6bf2363946c2f1e9
+/mydot-spaces-and-local-work/jobview:
+  en: 1500145a6594b974
+  zh: 1500145a6594b974
+/mydot-spaces-and-local-work/artifactview:
+  en: 6598e29454e0d6d8
+  zh: 6598e29454e0d6d8
+/mydot-spaces-and-local-work/mydotsnapshot:
+  en: a02b66d79130d792
+  zh: a02b66d79130d792
+/mydot-spaces-and-local-work/textread:
+  en: 8b6e0544876e9ae0
+  zh: 8b6e0544876e9ae0
+/mydot-spaces-and-local-work/textsave:
+  en: b00490ef8f2594f9
+  zh: b00490ef8f2594f9
+/mydot-spaces-and-local-work/textsaveresult:
+  en: 75d478a02ae16a9a
+  zh: 75d478a02ae16a9a
+/mydot-spaces-and-local-work/jobinput:
+  en: 4c84740372996e6e
+  zh: 4c84740372996e6e
+/mydot-spaces-and-local-work/jobaddress:
+  en: e1152dea82041947
+  zh: e1152dea82041947

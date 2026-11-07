@@ -122,7 +122,7 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
             </div>
             <div className={css.filters}>
               <div className={css.filterTabs} role="group" aria-label={t('statusFilter.label')}>
-                {(['all', 'active', 'inactive'] as const).map(value => (
+                {(['all', 'active', 'paused', 'inactive'] as const).map(value => (
                   <button
                     key={value}
                     type="button"
@@ -181,8 +181,8 @@ export function TaskManagerPage(props: TaskManagerPageProps) {
                         <span className={css.rowContent}>
                           <span className={css.rowTitle}>{taskName(record)}</span>
                           <span className={css.rowSummary} id={`${detailId}-metadata-${record.id}`}>
-                            {record.status === 'inactive'
-                              && <span className={css.metadata}>{t('status.inactive')}</span>}
+                            {record.status !== 'active'
+                              && <span className={css.metadata}>{t(record.status === 'paused' ? 'status.paused' : 'status.inactive')}</span>}
                             <span className={css.metadata}>{frequency(record)}</span>
                             {record.status === 'active' && <span className={css.metadata}>
                               {t('list.nextPrefix')}<time dateTime={record.scheduledAt}>

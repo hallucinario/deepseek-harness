@@ -38,3 +38,9 @@
 /host-wide-schedule/host-delivery:
   en: b6d522d24b9b97ba
   zh: 84df8ea09bedf51c
+/host-wide-schedule/schedulepauserequest:
+  en: 7511cd676de03a4b
+  zh: 7511cd676de03a4b
+/host-wide-schedule/schedulepauseresult:
+  en: d09ea46d100fee45
+  zh: d09ea46d100fee45

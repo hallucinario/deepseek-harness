@@ -142,6 +142,12 @@ export function apply(ctx: ClientContext): void {
     onDelete: reportedDelete(manager.onDelete),
     onRetry: manager.onRetry,
     onUpdateTiming: updateTask,
+    onPause: async (request) => {
+      const result = await ctx.remote.schedule.setPaused(request)
+      if (!result.ok) throw result.error
+      if ('code' in result.value) throw new Error(result.value.code)
+      await manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest)
+    },
     loadHistory,
     onOpenSession: openSession,
   }

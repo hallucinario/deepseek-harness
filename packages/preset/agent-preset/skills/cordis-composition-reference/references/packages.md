@@ -204,8 +204,10 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-cua-macos` | yes | macOS native provider for shared Computer Use application and window objects |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |
 | `@deepseek-ai/dsh-experimental-memory-experience` | yes | Source-referenced local experience recall scoped to host working directories |
+| `@deepseek-ai/dsh-experimental-mydot` | yes | Opt-in MyDot Spaces, local Session jobs and current-file editing |
 | `@deepseek-ai/dsh-experimental-mydot-integration-broker` | yes | Isolated, account-scoped Google Calendar and Outlook broker with an enforced no-send policy |
 | `@deepseek-ai/dsh-experimental-mydot-integrations` | yes | Session-bound Google Calendar and Outlook tools for the isolated MyDot no-send broker |
+| `@deepseek-ai/dsh-experimental-probability-guard` | yes | Opt-in visible-token probability monitoring and pre-execution task-flip guard |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |
 | `@deepseek-ai/dsh-experimental-session-inspector` | no | Experimental virtualized Session log and live Chat group/node inspectors |
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |

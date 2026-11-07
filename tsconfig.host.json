@@ -238,6 +238,7 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "./packages/experimental/mydot/tsconfig.host.json" },
     { "path": "./packages/experimental/mydot-integrations/tsconfig.host.json" },
     { "path": "./packages/experimental/mydot-integration-broker" },
     { "path": "./packages/experimental/client-ui-cot-translation/tsconfig.host.json" },

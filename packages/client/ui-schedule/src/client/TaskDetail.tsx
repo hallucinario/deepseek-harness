@@ -12,7 +12,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type {
   ScheduleCatalogEntry, ScheduleId, ScheduleRecord, ScheduleTimingChange, ScheduleUpdateContent,
-  ScheduleUpdateRequest, ScheduleUpdateResult,
+  ScheduleUpdateRequest, ScheduleUpdateResult, SchedulePauseRequest,
 } from '@deepseek-ai/dsh-schedule/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { CatalogFeedback } from './CatalogFeedback.tsx'
@@ -157,6 +157,8 @@ const sessionLinkMessages = {
  * actions one task's detail calls.
  */
 export interface TaskDetailInjected extends DeliveryHistoryInjected, TaskTimingInjected {
+  /** Change future delivery admission while preserving the task and existing turns. */
+  readonly onPause?: (request: SchedulePauseRequest) => Promise<void>
   /**
    * Delete one retained task through its original Session binding.
    * @param id - Task shown in this detail.
@@ -289,7 +291,7 @@ export function useTaskDetail(
  * @returns the detail region, its deletion confirmation dialog, and the linked Session entry.
  */
 export function TaskDetail({
-  task, authoritative, id, status, deleting, onDelete, onRetry, onUpdateTiming, loadHistory, onOpenSession,
+  task, authoritative, id, status, deleting, onDelete, onRetry, onUpdateTiming, loadHistory, onOpenSession, onPause,
   onEditState, tab, onTabChange, confirmId, onConfirm, onDeleted, onClose, withinSession, useSessions, useWorkspaces, t,
 }: TaskDetailProps): ReactNode {
   const sessions = useSessions(snapshot => snapshot)
@@ -300,6 +302,8 @@ export function TaskDetail({
   const panelRef = useRef<HTMLElement>(null)
   const footerRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [pausePending, setPausePending] = useState(false)
+  const [pauseFailed, setPauseFailed] = useState(false)
   // The next-run line states how long remains, so the panel reads the same
   // ticking clock the task list does.
   const now = useRelativeClock()
@@ -835,7 +839,17 @@ export function TaskDetail({
                   local stamp as well. */}
               <span className={css.nextRunRelative}>{nextRun.relative}</span>
             </p>
-            : <p>{t('status.inactive')}</p>}
+            : <p>{t(task.status === 'paused' ? 'status.paused' : 'status.inactive')}</p>}
+        </div>}
+        {tab === 'rule' && !deleted && task.status !== 'inactive' && onPause !== undefined && <div>
+          <Button disabled={busy || pausePending || !authoritative} onClick={() => {
+            setPausePending(true)
+            setPauseFailed(false)
+            void onPause({ id: task.id, sessionId: task.sessionId, paused: task.status !== 'paused' })
+              .catch(() =>{  setPauseFailed(true) }).finally(() =>{  setPausePending(false) })
+          }}>{t(task.status === 'paused' ? 'pause.resume' : 'pause.action')}</Button>
+          <p>{t('pause.scope')}</p>
+          {pauseFailed && <p role="alert">{t('pause.error')}</p>}
         </div>}
         <div role="tabpanel" id={`${id}-rule-panel`} aria-labelledby={`${id}-rule-tab`}
           hidden={tab !== 'rule' || deleted} tabIndex={0}>

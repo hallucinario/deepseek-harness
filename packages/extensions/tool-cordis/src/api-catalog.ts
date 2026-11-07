@@ -1622,6 +1622,114 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mydot',
+    summary: 'MyDot metadata, projected work and current-file access.',
+    description: 'MyDot metadata, projected work and current-file access.',
+    methods: [
+      {
+        signature: '@Remote async saveSpace(input: SpaceInput): Promise<Space>',
+        description: 'Save observed Space metadata without mutating Session history or files.',
+        parameters: [{ name: 'input', description: 'New metadata or optimistic replacement.' }],
+        returns: 'Committed Space.',
+      },
+      {
+        signature: '@Remote async createConversation(spaceId: SpaceId): Promise<{ sessionId: SessionId }>',
+        description: 'Start a fresh conversation in the Space\'s selected Workspace.',
+        parameters: [{ name: 'spaceId', description: 'Non-archived Space.' }],
+        returns: 'New Session; association failure rejects without claiming a rollback of Session creation.',
+      },
+      {
+        signature: '@Remote async attach(sessionId: SessionId, spaceId: SpaceId): Promise<void>',
+        description: 'Bind an existing conversation once without changing its execution directory.',
+        parameters: [{ name: 'sessionId', description: 'Existing Session.' }, { name: 'spaceId', description: 'Selected Space.' }],
+      },
+      {
+        signature: '@Remote async startJob(request: StartJob, signal: AbortSignal): Promise<{ childSessionId: SessionId }>',
+        description: 'Start a continuable local child under a stable caller-minted identity.',
+        parameters: [{ name: 'request', description: 'Exact parent and independently selected local provider.' }, { name: 'signal', description: 'Caller cancellation before publication.' }],
+        returns: 'Child identity; results are delivered through the existing parent channel.',
+      },
+      {
+        signature: '@Remote send(request: JobInput, signal: AbortSignal): Promise<SubagentPromptReceipt>',
+        description: 'Admit a targeted message using the existing durable deduplication key.',
+        parameters: [{ name: 'request', description: 'Exact address and stable request ID.' }, { name: 'signal', description: 'Cancellation before admission.' }],
+        returns: 'Existing inbox receipt; consumption remains observable in Session history.',
+      },
+      {
+        signature: '@Remote stop(address: JobAddress): SubagentInterruptReceipt',
+        description: 'Request a child\'s cancellation while preserving pending input.',
+        parameters: [{ name: 'address', description: 'Exact direct parent and continuable child.' }],
+        returns: 'Admission receipt, not a claim of completed stopping.',
+      },
+      {
+        signature: '@Remote async snapshot(): Promise<MyDotSnapshot>',
+        description: 'Read source-linked current artifacts and existing child states without activating Sessions.',
+        parameters: [],
+        returns: 'Metadata and derived lists; missing files remain listed explicitly.',
+      },
+      {
+        signature: '@Remote async presentResults(parentSessionId: SessionId): Promise<void>',
+        description: 'Retry parent inbox presentation from the existing durable child declarations.',
+        parameters: [{ name: 'parentSessionId', description: 'Original live parent; cold parents must first be reopened.' }],
+        returns: 'Resolution after the parent has accepted every missing reference.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async *watch(signal: AbortSignal): AsyncIterable<MyDotSnapshot>',
+        description: 'Stream replacement snapshots over the existing Remote WebSocket carrier.',
+        parameters: [{ name: 'signal', description: 'Subscription cancellation, including reconnect/unload.' }],
+        returns: 'Initial snapshot and subsequent committed metadata/execution changes.',
+      },
+      {
+        signature: '@Remote async readFile(sessionId: SessionId, path: string): Promise<TextRead>',
+        description: 'Read a referenced text file without capturing a fixed artifact version.',
+        parameters: [{ name: 'sessionId', description: 'Source conversation for path authorization.' }, { name: 'path', description: 'Material, artifact or file within that Session\'s execution directory.' }],
+        returns: 'Current content/version or explicit absence.',
+      },
+      {
+        signature: '@Remote async saveFile(sessionId: SessionId, request: TextSave): Promise<TextSaveResult>',
+        description: 'Persist a user edit atomically against its observed version.',
+        parameters: [{ name: 'sessionId', description: 'Source conversation.' }, { name: 'request', description: 'Authorized file, draft and version.' }],
+        returns: 'Saved version or retained conflict draft and current content.',
+      },
+      {
+        signature: '@Remote async continueFile( sessionId: SessionId, path: string, version: FsVersion, requestId: SessionRequestId, signal: AbortSignal, ): Promise<SessionPromptValue>',
+        description: 'Queue continuation with the exact saved file/version recorded as user input.',
+        parameters: [{ name: 'sessionId', description: 'Source conversation receiving the follow-up.' }, { name: 'path', description: 'Saved referenced file.' }, { name: 'version', description: 'Version confirmed by the editor.' }, { name: 'requestId', description: 'Stable caller-minted inbox identity.' }, { name: 'signal', description: 'Cancellation before inbox admission.' }],
+        returns: 'Existing Session prompt receipt.',
+      },
+      {
+        signature: '@Remote async readMemory(scope: MemoryScope): Promise<TextRead>',
+        description: 'Read scoped Markdown memory with its source path.',
+        parameters: [{ name: 'scope', description: 'Personal or one exact Space.' }],
+        returns: 'Editable current source, distinct from execution-experience memory.',
+      },
+      {
+        signature: '@Remote async saveMemory(scope: MemoryScope, request: Omit<TextSave, \'path\'>): Promise<TextSaveResult>',
+        description: 'Save one memory source with the same optimistic edit semantics as documents.',
+        parameters: [{ name: 'scope', description: 'Personal or one exact Space.' }, { name: 'request', description: 'Draft and observed version; path is chosen by the Host.' }],
+        returns: 'Saved version or current content and retained draft.',
+      },
+      {
+        signature: '@Remote handoffDesktop(): DesktopState',
+        description: 'Stop new desktop tool admission before allowing the person to edit.',
+        parameters: [],
+        returns: 'Stopping until admitted tool bodies settle, then human ownership.',
+      },
+      {
+        signature: '@Remote resumeDesktop(owner: SessionId, capturedAt: number): DesktopState',
+        description: 'Resume only against a newly captured frame after human ownership.',
+        parameters: [{ name: 'owner', description: 'Original controlling Session.' }, { name: 'capturedAt', description: 'Exact new observation timestamp.' }],
+        returns: 'Agent ownership; no desktop action is launched by this method.',
+      },
+      {
+        signature: '@Remote releaseDesktop(owner: SessionId): DesktopState',
+        description: 'Release a quiescent desktop so the next waiting job can own it.',
+        parameters: [{ name: 'owner', description: 'Exact current agent owner.' }],
+        returns: 'New ownership state; human handoff cannot be bypassed.',
+      },
+    ],
+  },
+  {
     key: 'officeToPdf',
     summary: 'A provider lifetime owns all converters, queued calls, and temporary files.',
     description: 'A provider lifetime owns all converters, queued calls, and temporary files.',
@@ -2087,6 +2195,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Update the name, instruction, and timing of an active task within the original Session binding without activating the Session or changing saved deliveries.\n\nEach supplied field replaces its stored value; an omitted field keeps it. A name or instruction change alone does not reset the committed target. A Session a delegated child owns returns the non-mutating `subagent_session` result, so an edit cannot re-arm a task bound to a Session delivery can never reach, and the Web editor can explain the refusal through the ordinary result it already renders.',
         parameters: [{ name: 'request', description: 'Task binding, complete observed record, and any combination of timing, name, and instruction.' }, { name: 'signal', description: 'Cancellation checked after domain readiness and FIFO waits, before persistence begins.' }],
         returns: 'The committed record, unchanged record for a no-op, or a non-mutating input/lookup/conflict/refusal result. Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.',
+      },
+      {
+        signature: '@Remote(\'setPaused\') async setPaused(request: SchedulePauseRequest): Promise<SchedulePauseResult>',
+        description: 'Suspend or resume future deliveries, preserving identity and delivery history. Pausing is serialized with delivery: a delivery already admitted completes first. Resume skips missed recurring occurrences and delivers an overdue one-shot once.',
+        parameters: [{ name: 'request', description: 'Exact Session binding and desired pause state.' }],
+        returns: 'Committed admission state or a non-mutating lookup/ended result.',
       },
     ],
   },
@@ -4880,6 +4994,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ArchiveSessionOptions {\n    readonly stopActivity?: boolean;\n}',
   },
   {
+    name: 'ArtifactView',
+    declaration: 'export interface ArtifactView {\n    sessionId: SessionId;\n    parentSessionId: SessionId;\n    path: string;\n    description?: string;\n    available: boolean;\n}',
+  },
+  {
     name: 'AskOptions',
     declaration: 'export interface AskOptions {\n    options?: readonly string[];\n    header?: string;\n    multiSelect?: true;\n}',
   },
@@ -5400,6 +5518,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface DeliveryRetentionBounds {\n    readonly days: number;\n    readonly records: number;\n}',
   },
   {
+    name: 'DesktopState',
+    declaration: 'export interface DesktopState {\n    phase: \'free\' | \'agent\' | \'stopping\' | \'human\';\n    owner?: SessionId;\n    capturedAt?: number;\n    inFlight: number;\n}',
+  },
+  {
     name: 'DeveloperMessage',
     declaration: 'export interface DeveloperMessage extends MessageBase {\n    readonly role: \'developer\';\n}',
   },
@@ -5828,6 +5950,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface InvokeRemoteRequest {\n    readonly namespace: string;\n    readonly method: string;\n    readonly args: Readonly<Record<string, unknown>>;\n    readonly uplink?: AsyncIterable<unknown>;\n    readonly uplinkWindow?: RemoteUplinkWindow | undefined;\n    readonly peer: PeerScope;\n    readonly signal?: AbortSignal;\n}',
   },
   {
+    name: 'JobAddress',
+    declaration: 'export interface JobAddress {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n}',
+  },
+  {
     name: 'JobAppendOptions',
     declaration: 'export interface JobAppendOptions {\n    channel?: JobChannel;\n    gapBefore?: true;\n}',
   },
@@ -5874,6 +6000,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'JobId',
     declaration: 'export type JobId = Branded<\'JobId\'>;',
+  },
+  {
+    name: 'JobInput',
+    declaration: 'export interface JobInput {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    requestId: SubagentPromptRequestId;\n    delivery: \'steer\' | \'queue\';\n    text: string;\n}',
   },
   {
     name: 'JobKillRequest',
@@ -5928,16 +6058,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface JobSpec {\n    kind: JobKind;\n    label: string;\n    owner?: SessionId;\n    toolCall?: JobToolCall;\n    outputLimitBytes?: number;\n    output?: readonly JobOutputSource[];\n    run(job: JobHandle): JobHooks;\n}',
   },
   {
-    name: 'JobStatus',
-    declaration: 'export type JobStatus = \'running\' | \'stopping\' | \'completed\' | \'killed\' | \'failed\';',
-  },
-  {
     name: 'JobToolCall',
     declaration: 'export interface JobToolCall {\n    readonly callId: SessionEventMap[\'tool/call\'][\'callId\'];\n    readonly rootCallId: SessionEventMap[\'tool/call\'][\'callId\'];\n}',
-  },
-  {
-    name: 'JobView',
-    declaration: 'export interface JobView {\n    readonly id: JobId;\n    readonly kind: string;\n    readonly label: string;\n    readonly owner?: SessionId;\n    readonly outputLimitBytes?: number;\n    readonly status: JobStatus;\n    readonly progress?: string;\n    readonly detail?: string;\n    readonly startedAt: number;\n    readonly finishedAt?: number;\n    readonly output: {\n        readonly total: number;\n        readonly earliest: number;\n        readonly spillPaths?: readonly string[];\n    };\n}',
   },
   {
     name: 'JsonSchemaNode',
@@ -6204,6 +6326,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type McpResourceRequest = {\n    method: \'resources/list\' | \'resources/templates/list\';\n    cursor?: string;\n} | {\n    method: \'resources/read\';\n    uri: string;\n};',
   },
   {
+    name: 'MemoryScope',
+    declaration: 'export type MemoryScope = {\n    kind: \'personal\';\n} | {\n    kind: \'space\';\n    spaceId: SpaceId;\n};',
+  },
+  {
     name: 'Message',
     declaration: 'export type Message = MessageRoleMap[keyof MessageRoleMap];',
   },
@@ -6358,6 +6484,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModTier',
     declaration: 'export type ModTier = \'prepend\' | \'user\' | \'append\' | \'builtin\' | \'core\';',
+  },
+  {
+    name: 'MyDotSnapshot',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: JobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'NativeFileApplication',
@@ -6953,7 +7083,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ScheduleCatalogEntry',
-    declaration: 'export type ScheduleCatalogEntry = ScheduleRecord & {\n    readonly sessionId: SessionId;\n    readonly status: \'active\' | \'inactive\';\n    readonly lastDelivery?: ScheduleDeliveryReceipt;\n};',
+    declaration: 'export type ScheduleCatalogEntry = ScheduleRecord & {\n    readonly sessionId: SessionId;\n    readonly status: \'active\' | \'paused\' | \'inactive\';\n    readonly lastDelivery?: ScheduleDeliveryReceipt;\n};',
   },
   {
     name: 'ScheduleCreateRequest',
@@ -6998,6 +7128,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ScheduleListRequest',
     declaration: 'export interface ScheduleListRequest {\n    sessionId: SessionId;\n}',
+  },
+  {
+    name: 'SchedulePauseRequest',
+    declaration: 'export interface SchedulePauseRequest {\n    readonly id: ScheduleId;\n    readonly sessionId: SessionId;\n    readonly paused: boolean;\n}',
+  },
+  {
+    name: 'SchedulePauseResult',
+    declaration: 'export type SchedulePauseResult = {\n    readonly id: ScheduleId;\n    readonly status: \'active\' | \'paused\';\n} | {\n    readonly id: ScheduleId;\n    readonly code: \'schedule_not_found\' | \'schedule_ended\';\n};',
   },
   {
     name: 'ScheduleRecord',
@@ -7784,6 +7922,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SkillViewOptions extends SkillLookupOptions {\n    readonly scope?: ScopeKey | undefined;\n}',
   },
   {
+    name: 'Space',
+    declaration: 'export interface Space {\n    id: SpaceId;\n    name: string;\n    purpose: string;\n    instructions: string;\n    materials: string[];\n    workspaceId?: WorkspaceId | undefined;\n    archived: boolean;\n    revision: number;\n}',
+  },
+  {
+    name: 'SpaceInput',
+    declaration: 'export type SpaceInput = Omit<Space, \'id\' | \'revision\' | \'archived\'> & {\n    id?: SpaceId;\n    revision?: number;\n    archived?: boolean;\n};',
+  },
+  {
     name: 'SpawnTeammateRequest',
     declaration: 'export interface SpawnTeammateRequest {\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly signal: AbortSignal;\n}',
   },
@@ -7882,6 +8028,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SshStreamEndpoint',
     declaration: 'export type SshStreamEndpoint = z.infer<typeof streamEndpointSchema>;',
+  },
+  {
+    name: 'StartJob',
+    declaration: 'export interface StartJob {\n    parentSessionId: SessionId;\n    requestId: SessionRequestId;\n    label: string;\n    prompt: string;\n    provider: \'spawn\' | \'fork\';\n}',
   },
   {
     name: 'StorageBackend',
@@ -8242,6 +8392,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TextProps',
     declaration: 'export interface TextProps {\n    readonly color?: string | undefined;\n    readonly bold?: boolean | undefined;\n    readonly dimColor?: boolean | undefined;\n    readonly italic?: boolean | undefined;\n    readonly underline?: boolean | undefined;\n    readonly children?: UiNode | undefined;\n}',
+  },
+  {
+    name: 'TextRead',
+    declaration: 'export type TextRead = {\n    kind: \'text\';\n    path: string;\n    content: string;\n    version: FsVersion;\n} | {\n    kind: \'missing\';\n    path: string;\n};',
+  },
+  {
+    name: 'TextSave',
+    declaration: 'export interface TextSave {\n    path: string;\n    content: string;\n    version: FsVersion | null;\n}',
+  },
+  {
+    name: 'TextSaveResult',
+    declaration: 'export type TextSaveResult = {\n    kind: \'saved\';\n    path: string;\n    version: FsVersion;\n    content: string;\n} | {\n    kind: \'conflict\';\n    path: string;\n    draft: string;\n    current: TextRead;\n};',
   },
   {
     name: 'TimedUserQuestionResult',

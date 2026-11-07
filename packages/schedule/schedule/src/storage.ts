@@ -37,7 +37,7 @@ const deliveryHistorySchema = z.object({
 export const scheduleTaskSchema = z.object({
   sessionId: z.string().min(1).transform(SessionId),
   record: recordSchema,
-  status: z.enum(['active', 'inactive']).default('active'),
+  status: z.enum(['active', 'paused', 'inactive']).default('active'),
   lastDelivery: deliveryReceiptSchema.optional(),
   deliveryHistory: deliveryHistorySchema.optional(),
 }).strict().refine((task) => {
