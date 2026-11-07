@@ -50,6 +50,7 @@ export { REGION_BEGIN, REGION_END }
  * errors, so the partition can never silently drift from the service API.
  */
 export const SERVICE_PAGE: Record<string, string> = {
+  mydot: 'mydot.md',
   experienceMemory: 'experience-memory.md',
   translator: 'translation.md',
   cotTranslation: 'translation.md',
@@ -287,6 +288,23 @@ export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
  * appear on more than one page.
  */
 export const LINK_MAP: Readonly<Record<string, string>> = {
+  Space: 'mydot.md',
+  SpaceInput: 'mydot.md',
+  SpaceId: 'mydot.md',
+  StartJob: 'mydot.md',
+  MemoryScope: 'mydot.md',
+  DesktopState: 'mydot.md',
+  JobView: 'mydot.md',
+  ArtifactView: 'mydot.md',
+  MyDotSnapshot: 'mydot.md',
+  TextRead: 'mydot.md',
+  TextSave: 'mydot.md',
+  TextSaveResult: 'mydot.md',
+  JobInput: 'mydot.md',
+  JobAddress: 'mydot.md',
+  SessionRequestId: 'session.md',
+  SchedulePauseRequest: 'schedule.md',
+  SchedulePauseResult: 'schedule.md',
   Episode: 'experience-memory.md',
   ExperienceStatus: 'experience-memory.md',
   Principal: 'typert.md',

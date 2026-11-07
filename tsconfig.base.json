@@ -28,6 +28,10 @@
     // not declaration path aliases, keep each package/vendor source compiled
     // under its own tsconfig boundary.
     "paths": {
+      "@deepseek-ai/dsh-fs/types": ["./packages/fs/fs/src/types.ts"],
+      "@deepseek-ai/dsh-experimental-mydot": ["./packages/experimental/mydot/src/index.ts"],
+      "@deepseek-ai/dsh-experimental-mydot/types": ["./packages/experimental/mydot/src/types.ts"],
+      "@deepseek-ai/dsh-experimental-mydot/client": ["./packages/experimental/mydot/src/client/index.ts"],
       "@deepseek-ai/dsh-experimental-memory-experience": ["./packages/experimental/memory-experience/src/index.ts"],
       "@deepseek-ai/dsh-experimental-session-search": ["./packages/experimental/session-search/src/index.ts"],
       "@deepseek-ai/dsh-experimental-ralph-bundle": ["./packages/experimental/ralph-bundle/src/index.ts"],

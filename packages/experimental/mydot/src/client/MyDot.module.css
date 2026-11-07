@@ -1,0 +1,12 @@
+.root { display: grid; gap: 8px; min-width: 0; padding: 12px; color: var(--dsw-alias-text-primary); font-size: 13px; }
+.panel { height: 100%; overflow: auto; box-sizing: border-box; padding: 24px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.card { display: grid; gap: 8px; border: 1px solid var(--dsw-alias-border-l3); border-radius: 12px; padding: 12px; min-width: 0; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.input { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l3); background: var(--dsw-alias-bg-layer-1); color: inherit; font: inherit; }
+.text { overflow-wrap: anywhere; white-space: pre-wrap; }
+.editor { min-height: 160px; resize: vertical; }
+.jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
+.heading { font-size: 16px; font-weight: 500; margin: 0; }
+.muted { color: var(--dsw-alias-text-secondary); }
+@media (max-width: 600px) { .panel { padding: 12px; } .root { padding: 8px; } }

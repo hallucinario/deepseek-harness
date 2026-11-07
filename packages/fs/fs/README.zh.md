@@ -27,6 +27,8 @@ kind: "package-reference"
 
 你很少直接加载 `dsh-fs`：你挂载一个注册为 `ctx.fs` 的后端，然后从自己的插件调用该服务，或让 `dsh-tool-fs` 工具替你调用。本页服务于确实接触它的两类读者——选择后端的部署方，以及实现或消费该约定的开发者。
 
+纯类型消费者和生成的 Remote 声明通过 `@deepseek-ai/dsh-fs/types` 使用 `FsVersion` 等不透明文件系统标识，运行时服务仍从根入口导出。
+
 ### 选择并挂载后端
 
 普通宿主文件选择 [`fs-local`](../fs-local/README.zh.md)，会话变更必须限制在工作区与临时根目录内时选择 [`fs-sandbox`](../fs-sandbox/README.zh.md)。挂载任一后端都会填充 `ctx.fs`；更换后端不会改变策略插件、工具或工具 schema。未挂载任何后端的组合就没有 `ctx.fs`，工具会在注册时失败。

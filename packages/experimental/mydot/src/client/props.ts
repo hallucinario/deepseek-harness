@@ -1,0 +1,43 @@
+/** Slot-derived props and plain MyDot application commands. */
+import type { HostObservable, PropsLocale, PropsRuntime, PropsStore, InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { Space, SpaceId, SpaceInput } from '../types.ts'
+import type { MyDotSnapshot, JobView, ArtifactView } from '../types.ts'
+import type { TextRead, TextSave, TextSaveResult } from '../types.ts'
+import type { MemoryScope, StartJob } from '../types.ts'
+import type { PendingInput, createMyDotStore } from './store.ts'
+import type { NS } from './locales.ts'
+
+/** Connection failure is visible separately from an empty loaded list. */
+export type ViewState = { phase: 'loading' } | { phase: 'ready'; value: MyDotSnapshot; disconnected?: boolean } | { phase: 'failed'; message: string }
+/** Apply-time command values; no service objects or React values cross this face. */
+export interface Commands {
+  hooks: { mydot: HostObservable<ViewState> }
+  retry: () => void
+  presentResults: (sessionId: SessionId) => Promise<void>
+  releaseDesktop: (sessionId: SessionId) => Promise<void>
+  saveSpace: (input: SpaceInput) => Promise<Space>
+  createConversation: (spaceId: SpaceId) => Promise<void>
+  attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>
+  startJob: (input: StartJob) => Promise<void>
+  send: (sessionId: SessionId, input: PendingInput) => Promise<void>
+  stop: (job: JobView) => Promise<void>
+  open: (job: JobView) => void
+  openConversation: (sessionId: SessionId) => void
+  preview: (artifact: ArtifactView) => void
+  flushPreview: (sessionId: SessionId) => void
+  readFile: (sessionId: SessionId, path: string) => Promise<TextRead>
+  saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>
+  readMemory: (scope: MemoryScope) => Promise<TextRead>
+  saveMemory: (scope: MemoryScope, edit: Omit<TextSave, 'path'>) => Promise<TextSaveResult>
+  continueFile: (sessionId: SessionId, path: string, version: import('@deepseek-ai/dsh-fs/types').FsVersion) => Promise<void>
+  handoff: () => Promise<void>
+  resume: (owner: SessionId, capturedAt: number) => Promise<void>
+  newRequestId: () => string
+}
+/** Renderer turns the declared observable into its subscribed selector hook. */
+export type Injected = InjectFace<Commands>
+/** Conversation-scoped dock and persisted viewing state. */
+export type DockProps = PropsRuntime<'conversation.input.dock'> & PropsLocale<typeof NS> & PropsStore<ReturnType<typeof createMyDotStore>> & Injected
+/** Global panel uses the same Host source and navigation commands. */
+export type PanelProps = PropsRuntime<'main'> & PropsLocale<typeof NS> & Injected

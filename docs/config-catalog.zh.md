@@ -1162,6 +1162,31 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-experience -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->
+<a id="deepseek-aidsh-experimental-mydot"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot`
+
+- `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `workingDirectory` · `tools` · `agents`
+- `source`: [`packages/experimental/mydot/src/index.ts:44`](../packages/experimental/mydot/src/index.ts)
+
+```ts config-catalog
+/** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
+export interface Config {
+  /** Host directory containing personal and Space Markdown memory. */
+  memoryDirectory: string
+  /** Maximum UTF-8 bytes admitted by the current-file editor. */
+  maxTextBytes: number
+  /** Complete tool-name set sharing one physical desktop; empty disables coordination. */
+  desktopTools: string[]
+  /** Read-only image-capture tools within desktopTools, also allowed during human ownership. */
+  captureTools: string[]
+  /** Maximum characters quoted from a job’s latest logged assistant output. */
+  summaryCharacters: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 
