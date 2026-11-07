@@ -473,6 +473,70 @@ describe('experience memory service', () => {
     expect(second.ctx.experienceMemory.status().selections).toBe(2)
   })
 
+  it('does not recover mixed-directory evidence into later work or revive retired independent evidence', async () => {
+    const mixed = record('mixed-directory', {}, (session) => {
+      session.append('working-directory/change', { cwd: '/other-project' })
+      session.append('tool/call', { turn: 1, step: 2, callId: ToolCallId('foreign'), name: 'bash', arguments: '{}' })
+      session.append('tool/result', { turn: 1, step: 2, message: createToolResultMessage({ callId: ToolCallId('foreign'), content: [{ type: 'text', text: 'foreign build evidence' }], isError: false }) }, { surfaceOp: 'append' })
+      session.append('working-directory/change', { cwd: process.cwd() })
+    })
+    const independent = record('independent-directory')
+    const records = [mixed, independent]
+    const first = await setup({}, new MemoryMediaPool(), (subject) => { persistedQueries(subject, records) })
+    first.ctx.on('session/flush', () => {})
+    expect((await first.ctx.experienceMemory.list(first.agent)).map(value => value.sessionId)).toEqual([independent.session.id])
+    await enter(first.ctx, first.agent, 1, 'build failure')
+    expect(await prompt(first.ctx, first.agent)).toContain('independent-directory')
+    expect(await prompt(first.ctx, first.agent)).not.toContain('foreign build evidence')
+    const saved = (await first.ctx.experienceMemory.list(first.agent))[0]!
+    await first.ctx.experienceMemory.retire(first.agent, saved.id)
+    await first.ctx.fiber.dispose()
+    const second = await setup({}, first.pool, (subject) => { persistedQueries(subject, records) })
+    second.ctx.on('session/flush', () => {})
+    expect(await second.ctx.experienceMemory.list(second.agent)).toHaveLength(1)
+    expect(await second.ctx.experienceMemory.inspect(second.agent, saved.id)).toMatchObject({ state: 'retired' })
+    await enter(second.ctx, second.agent, 2, 'build failure')
+    expect(await prompt(second.ctx, second.agent)).toBe('')
+  })
+
+  it.each([false, true])('reconciles an already saved child when its parent adopts a goal; retired=%s', async (retired) => {
+    const parent = record('adopting-parent', {}, session => session.append('subagent/catalog', { version: 0, childId: SessionId('early-child'), childCreatedAt: 0, mode: 'one-shot' }))
+    parent.events.pop()
+    const child = record('early-child', { origin: 'subagent', parentSession: parent.session.id })
+    const records = [parent, child]
+    const first = await setup({}, new MemoryMediaPool(), (subject) => { persistedQueries(subject, records) })
+    first.ctx.on('session/flush', () => {})
+    const saved = (await first.ctx.experienceMemory.list(first.agent))[0]!
+    expect(saved.groupId).toBe('adopting-parent:turn:1')
+    if (retired) await first.ctx.experienceMemory.retire(first.agent, saved.id)
+    const { agent: root } = await first.ctx.agents.create({ sessionId: parent.session.id, meta: { cwd: process.cwd() } })
+    const liveParent = root.session
+    liveParent.append('turn/start', { turn: 1 })
+    liveParent.append('subagent/catalog', { version: 0, childId: child.session.id, childCreatedAt: 0, mode: 'one-shot' })
+    const goal = { id: GoalId('late-goal'), revision: 1, objective: 'repair dependency build failure', phase: 'active' as const, maxGoalRounds: 10 }
+    liveParent.append('goal/change', { kind: 'goal/change', version: 1, operation: 'create', goal, roundsStarted: 0, createdAt: 1, updatedAt: 1 })
+    parent.events = [...liveParent.snapshotEvents()]
+    await first.ctx.experienceMemory.flush()
+    expect(await first.ctx.experienceMemory.inspect(first.agent, saved.id)).toMatchObject({
+      ...saved, groupId: 'adopting-parent:goal:late-goal', state: retired ? 'retired' : 'active',
+    })
+    // A second notification does not create evidence or revive a tombstone.
+    liveParent.append('goal/change', { kind: 'goal/change', version: 1, operation: 'edit', goal: { ...goal, revision: 2 }, roundsStarted: 1, createdAt: 1, updatedAt: 2 })
+    parent.events = [...liveParent.snapshotEvents()]
+    await first.ctx.experienceMemory.flush()
+    const messages = [createUserMessage({ content: [{ type: 'text', text: 'continue build failure' }], source: { kind: 'goal', goalId: goal.id, revision: 2, round: 2 } })]
+    await agentEvents(first.ctx, root).waterfall('agent/pre-step', { messages, turn: 2, step: 1, signal: new AbortController().signal }, () => Promise.resolve({ kind: 'enter' as const, messages }))
+    expect(await prompt(first.ctx, root)).toBe('')
+    expect(await first.ctx.experienceMemory.list(first.agent)).toHaveLength(1)
+    await first.ctx.fiber.dispose()
+    const second = await setup({}, first.pool, (subject) => { persistedQueries(subject, records) })
+    second.ctx.on('session/flush', () => {})
+    expect(await second.ctx.experienceMemory.list(second.agent)).toHaveLength(1)
+    expect(await second.ctx.experienceMemory.inspect(second.agent, saved.id)).toMatchObject({ groupId: 'adopting-parent:goal:late-goal', state: retired ? 'retired' : 'active', observations: saved.observations })
+    await enter(second.ctx, second.agent, 1, 'build failure')
+    expect((await prompt(second.ctx, second.agent)).includes('early-child')).toBe(!retired)
+  })
+
   it('groups parent and nested child evidence as one prior work item', async () => {
     const parent = record('root-work', {}, session => session.append('subagent/catalog', { version: 0, childId: SessionId('child-work'), childCreatedAt: 0, mode: 'one-shot' }))
     const child = record('child-work', { origin: 'subagent', parentSession: parent.session.id }, session => session.append('subagent/catalog', { version: 0, childId: SessionId('grandchild-work'), childCreatedAt: 0, mode: 'one-shot' }))

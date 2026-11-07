@@ -161,7 +161,8 @@ export function extractEpisodes(snapshot: SessionLogSnapshot, bounds: CaptureBou
       const closed = turn
       turn = undefined
       if (event.data.reason.kind === 'forked' || event.data.reason.kind === 'interrupted') continue
-      if (closed.cwd === undefined || cwd !== closed.cwd) continue
+      if (closed.cwd === undefined || cwd !== closed.cwd
+        || closed.events.some(value => value.type === 'working-directory/change' && value.data.cwd !== closed.cwd)) continue
       const scope = resolveScope(snapshot.session.cwd, closed.cwd)
       if (scope === undefined) continue
       const request = closed.events.find((value): value is SessionEvent<'user/message'> =>
