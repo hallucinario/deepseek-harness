@@ -38,6 +38,8 @@ Capture awaits `ctx.sessions.flush(session)` before storing an episode and refus
 
 ## Recall and recovery
 
+Recovery retires previously saved records whose original event interval contains a different working directory, retaining source references, observations, and existing retirement timestamps.
+
 Scope is the normalized pair of the immutable Session project directory and its effective host working directory. Missing project identity disables automatic memory. Model text never supplies scope. A directory change prevents an older selection from being rendered in the new scope. Capture excludes an entire turn if it visits another directory, including a return to its starting directory. Recovery filters persisted Sessions by the original project directory, reconciles ended local turns, and respects the configured Session bound. No source file, embedding index, or network search is used for retrieval.
 
 Normal root requests group by Session and turn. Goal continuation rounds share their stable goal identity. A child marked as a subagent must resolve its root task through its immutable parent id and the parent's durable subagent catalog; missing attribution fails closed. When a parent adopts a goal, saved child episodes move to that goal group while retaining their observations, source references, and retirement tombstones. Recovery reconciles the same attribution without adding records. Recall excludes the current group and chooses at most one episode per other group.
