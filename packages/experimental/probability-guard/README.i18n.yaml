@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/probability-guard/README.md
+/:
+  en: 9fbb0726fa0c9a08
+  zh: 8ed8c474e16b0ff4
+/deepseek-ai-dsh-experimental-probability-guard:
+  en: 8755410e7404959f
+  zh: e4ee553c64a008c7
+/deepseek-ai-dsh-experimental-probability-guard/summary:
+  en: 23d1be74bee1b40e
+  zh: 745f2fc9de6401d5
+/deepseek-ai-dsh-experimental-probability-guard/table-of-contents:
+  en: 537da3aca6280973
+  zh: 460d3104c3a7fd81
+/deepseek-ai-dsh-experimental-probability-guard/use-this-package:
+  en: 6ee8be200fab42ae
+  zh: 4259c0bd7fb48fb0
+/deepseek-ai-dsh-experimental-probability-guard/detection-and-confirmation:
+  en: 95354a3035ccf08d
+  zh: 48e175f00d5692be
+/deepseek-ai-dsh-experimental-probability-guard/execution-and-audit:
+  en: 2184b7d7638d0771
+  zh: 4bf53fdf377017b4
+/deepseek-ai-dsh-experimental-probability-guard/model-experience:
+  en: 215e7ba838619b7b
+  zh: e61c78b7d37628ed
+/deepseek-ai-dsh-experimental-probability-guard/model-experience/task-flip:
+  en: d2a09af9ba226415
+  zh: 99451c73d77621ce
+/deepseek-ai-dsh-experimental-probability-guard/model-experience/task-flip/what-the-model-sees:
+  en: 716476d16551d1d4
+  zh: 90d961408e1188fa
+/deepseek-ai-dsh-experimental-probability-guard/model-experience/task-flip/what-the-model-sees/confirmation-instruction:
+  en: 3a7f2778acf87752
+  zh: 0197e70581fe85e6
+/deepseek-ai-dsh-experimental-probability-guard/model-experience/task-flip/token-effect:
+  en: 60c67311be4d78bb
+  zh: af42e825a243fa2a
+/deepseek-ai-dsh-experimental-probability-guard/model-experience/task-flip/kv-cache-effect:
+  en: 892be82966169468
+  zh: fd1bca61000bf712
+/deepseek-ai-dsh-experimental-probability-guard/known-limitations-and-deferred-work:
+  en: 33633cdde9beb90a
+  zh: ec9ab59c33304cac
+/deepseek-ai-dsh-experimental-probability-guard/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: b0eb24bfe1bdcff2

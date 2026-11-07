@@ -242,6 +242,7 @@
     { "path": "./packages/experimental/cot-translation-bundle" },
     { "path": "./packages/experimental/session-search" },
     { "path": "./packages/experimental/memory-experience" },
+    { "path": "./packages/experimental/probability-guard" },
     { "path": "./packages/experimental/ralph-bundle" },
     { "path": "./packages/experimental/terminal-bundle" },
     { "path": "./packages/experimental/badge-skill-bundle" },

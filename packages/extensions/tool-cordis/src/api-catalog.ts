@@ -4408,6 +4408,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'reloads', description: 'Replaced plugins and their module locations.' }],
   },
   {
+    name: 'llm-pi-ai/provider-event',
+    mode: 'serial',
+    signature: '\'llm-pi-ai/provider-event\'(request: import(\'@deepseek-ai/dsh-llm\').GenerateOptions, data: unknown): void | Promise<void>',
+    summary: 'Read-only provider events before normalization; unsupported APIs emit none.',
+    description: 'Read-only provider events before normalization; unsupported APIs emit none.',
+    parameters: [{ name: 'request', description: 'exact adapter request identifying this response.' }, { name: 'data', description: 'unvalidated provider-owned parsed event.' }],
+  },
+  {
+    name: 'llm-pi-ai/stream',
+    mode: 'waterfall',
+    signature: '\'llm-pi-ai/stream\'(request: import(\'@deepseek-ai/dsh-llm\').GenerateOptions, next: () => AsyncIterable<import(\'@deepseek-ai/dsh-llm\').StreamChunk>): AsyncIterable<import(\'@deepseek-ai/dsh-llm\').StreamChunk>',
+    summary: 'Request-local middleware around the pi-ai adapter stream, before tool dispatch.',
+    description: 'Request-local middleware around the pi-ai adapter stream, before tool dispatch.',
+    parameters: [{ name: 'request', description: 'adapter request; raw events carry this exact object identity.' }, { name: 'next', description: 'delegate to the provider once.' }],
+  },
+  {
     name: 'llm/adapters-updated',
     mode: 'emit',
     signature: '\'llm/adapters-updated\'(): void',
