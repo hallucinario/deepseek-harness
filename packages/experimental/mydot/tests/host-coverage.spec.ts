@@ -10,8 +10,9 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import Storage from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
+import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, createAssistantMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
@@ -92,8 +93,8 @@ it('shares pending starts and compares cataloged requests after Host reload', as
   spy.mockRestore()
   await ctx.subagents.waitForChildren(parent)
   const retiring = entry.fiber!
-  await entry.update({ disabled: true })
   await retiring.dispose()
+  await entry.update({ disabled: true })
   await entry.update({ disabled: false })
   await entry.fiber!.await()
   expect(await ctx.mydot.startJob(request, signal())).toEqual({ childSessionId: SessionId('mydot-pending') })
@@ -226,4 +227,147 @@ it('coordinates desktop actions, human capture and quiescence through actual too
   expect(ctx.mydot.releaseDesktop(parent.id)).toEqual({ phase: 'free', inFlight: 0 })
   await ctx.tools.execute({ name: 'capture', arguments: {}, callId: ToolCallId('without-agent'), signal: signal() })
   expect((await ctx.mydot.snapshot()).desktop.phase).toBe('free')
+})
+
+it('creates conversations with the selected workspace or default and rejects archived or missing Spaces', async () => {
+  const { ctx, root } = await setup()
+  const create = vi.fn<typeof ctx.sessionController.create>().mockImplementation(async () => {
+    const sessionId = SessionId(`created-${create.mock.calls.length}`)
+    await ctx.agentLoop.create(sessionId, {}, { cwd: root })
+    return { sessionId }
+  })
+  Object.assign(ctx.sessionController, { create })
+  const plain = await ctx.mydot.saveSpace(spaceInput)
+  const { WorkspaceId } = await import('@deepseek-ai/dsh-workspace')
+  const workspaceId = WorkspaceId('selected-workspace')
+  const selected = await ctx.mydot.saveSpace({ ...spaceInput, workspaceId })
+  const first = await ctx.mydot.createConversation(plain.id)
+  const second = await ctx.mydot.createConversation(selected.id)
+  expect(create.mock.calls).toEqual([[{}], [{ workspaceId }]])
+  expect((await ctx.mydot.snapshot()).conversations).toEqual(expect.arrayContaining([
+    expect.objectContaining({ sessionId: first.sessionId, spaceId: plain.id }),
+    expect.objectContaining({ sessionId: second.sessionId, spaceId: selected.id }),
+  ]))
+  await ctx.mydot.saveSpace({ ...plain, archived: true })
+  await expect(ctx.mydot.createConversation(plain.id)).rejects.toThrow('non-archived')
+  await expect(ctx.mydot.createConversation('missing' as SpaceId)).rejects.toThrow('non-archived')
+  expect(create).toHaveBeenCalledTimes(2)
+})
+
+it('refuses a persisted parent with no live Agent after its catalog can be read', async () => {
+  const { ctx } = await setup()
+  const session = ctx.sessions.create(SessionId('cold-parent'))
+  expect(await ctx.subagents.listChildren(session.id)).toEqual([])
+  await expect(ctx.mydot.startJob({ parentSessionId: session.id, requestId: 'cold' as SessionRequestId,
+    label: 'Cold', prompt: 'Work', provider: 'spawn' }, signal())).rejects.toThrow('Resume the original parent')
+})
+
+it('continues only the exact current saved file and returns the SessionController receipt', async () => {
+  const { ctx, root } = await setup()
+  const parent = await ctx.agentLoop.create(SessionId('continue-file'), {}, { cwd: root })
+  const receipt = { accepted: true as const }
+  const prompt = vi.fn<typeof ctx.sessionController.prompt>().mockResolvedValue(receipt)
+  Object.assign(ctx.sessionController, { prompt })
+  const saved = await ctx.mydot.saveFile(parent.id, { path: 'draft.md', content: 'saved', version: null })
+  expect(saved.kind).toBe('saved')
+  if (saved.kind !== 'saved') throw new Error('Expected saved draft')
+  const requestId = 'continue-once' as SessionRequestId
+  const cancellation = signal()
+  expect(await ctx.mydot.continueFile(parent.id, './draft.md', saved.version, requestId, cancellation)).toBe(receipt)
+  expect(prompt).toHaveBeenCalledWith({ sessionId: parent.id, requestId, mode: 'queue', content: [{ type: 'text', text:
+    'Continue using the saved file. Read it again before working. ' + JSON.stringify({ path: join(root, 'draft.md'), version: saved.version }) }] }, cancellation)
+  await writeFile(join(root, 'draft.md'), 'changed since saved')
+  await expect(ctx.mydot.continueFile(parent.id, 'draft.md', saved.version, requestId, signal())).rejects.toThrow('File changed after saving')
+  await expect(ctx.mydot.continueFile(parent.id, 'missing.md', saved.version, requestId, signal())).rejects.toThrow('File changed after saving')
+  expect(prompt).toHaveBeenCalledOnce()
+  expect(() => ctx.mydot.handoffDesktop()).toThrow('Configure desktop tool admission')
+})
+
+it('projects unlabeled local children and external catalog entries without inheriting external Sessions', async () => {
+  const { ctx, root } = await setup({ summaryCharacters: 8 })
+  const parent = await ctx.agentLoop.create(SessionId('catalog-parent'), {}, { cwd: root })
+  const child = ctx.sessions.create(SessionId('unlabeled-child'), { meta: { cwd: root } })
+  child.append('user/message', createUserMessage({ source: { kind: 'user' }, content: [
+    { type: 'image', attachment: { attachmentId: AttachmentId('image-fixture'), mediaType: 'image/png', bytes: 3, width: 1, height: 1 } },
+    { type: 'text', text: 'ordinary user input' }, { type: 'text', text: 'MyDot job request: {"prompt":"request"}' },
+  ] }), { surfaceOp: 'append' })
+  child.append('assistant/message', { stream: [], turn: 1, step: 1, message: createAssistantMessage({ source: { provider: 'mock', model: 'mock' }, content: [
+    { type: 'text', text: 'First' }, { type: 'reasoning', text: 'private' }, { type: 'text', text: 'second' },
+  ] }) }, { surfaceOp: 'append' })
+  child.append('deliverables/presented', { files: [{ path: 'absent.md' }, { path: '.', description: 'directory' }] })
+  parent.session.append('subagent/catalog', { version: 0, childId: child.id, childCreatedAt: 1, mode: 'one-shot' })
+  parent.session.append('subagent/catalog', { version: 2, childId: SessionId('external-child'), childCreatedAt: 2, mode: 'external' })
+  const space = await ctx.mydot.saveSpace(spaceInput)
+  await ctx.mydot.attach(parent.id, space.id)
+  const snapshot = await ctx.mydot.snapshot()
+  expect(snapshot.jobs).toEqual([
+    { parentSessionId: parent.id, childSessionId: child.id, label: child.id, mode: 'one-shot', status: 'inactive', request: 'request', summary: 'First se' },
+    { parentSessionId: parent.id, childSessionId: 'external-child', label: 'external-child', mode: 'external', status: 'inactive' },
+  ])
+  expect(snapshot.conversations.map(item => item.sessionId)).toEqual([parent.id, child.id])
+  expect(snapshot.artifacts).toEqual([
+    { sessionId: child.id, parentSessionId: parent.id, path: join(root, 'absent.md'), available: false },
+    { sessionId: child.id, parentSessionId: parent.id, path: root, description: 'directory', available: false },
+  ])
+  const observe = vi.spyOn(ctx.sessionQuery, 'observeSession')
+  await ctx.mydot.presentResults(parent.id)
+  expect(observe.mock.calls.every(([id]) => id === parent.id)).toBe(true)
+})
+
+it('normalizes referenced materials and artifacts and denies directories as editable text', async () => {
+  const { ctx, root } = await setup()
+  await mkdir(join(root, 'work'))
+  const parent = await ctx.agentLoop.create(SessionId('normalized'), {}, { cwd: join(root, 'work') })
+  await writeFile(join(root, 'artifact.md'), 'outside artifact')
+  const space = await ctx.mydot.saveSpace({ ...spaceInput, materials: ['../material.md', '../unused.md'] })
+  await ctx.mydot.attach(parent.id, space.id)
+  parent.session.append('deliverables/presented', { files: [{ path: '../unused-artifact.md' }, { path: '../artifact.md' }] })
+  expect(await ctx.mydot.readFile(parent.id, '../work/../artifact.md')).toMatchObject({ content: 'outside artifact', path: join(root, 'artifact.md') })
+  await expect(ctx.mydot.readFile(parent.id, '.')).rejects.toThrow('regular text file')
+  await expect(ctx.mydot.readFile(parent.id, '../private.md')).rejects.toThrow('Select a file referenced')
+})
+
+it('rechecks a watch revision changed during snapshot resolution and aborts before parking', async () => {
+  const { ctx } = await setup()
+  const original = ctx.mydot.snapshot.bind(ctx.mydot)
+  const entered = Promise.withResolvers<undefined>()
+  const gate = Promise.withResolvers<undefined>()
+  vi.spyOn(ctx.mydot, 'snapshot').mockImplementationOnce(async () => {
+    const snapshot = await original()
+    entered.resolve(undefined)
+    await gate.promise
+    return snapshot
+  })
+  const cancel = new AbortController()
+  const watch = ctx.mydot.watch(cancel.signal)[Symbol.asyncIterator]()
+  const first = watch.next()
+  await entered.promise
+  await ctx.mydot.saveSpace(spaceInput)
+  gate.resolve(undefined)
+  expect((await first).value?.spaces).toEqual([])
+  expect((await watch.next()).value?.spaces).toHaveLength(1)
+  cancel.abort()
+  expect(await watch.next()).toEqual({ done: true, value: undefined })
+})
+
+it('serializes presentation retry after a rejected concurrent predecessor', async () => {
+  const { ctx } = await setup()
+  const parent = await ctx.agentLoop.create(SessionId('presentation-retry'), {})
+  const entered = Promise.withResolvers<undefined>()
+  const gate = Promise.withResolvers<undefined>()
+  const list = ctx.subagents.listChildren.bind(ctx.subagents)
+  const spy = vi.spyOn(ctx.subagents, 'listChildren').mockImplementationOnce(async () => {
+    entered.resolve(undefined)
+    await gate.promise
+    throw new Error('temporary catalog failure')
+  })
+  const first = ctx.mydot.presentResults(parent.id)
+  const rejected = expect(first).rejects.toThrow('temporary catalog failure')
+  await entered.promise
+  const second = ctx.mydot.presentResults(parent.id)
+  spy.mockImplementation(list)
+  gate.resolve(undefined)
+  await rejected
+  await second
+  expect(spy).toHaveBeenCalledTimes(2)
 })
