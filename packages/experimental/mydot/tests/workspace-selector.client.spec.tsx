@@ -12,6 +12,7 @@ import { createEditorStore } from '../src/client/editor-store.ts'
 import type { ViewState } from '../src/client/props.ts'
 import type { Space, SpaceId, SpaceInput } from '../src/types.ts'
 import { ja } from '../src/client/locales.ts'
+import { clientCommands } from './client-commands.client.ts'
 
 afterEach(() => { cleanup(); localStorage.clear() })
 const research: WorkspaceView = { workspaceId: 'opaque-research-01' as WorkspaceId, title: '調査資料', path: '/Users/test/調査', sessionIds: [], createdAt: '2026-11-07T00:00:00Z', updatedAt: '2026-11-07T00:00:00Z' }
@@ -25,14 +26,15 @@ function setup(space?: Space) {
   const source = createSnapshotStore<ViewState>({ phase: 'ready', value: { spaces: space === undefined ? [] : [space], conversations: [], jobs: [], artifacts: [], desktop: { phase: 'free', inFlight: 0 } } })
   const saveSpace = vi.fn(async (input: SpaceInput): Promise<Space> => ({ id: saved.id, archived: false, revision: 4, ...input }))
   const props = {
+    ...clientCommands(),
     useMydot: bindSnapshotSelector(source), useWorkspaces: bindSnapshotSelector(workspaces), useStore: bindSnapshotSelector(editor),
     actions: editor.actions, t: makeTranslate(ja), saveSpace, retry: vi.fn(),
-  } as ComponentProps<typeof MyDotPanel>
+  } satisfies ComponentProps<typeof MyDotPanel>
   render(<MyDotPanel {...props} />)
   return { workspaces, saveSpace, source }
 }
 function selector() { return screen.getByRole<HTMLSelectElement>('combobox', { name: ja.workspace }) }
-async function save(name = ja.save) { await act(async () => { fireEvent.click(screen.getByRole('button', { name, exact: true })) }) }
+async function save(name = ja.save) { await act(async () => { fireEvent.click(screen.getByRole('button', { name })) }) }
 
 it('starts unselected and creates a Space with the exact WorkspaceId chosen by Japanese name and path', async () => {
   const b = setup()
@@ -98,6 +100,8 @@ it('subscribes to snapshot arrivals, renames and removal without resetting the s
   expect(screen.getByText('改名済み · /Users/test/調査', { selector: 'p' })).toBeTruthy()
   act(() => { b.workspaces.set(workspaceState({ items: [defaultWorkspace] })) })
   expect(selector().value).toBe(research.workspaceId)
+  // A stale selection event for the removed registration cannot replace its saved association.
+  fireEvent.change(selector(), { target: { value: research.workspaceId } })
   await save()
   expect(b.saveSpace.mock.lastCall?.[0].workspaceId).toBe(research.workspaceId)
   act(() => { b.workspaces.set(workspaceState({ items: [research, defaultWorkspace] })) })

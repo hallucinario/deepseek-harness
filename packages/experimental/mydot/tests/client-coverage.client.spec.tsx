@@ -37,7 +37,7 @@ function bench() {
     panelProps: { ...common, useStore: bindSnapshotSelector(editor), actions: editor.actions } as ComponentProps<typeof MyDotPanel>,
   }
 }
-async function click(name: string) { await act(async () => { fireEvent.click(screen.getByRole('button', { name, exact: true })) }) }
+async function click(name: string) { await act(async () => { fireEvent.click(screen.getByRole('button', { name })) }) }
 
 it('names the targeted composer in the active locale and clears an accepted parent draft', async () => {
   const b = bench()
@@ -179,7 +179,7 @@ it('retains a missing-file conflict, reports failed saves and reloads, and reloa
   fireEvent.change(editor().getByRole('textbox'), { target: { value: 'Draft' } })
   await act(async () => { fireEvent.click(editor().getByRole('button', { name: ja.save })) })
   expect(editor().getByText(ja.conflict)).toBeTruthy()
-  expect(editor().getByRole('textbox').value).toBe('Draft')
+  expect(editor().getByRole<HTMLTextAreaElement>('textbox').value).toBe('Draft')
   await act(async () => { fireEvent.click(editor().getByRole('button', { name: ja.save })) })
   expect(editor().getByText(/write failed/)).toBeTruthy()
   await click(ja.discard)

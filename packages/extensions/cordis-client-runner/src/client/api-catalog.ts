@@ -529,7 +529,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'Commands',
-    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: JobView) => Promise<void>;\n    open: (job: JobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
+    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
   },
   {
     name: 'CommonKeyOf',
@@ -680,10 +680,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ISessions {\n    readonly list: ObservableSnapshot<SessionListState>;\n    retain(target: SessionTarget, options: SessionRetainOptions): SessionReference;\n    using<T>(target: SessionTarget, options: SessionRetainOptions, operation: (reference: SessionReference) => T | Promise<T>): Promise<T>;\n    retainInfo(id: SessionId): ObservableSnapshot<SessionRetainInfo>;\n    readonly searchResultLimit: number;\n    create(opts?: {\n        workspaceId?: WorkspaceId;\n        cwd?: string;\n        sessionId?: SessionId;\n        agentPreset?: string;\n    }): Promise<SessionId>;\n    subagentAddress(id: SessionId): SubagentAddress | undefined;\n    refreshProjections(sessionId: SessionId): Promise<void>;\n    refresh(): Promise<void>;\n    search(query: string, signal: AbortSignal): Promise<RemoteResult<{\n        items: SessionSearchResultItem[];\n        hasMore: boolean;\n    }>>;\n    fork(opts: {\n        sessionId: SessionId;\n        atSeq?: number;\n        increaseTitle?: boolean;\n        onCreated?: (childId: SessionId) => void;\n        allowMigration?: boolean;\n    }): Promise<SessionId>;\n    scope(id: SessionId): AgentContext | undefined;\n    scopeOf(ctx: Context): SessionId | undefined;\n    sessionOf(ctx: Context): SessionFace | undefined;\n    binding(id: SessionId): SessionBinding | undefined;\n}',
   },
   {
-    name: 'JobView',
-    declaration: 'export interface JobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
-  },
-  {
     name: 'KeyedHooksSources',
     declaration: 'export type KeyedHooksSources = Record<string, KeyedStandardSource>;',
   },
@@ -760,8 +756,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type MemoryScope = {\n    kind: \'personal\';\n} | {\n    kind: \'space\';\n    spaceId: SpaceId;\n};',
   },
   {
+    name: 'MyDotJobView',
+    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
+  },
+  {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: JobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'ObservableSnapshot',

@@ -27,13 +27,14 @@ export class TextFiles {
 
   /** Save against an observed version, preserving the draft on conflict.
    * @param request - Authorized path, draft and observed version.
+   * @param policy - Existing caller mode and exact authorized workspace; no mode escalation.
    * @returns New version or current contents and unchanged draft on conflict.
    */
-  async save(request: TextSave): Promise<TextSaveResult> {
+  async save(request: TextSave, policy?: Parameters<FileSystem['writeText']>[4]): Promise<TextSaveResult> {
     if (Buffer.byteLength(request.content) > this.maxBytes) throw new Error('Draft exceeds the text editor limit')
     const target = await this.fs.resolve(request.path)
     try {
-      const result = await this.fs.writeText(target, request.content, request.version === null ? { kind: 'createIfAbsent' } : { kind: 'replaceIfVersion', version: request.version })
+      const result = await this.fs.writeText(target, request.content, request.version === null ? { kind: 'createIfAbsent' } : { kind: 'replaceIfVersion', version: request.version }, undefined, policy)
       return { kind: 'saved', path: request.path, version: result.version, content: result.after }
     } catch (error: unknown) {
       if (!(error instanceof FsError) || (error.code !== 'FS_STALE_VERSION' && error.code !== 'FS_NOT_OBSERVED')) throw error

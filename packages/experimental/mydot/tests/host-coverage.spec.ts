@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { agentEvents } from '@deepseek-ai/dsh-agent'
+import SandboxPolicy from '@deepseek-ai/dsh-sandbox-policy'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
@@ -36,6 +38,7 @@ async function setup(config: Partial<Config> = {}) {
   const ctx = new Context()
   contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx, { workingDirectory: true })
+  await ctx.plugin(SandboxPolicy, { mode: 'workspace-write', workspaceRoot: root })
   await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(TestSessionQuery)
@@ -140,7 +143,8 @@ it('authorizes materials and declared artifacts outside cwd while denying unrela
   await writeFile(artifact, 'artifact')
   const space = await ctx.mydot.saveSpace({ ...spaceInput, materials: [material] })
   await ctx.mydot.attach(parent.id, space.id)
-  parent.session.append('deliverables/presented', { files: [{ path: artifact, description: 'report' }] })
+  parent.session.append('deliverables/presented', { turn: 0, callId: ToolCallId('declared'), files: [{ path: artifact, description: 'report' }] })
+  parent.session.append('sandbox/mode', { mode: 'workspace-write' })
   expect(await ctx.mydot.readFile(parent.id, material)).toMatchObject({ content: 'material' })
   expect(await ctx.mydot.readFile(parent.id, artifact)).toMatchObject({ content: 'artifact' })
   await expect(ctx.mydot.readFile(parent.id, join(root, 'private.md'))).rejects.toThrow('Select a file referenced')
@@ -212,7 +216,7 @@ it('coordinates desktop actions, human capture and quiescence through actual too
     entered.resolve(undefined); await finish.promise; return [{ type: 'text', text: 'acted' }]
   } }))
   ctx.tools.register(defineContentToolFixture({ name: 'capture', description: '', parameters: {}, async execute() {
-    return [{ type: 'image', data: 'aW1hZ2U=', mimeType: 'image/png' }]
+    return [{ type: 'image', attachment: { attachmentId: AttachmentId('fixture-frame'), mediaType: 'image/png', bytes: 1, width: 1, height: 1 } }]
   } }))
   const execute = (name: string) => ctx.tools.execute({ name, arguments: {}, callId: ToolCallId(name), signal: signal(), agent: parent })
   const active = execute('action')
@@ -294,7 +298,7 @@ it('projects unlabeled local children and external catalog entries without inher
   child.append('assistant/message', { stream: [], turn: 1, step: 1, message: createAssistantMessage({ source: { provider: 'mock', model: 'mock' }, content: [
     { type: 'text', text: 'First' }, { type: 'reasoning', text: 'private' }, { type: 'text', text: 'second' },
   ] }) }, { surfaceOp: 'append' })
-  child.append('deliverables/presented', { files: [{ path: 'absent.md' }, { path: '.', description: 'directory' }] })
+  child.append('deliverables/presented', { turn: 0, callId: ToolCallId('declared'), files: [{ path: 'absent.md' }, { path: '.', description: 'directory' }] })
   parent.session.append('subagent/catalog', { version: 0, childId: child.id, childCreatedAt: 1, mode: 'one-shot' })
   parent.session.append('subagent/catalog', { version: 2, childId: SessionId('external-child'), childCreatedAt: 2, mode: 'external' })
   const space = await ctx.mydot.saveSpace(spaceInput)
@@ -321,7 +325,7 @@ it('normalizes referenced materials and artifacts and denies directories as edit
   await writeFile(join(root, 'artifact.md'), 'outside artifact')
   const space = await ctx.mydot.saveSpace({ ...spaceInput, materials: ['../material.md', '../unused.md'] })
   await ctx.mydot.attach(parent.id, space.id)
-  parent.session.append('deliverables/presented', { files: [{ path: '../unused-artifact.md' }, { path: '../artifact.md' }] })
+  parent.session.append('deliverables/presented', { turn: 0, callId: ToolCallId('declared'), files: [{ path: '../unused-artifact.md' }, { path: '../artifact.md' }] })
   expect(await ctx.mydot.readFile(parent.id, '../work/../artifact.md')).toMatchObject({ content: 'outside artifact', path: join(root, 'artifact.md') })
   await expect(ctx.mydot.readFile(parent.id, '.')).rejects.toThrow('regular text file')
   await expect(ctx.mydot.readFile(parent.id, '../private.md')).rejects.toThrow('Select a file referenced')
@@ -370,4 +374,103 @@ it('serializes presentation retry after a rejected concurrent predecessor', asyn
   await rejected
   await second
   expect(spy).toHaveBeenCalledTimes(2)
+})
+
+it('rejects capture tools outside desktop admission and skips unrelated domain changes', async () => {
+  const { ctx } = await setup()
+  const { MyDotService } = await import('../src/index.ts')
+  const invalid = new Context()
+  contexts.push(invalid)
+  expect(() => new MyDotService(invalid, { memoryDirectory: '/unused', maxTextBytes: 1, summaryCharacters: 1,
+    desktopTools: [], captureTools: ['capture'] })).toThrow('subset')
+  const snapshot = vi.spyOn(ctx.mydot, 'snapshot')
+  const cancel = new AbortController()
+  const watch = ctx.mydot.watch(cancel.signal)[Symbol.asyncIterator]()
+  await watch.next()
+  const next = watch.next()
+  ctx.emit('domain/changed', { domain: 'unrelated', table: '', key: '', operation: 'deleted' })
+  cancel.abort()
+  expect(await next).toEqual({ done: true, value: undefined })
+  expect(snapshot).toHaveBeenCalledOnce()
+})
+
+it('preserves rejected and cancelled pre-step decisions without injecting Space memory', async () => {
+  const { ctx, root } = await setup()
+  const parent = await ctx.agentLoop.create(SessionId('pre-step'), {}, { cwd: root })
+  const space = await ctx.mydot.saveSpace(spaceInput)
+  await ctx.mydot.attach(parent.id, space.id)
+  const read = vi.spyOn(ctx.fs, 'readText')
+  const rejected = { kind: 'reject' as const }
+  expect(await agentEvents(ctx, parent).waterfall('agent/pre-step', { messages: [], turn: 1, step: 1, signal: signal() }, async () => rejected)).toBe(rejected)
+  const cancel = new AbortController()
+  const entered = { kind: 'enter' as const, messages: [message('original')] }
+  const result = await agentEvents(ctx, parent).waterfall('agent/pre-step', { messages: [], turn: 1, step: 1, signal: cancel.signal }, async () => {
+    cancel.abort()
+    return entered
+  })
+  expect(result).toBe(entered)
+  expect(read).not.toHaveBeenCalled()
+})
+
+it('uses header and deployment cwd fallbacks for snapshots and referenced-file access', async () => {
+  const { ctx, root } = await setup()
+  const header = ctx.sessions.create(SessionId('header-cwd'), { meta: { cwd: root } })
+  const defaulted = ctx.sessions.create(SessionId('default-cwd'))
+  const material = join(root, 'fallback.md')
+  await writeFile(material, 'fallback text')
+  const space = await ctx.mydot.saveSpace({ ...spaceInput, materials: [material] })
+  await ctx.mydot.attach(header.id, space.id)
+  await ctx.mydot.attach(defaulted.id, space.id)
+  const observe = ctx.sessionQuery.observeSession.bind(ctx.sessionQuery)
+  vi.spyOn(ctx.sessionQuery, 'observeSession').mockImplementation((id, options) => observe(id, options === undefined ? { projectionMode: 'none' } : options))
+  const snapshot = await ctx.mydot.snapshot()
+  expect(snapshot.conversations).toEqual([
+    { sessionId: header.id, spaceId: space.id, cwd: root },
+    { sessionId: defaulted.id, spaceId: space.id, cwd: ctx.workingDirectory.defaultDirectory },
+  ])
+  expect(await ctx.mydot.readFile(header.id, 'fallback.md')).toMatchObject({ content: 'fallback text' })
+  expect(await ctx.mydot.readFile(defaulted.id, material)).toMatchObject({ content: 'fallback text' })
+})
+
+it('reports failed automatic result delivery and clears it only after a successful retry', async () => {
+  const { ctx, root } = await setup()
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([textResponse('done'), textResponse('received')]))
+  const parent = await ctx.agentLoop.create(SessionId('failed-delivery'), { provider: 'mock', model: 'mock' }, { cwd: root })
+  const notified = Promise.withResolvers<undefined>()
+  vi.spyOn(ctx.logger, 'warn').mockImplementation(() => { notified.resolve(undefined) })
+  const present = vi.spyOn(ctx.mydot, 'presentResults').mockRejectedValueOnce(new Error('parent inbox unavailable'))
+  await ctx.mydot.startJob({ parentSessionId: parent.id, requestId: 'failure' as SessionRequestId,
+    label: 'Delivery', prompt: 'work', provider: 'spawn' }, signal())
+  await notified.promise
+  expect((await ctx.mydot.snapshot()).issues).toEqual([{ sessionId: parent.id, kind: 'artifact-delivery' }])
+  present.mockRestore()
+  await ctx.mydot.presentResults(parent.id)
+  expect((await ctx.mydot.snapshot()).issues).toEqual([])
+  await ctx.subagents.waitForChildren(parent)
+})
+
+it('releases desktop ownership on child completion only after agent tool bodies settle', async () => {
+  const { ctx, root } = await setup({ desktopTools: ['action'] })
+  const parent = await ctx.agentLoop.create(SessionId('desktop-end'), {}, { cwd: root })
+  const { SubagentRunId } = await import('@deepseek-ai/dsh-subagent')
+  const info = { id: parent.id, runId: SubagentRunId('desktop-run'), provider: 'spawn', local: true, stopReason: 'completed' as const }
+  const entered = Promise.withResolvers<undefined>()
+  const finished = Promise.withResolvers<undefined>()
+  ctx.tools.register(defineContentToolFixture({ name: 'action', description: '', parameters: {}, async execute() {
+    entered.resolve(undefined)
+    await finished.promise
+    return [{ type: 'text', text: 'finished' }]
+  } }))
+  const active = ctx.tools.execute({ name: 'action', arguments: {}, callId: ToolCallId('desktop-end'), signal: signal(), agent: parent })
+  await entered.promise
+  ctx.emit('subagent/end', info)
+  expect((await ctx.mydot.snapshot()).desktop).toMatchObject({ phase: 'agent', owner: parent.id, inFlight: 1 })
+  finished.resolve(undefined)
+  await active
+  ctx.emit('subagent/end', info)
+  expect((await ctx.mydot.snapshot()).desktop).toEqual({ phase: 'free', inFlight: 0 })
+  await ctx.tools.execute({ name: 'action', arguments: {}, callId: ToolCallId('desktop-human'), signal: signal(), agent: parent })
+  ctx.mydot.handoffDesktop()
+  ctx.emit('subagent/end', info)
+  expect((await ctx.mydot.snapshot()).desktop.phase).toBe('human')
 })

@@ -983,11 +983,13 @@ describe('HLC reconnect workflow', () => {
     const command = String(regression?.run)
     for (const path of [
       'packages/experimental/mydot/tests', 'packages/experimental/probability-guard/tests',
+      'packages/sandbox/sandbox-policy/tests/policy.spec.ts',
       'packages/llm/llm-pi-ai/tests/probability-observation.spec.ts',
       'packages/schedule/schedule/tests', 'packages/client/ui-schedule/tests',
     ]) expect(command).toContain(path)
     expect(command).toContain("--coverage.include='packages/experimental/mydot/src/**/*.{ts,tsx}'")
     expect(command).toContain("--coverage.include='packages/experimental/probability-guard/src/**/*.ts'")
+    expect(command).toContain("--coverage.include='packages/sandbox/sandbox-policy/src/**/*.ts'")
     expect(command).not.toContain('DEEPSEEK_API_KEY')
     expect(job.steps.filter(isRecord).filter(step => step.run === 'pnpm install --frozen-lockfile')).toHaveLength(1)
   })

@@ -20,7 +20,6 @@ export function MyDotDock(props: DockProps) {
   const selected = draft.target === null ? undefined : jobs.find(job => job.childSessionId === draft.target)
   const destination = selected?.label ?? (draft.target === null ? t('parent') : draft.target)
   const send = async (): Promise<void> => {
-    if (sending) return
     const request: PendingInput = draft.pending ?? { requestId: props.newRequestId() as SubagentPromptRequestId,
       target: draft.target, delivery: draft.delivery, text: draft.text }
     actions.pending(request)

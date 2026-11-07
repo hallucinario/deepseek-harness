@@ -1165,8 +1165,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-mydot`
 
-- `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:44`](../packages/experimental/mydot/src/index.ts)
+- `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
+- `source`: [`packages/experimental/mydot/src/index.ts:45`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */

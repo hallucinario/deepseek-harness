@@ -208,6 +208,14 @@ The sandbox-policy service (`ctx.sandboxPolicy`). Owns the deployment default mo
 resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
 
 /**
+ * Resolve one complete retained Session observation without activating a writer.
+ * @param header - Immutable metadata from the same observation as events.
+ * @param events - Complete contiguous logical log at the retained cut.
+ * @returns Recorded mode and original workspace, with deployment fallbacks; no escalation grant.
+ */
+resolveRecorded(header: SessionHeader, events: readonly SessionEvent[]): SandboxExecutionPolicy
+
+/**
  * Read the session override without applying the deployment default.
  * @param session - session whose log supplies the override.
  * @returns the last logged mode, or `undefined` without one.
@@ -215,7 +223,7 @@ resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
 overrideOf(session: Session): SandboxMode | undefined
 ```
 
-Types: [Session](session.zh.md)
+Types: [Session](session.zh.md) · [SessionEvent](session.zh.md) · [SessionHeader](persistence.zh.md)
 
 Source: [`packages/sandbox/sandbox-policy/src/index.ts`](../../packages/sandbox/sandbox-policy/src/index.ts)
 <!-- END GENERATED cordis-surface -->

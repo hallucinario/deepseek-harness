@@ -9,6 +9,7 @@ import type { ViewState, DockProps } from '../src/client/props.ts'
 import { MyDotDock } from '../src/client/Dock.tsx'
 import { createMyDotStore } from '../src/client/store.ts'
 import { ja } from '../src/client/locales.ts'
+import { clientCommands } from './client-commands.client.ts'
 
 afterEach(cleanup)
 function setup(send = vi.fn(async () => {})) {
@@ -19,9 +20,9 @@ function setup(send = vi.fn(async () => {})) {
     jobs: ['A', 'B'].map(name => ({ parentSessionId: 'parent' as SessionId, childSessionId: name as SessionId, label: `仕事 ${name}`, mode: 'continuable', status: 'running' })),
   } })
   const stop = vi.fn(async (_job: unknown) => {})
-  const props = { sessionId: 'parent' as SessionId, useMydot: bindSnapshotSelector(source), useStore: bindSnapshotSelector(state), actions: state.actions,
+  const props = { ...clientCommands(), sessionId: 'parent' as SessionId, useMydot: bindSnapshotSelector(source), useStore: bindSnapshotSelector(state), actions: state.actions,
     t: makeTranslate(ja), send, stop, open: vi.fn(), newRequestId: () => 'stable-request', retry: vi.fn(), readFile: vi.fn(), startJob: vi.fn(), preview: vi.fn(), flushPreview: vi.fn(),
-  } as DockProps
+  } satisfies DockProps
   return { state, source, props, send, stop }
 }
 
@@ -59,6 +60,24 @@ it('keeps the same uncertain request across remount and never automatically rese
   expect(screen.getByRole<HTMLTextAreaElement>('textbox').value).toBe('草稿')
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: '再試行' })) })
   expect(send.mock.calls[1]).toEqual(send.mock.calls[0])
+})
+
+it('disables resubmission until the exact pending request receives a receipt', async () => {
+  const delivery = Promise.withResolvers<undefined>()
+  const send = vi.fn(() => delivery.promise)
+  const b = setup(send)
+  render(<MyDotDock {...b.props} />)
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'One request only' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: ja.send })) })
+  const retry = screen.getByRole<HTMLButtonElement>('button', { name: ja.retry })
+  expect(retry.disabled).toBe(true)
+  expect(screen.getByRole<HTMLTextAreaElement>('textbox').disabled).toBe(true)
+  fireEvent.click(retry)
+  expect(send).toHaveBeenCalledOnce()
+  expect(b.state.getSnapshot().pending).toMatchObject({ requestId: 'stable-request', text: 'One request only' })
+  await act(async () => { delivery.resolve(undefined) })
+  expect(screen.getByText(ja.accepted)).toBeTruthy()
+  expect(b.state.getSnapshot().pending).toBeNull()
 })
 
 it('retains both initial job requests and their IDs after a partial start failure and remount', async () => {

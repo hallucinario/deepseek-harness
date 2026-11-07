@@ -2147,6 +2147,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the fully resolved per-call mode and absolute workspace root.',
       },
       {
+        signature: 'resolveRecorded(header: SessionHeader, events: readonly SessionEvent[]): SandboxExecutionPolicy',
+        description: 'Resolve one complete retained Session observation without activating a writer.',
+        parameters: [{ name: 'header', description: 'Immutable metadata from the same observation as events.' }, { name: 'events', description: 'Complete contiguous logical log at the retained cut.' }],
+        returns: 'Recorded mode and original workspace, with deployment fallbacks; no escalation grant.',
+      },
+      {
         signature: 'overrideOf(session: Session): SandboxMode | undefined',
         description: 'Read the session override without applying the deployment default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],

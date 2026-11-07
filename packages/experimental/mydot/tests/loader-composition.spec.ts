@@ -1,5 +1,5 @@
 /** Keyless Loader composition with real loop, child Sessions, filesystem and storage. */
-import { mkdtemp, realpath, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -15,6 +15,11 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
+import SandboxPolicy, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
+import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
+import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import { assertWorkspaceOutsideTemp, outsideTempWorkspaceParent } from '../../../../scripts/snapshot-workspace-parent.ts'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import { TestSessionQuery } from '../../../subagent/subagent/tests/test-session-query.ts'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
@@ -25,11 +30,16 @@ import '../src/index.ts'
 const contexts: Context[] = []
 afterEach(async () => { await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose())) })
 
-async function setup(existing?: { root: string; pool: MemoryMediaPool }) {
+async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string }) {
   const root = existing?.root ?? await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-loader-')))
   const ctx = new Context()
   contexts.push(ctx)
-  await mountAgentLoopTestDependencies(ctx, { workingDirectory: true })
+  await mountAgentLoopTestDependencies(ctx, { workingDirectory: policy === undefined })
+  await ctx.plugin(SandboxPolicy, policy ?? { mode: 'workspace-write', workspaceRoot: root })
+  if (policy !== undefined) {
+    await ctx.plugin(SandboxedFileSystem, { cwd: root })
+    await ctx.plugin(WorkingDirectory)
+  }
   await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(TestSessionQuery)
@@ -55,6 +65,56 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }) {
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
   return { ctx, root, row, pool }
 }
+
+it('edits only the configured memory root and historical conversation workspace under the actual file sandbox', async ({ onTestFinished }) => {
+  const root = await realpath(await mkdtemp(join(outsideTempWorkspaceParent(), '.dsh-mydot-policy-')))
+  assertWorkspaceOutsideTemp(root)
+  onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
+  const fallback = join(root, 'fallback')
+  const workspace = join(root, 'work')
+  await mkdir(fallback)
+  await mkdir(workspace)
+  const { ctx } = await setup({ root, pool: new MemoryMediaPool() }, { mode: 'workspace-write', workspaceRoot: fallback })
+  const parent = await ctx.agentLoop.create(SessionId('policy-parent'), {}, { cwd: workspace })
+  const space = await ctx.mydot.saveSpace({ name: 'Policy', purpose: '', instructions: '', materials: [] })
+  await ctx.mydot.attach(parent.id, space.id)
+  expect(await ctx.mydot.saveMemory({ kind: 'personal' }, { version: null, content: 'Personal premise' })).toMatchObject({ kind: 'saved' })
+  expect(await ctx.mydot.saveMemory({ kind: 'space', spaceId: space.id }, { version: null, content: 'Scoped decision' })).toMatchObject({ kind: 'saved' })
+  await ctx.plugin({
+    name: 'mydot-editor-caller', inject: ['mydot'],
+    async apply(caller) {
+      expect(await caller.mydot.saveFile(parent.id, { path: 'report.md', version: null, content: 'Report' })).toMatchObject({ kind: 'saved' })
+    },
+  })
+  setSandboxMode(parent.session, 'read-only')
+  const current = await ctx.mydot.readFile(parent.id, 'report.md')
+  if (current.kind !== 'text') throw new Error('Missing report')
+  await expect(ctx.mydot.saveFile(parent.id, { path: 'report.md', version: current.version, content: 'Denied' })).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+  expect(await readFile(join(workspace, 'report.md'), 'utf8')).toBe('Report')
+  const unrelated = await ctx.fs.resolve(join(root, 'private.md'))
+  await expect(ctx.fs.writeText(unrelated, 'No ambient grant')).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+  const memory = join(root, 'memory', 'MEMORY.md')
+  await rename(memory, memory + '.original')
+  const secret = join(root, 'private.md')
+  await writeFile(secret, 'Keep unchanged')
+  await symlink(secret, memory)
+  const linked = await ctx.mydot.readMemory({ kind: 'personal' })
+  if (linked.kind !== 'text') throw new Error('Missing linked memory')
+  await expect(ctx.mydot.saveMemory({ kind: 'personal' }, { version: linked.version, content: 'Denied escape' })).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+  expect(await readFile(secret, 'utf8')).toBe('Keep unchanged')
+  await ctx.fiber.dispose()
+  const cold = await setup({ root, pool: new MemoryMediaPool() }, { mode: 'workspace-write', workspaceRoot: fallback })
+  expect(cold.ctx.agents.get(parent.id)).toBeUndefined()
+  await expect(cold.ctx.mydot.saveFile(parent.id, { path: 'report.md', version: current.version, content: 'Denied after restart' })).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+})
+
+it('keeps a read-only deployment read-only when the configured memory root is outside its fallback', async ({ onTestFinished }) => {
+  const root = await realpath(await mkdtemp(join(outsideTempWorkspaceParent(), '.dsh-mydot-readonly-')))
+  assertWorkspaceOutsideTemp(root)
+  onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
+  const { ctx } = await setup({ root, pool: new MemoryMediaPool() }, { mode: 'read-only', workspaceRoot: root })
+  await expect(ctx.mydot.saveMemory({ kind: 'personal' }, { version: null, content: 'Denied' })).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })
+})
 
 it('loads opt-in, records scoped memory on the first child request, and authorizes relative files against the original cwd', async () => {
   const { ctx, root } = await setup()

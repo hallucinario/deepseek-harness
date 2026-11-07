@@ -7,6 +7,7 @@ import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-working-directory'
+import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
 import { createUserMessage, type ContextFormed } from '@deepseek-ai/dsh-llm'
@@ -56,7 +57,7 @@ export interface Config {
 
 /** MyDot metadata, projected work and current-file access. */
 export class MyDotService extends TypertRemoteService {
-  static inject = ['storageDomain', 'sessionController', 'sessions', 'sessionQuery', 'subagents', 'fs', 'workingDirectory', 'tools', 'agents']
+  static inject = ['storageDomain', 'sessionController', 'sessions', 'sessionQuery', 'subagents', 'fs', 'sandboxPolicy', 'workingDirectory', 'tools', 'agents']
   static Config: z<Config> = z.object({
     memoryDirectory: z.string().default(join(homedir(), 'MyDot')),
     maxTextBytes: z.number().step(1).min(1).default(262144),
@@ -352,7 +353,7 @@ export class MyDotService extends TypertRemoteService {
   @Remote
   async readFile(sessionId: SessionId, path: string): Promise<TextRead> {
     const target = await this.authorizeFile(sessionId, path)
-    return this.files.read(target)
+    return this.files.read(target.path)
   }
 
   /** Persist a user edit atomically against its observed version.
@@ -362,8 +363,8 @@ export class MyDotService extends TypertRemoteService {
    */
   @Remote
   async saveFile(sessionId: SessionId, request: TextSave): Promise<TextSaveResult> {
-    const path = await this.authorizeFile(sessionId, request.path)
-    return this.files.save({ ...request, path })
+    const target = await this.authorizeFile(sessionId, request.path)
+    return this.files.save({ ...request, path: target.path }, target.policy)
   }
 
   /** Queue continuation with the exact saved file/version recorded as user input.
@@ -404,7 +405,10 @@ export class MyDotService extends TypertRemoteService {
   async saveMemory(scope: MemoryScope, request: Omit<TextSave, 'path'>): Promise<TextSaveResult> {
     await this.initialized
     this.validateMemory(scope)
-    return this.files.save({ ...request, path: this.memoryPath(scope) })
+    const mode = this.ctx.fs.sandboxMode
+    return this.files.save({ ...request, path: this.memoryPath(scope) }, mode === undefined ? undefined : {
+      mode, workspaceRoot: this.config.memoryDirectory,
+    })
   }
 
   /** Stop new desktop tool admission before allowing the person to edit.
@@ -440,21 +444,25 @@ export class MyDotService extends TypertRemoteService {
   private validateMemory(scope: MemoryScope): void {
     if (scope.kind === 'space' && !this.spaces.list().some(space => space.id === scope.spaceId)) throw new Error('Space not found')
   }
-  private async authorizeFile(sessionId: SessionId, path: string): Promise<string> {
+  private async authorizeFile(sessionId: SessionId, path: string): Promise<{ path: string; policy: Parameters<TextFiles['save']>[1] }> {
     await this.initialized
     using source = await this.ctx.sessionQuery.observeSession(sessionId)
     const cwd = source.projections?.values.workingDirectory ?? source.header.cwd ?? this.ctx.workingDirectory.defaultDirectory
     const target = await this.ctx.fs.resolve(path, { cwd })
     const root = await this.ctx.fs.resolve(cwd)
-    if (this.ctx.fs.contains(root, target)) return this.ctx.fs.processPath(target)
+    const mode = this.ctx.fs.sandboxMode
+    const authorized = { path: this.ctx.fs.processPath(target), policy: mode === undefined ? undefined : {
+      ...this.ctx.sandboxPolicy.resolveRecorded(source.header, source.events), workspaceRoot: cwd,
+    } }
+    if (this.ctx.fs.contains(root, target)) return authorized
     const space = this.spaces.forSession(sessionId)
     for (const reference of space?.materials ?? []) {
-      if ((await this.ctx.fs.resolve(reference, { cwd })).targetKey === target.targetKey) return this.ctx.fs.processPath(target)
+      if ((await this.ctx.fs.resolve(reference, { cwd })).targetKey === target.targetKey) return authorized
     }
     for (const event of source.events) {
       if (event.type !== 'deliverables/presented') continue
       for (const file of event.data.files) {
-        if ((await this.ctx.fs.resolve(file.path, { cwd })).targetKey === target.targetKey) return this.ctx.fs.processPath(target)
+        if ((await this.ctx.fs.resolve(file.path, { cwd })).targetKey === target.targetKey) return authorized
       }
     }
     throw new Error('Select a file referenced by this conversation or Space')

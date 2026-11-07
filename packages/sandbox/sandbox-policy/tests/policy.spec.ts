@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SESSION_FORMAT_VERSION, Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { type SessionEvent } from '@deepseek-ai/dsh-session'
 import SandboxPolicyService, { SANDBOX_MODES, setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt, { renderContextSnapshot, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -43,6 +44,30 @@ async function policyContext(ctx: Context, activeSession: Session): Promise<stri
 }
 
 describe('SandboxPolicyService', () => {
+  it('resolves a retained Session cut without activating it or consulting client-only projections', async () => {
+    const ctx = await mounted({ mode: 'workspace-write', workspaceRoot: '/fallback' })
+    try {
+      await ctx.plugin(SessionStore)
+      const events: SessionEvent[] = []
+      ctx.on('session/event', (_session, event) => { events.push(event) })
+      const saved = ctx.sessions.create(SessionId('saved'), { meta: { cwd: '/original' } })
+      expect(ctx.sandboxPolicy.resolveRecorded(saved.header, events)).toEqual({
+        mode: 'workspace-write', workspaceRoot: '/original', sessionId: 'saved',
+      })
+      setSandboxMode(saved, 'danger-full-access')
+      setSandboxMode(saved, 'read-only')
+      const cut = events.slice()
+      setSandboxMode(saved, 'workspace-write')
+      expect(ctx.sandboxPolicy.resolveRecorded(saved.header, cut)).toEqual({
+        mode: 'read-only', workspaceRoot: '/original', sessionId: 'saved',
+      })
+      const fallback = ctx.sessions.create(SessionId('fallback'))
+      expect(ctx.sandboxPolicy.resolveRecorded(fallback.header, [])).toEqual({
+        mode: 'workspace-write', workspaceRoot: '/fallback', sessionId: 'fallback',
+      })
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it('defaults to read-only under the process cwd', async () => {
     const ctx = await mounted()
     expect(ctx.sandboxPolicy.defaultMode).toBe('read-only')

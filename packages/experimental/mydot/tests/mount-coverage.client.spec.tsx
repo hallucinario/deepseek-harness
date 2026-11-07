@@ -68,7 +68,7 @@ async function bench() {
   let dispose: (() => Promise<void>) | undefined
   await rt.mount({ inject, apply: async (ctx) => { dispose = await mountMyDot(ctx, contribution)
     return dispose } })
-  const commands = rt.slots.entries('main')[0]!.inject!() as Commands
+  const commands = rt.slots.entries('main')[0]!.inject!() as { [K in keyof Commands]: Commands[K] }
   const snapshot: MyDotSnapshot = { spaces: [], conversations: [], jobs: [{ parentSessionId: parent, childSessionId: child, label: 'Child', mode: 'continuable', status: 'running' }], artifacts: [], desktop: { phase: 'free', inFlight: 0 } }
   return { rt, remote, prompt, mount, unmount, streams, commands, snapshot, mounted, openSession, openResource, dispose: () => dispose!() }
 }
@@ -82,7 +82,7 @@ it('mounts the Remote contribution, renders registered root slots and disposes t
   expect(view.view.getByRole('status')).toBeTruthy()
   await act(async () => { b.streams[0]!.push(b.snapshot) })
   expect(view.view.getByRole('heading', { name: 'MyDot' })).toBeTruthy()
-  const icon = b.rt.renderSlot('sidebar.panellist', { size: 16 })
+  const icon = b.rt.renderSlot('sidebar.panellist', { size: 16, active: false })
   expect(icon.container.querySelector('svg')).toBeTruthy()
   await act(async () => { await b.dispose() })
   expect(b.unmount).toHaveBeenCalledOnce()
