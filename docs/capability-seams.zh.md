@@ -9,6 +9,8 @@
 
 ```mermaid
 flowchart LR
+  pkg_experimental_mydot["experimental-mydot"]
+  svc_mydot["ctx.mydot<br/>Space-linked local work and current files"]
   pkg_experimental_memory_experience["experimental-memory-experience"]
   svc_experienceMemory["ctx.experienceMemory<br/>Scoped execution experience recall"]
   pkg_experimental_client_ui_cot_translation["experimental-client-ui-cot-translation"]
@@ -353,6 +355,7 @@ flowchart LR
   pkg_experimental_computer_use_cua_driver_mcp --> svc_computerUse
   pkg_experimental_computer_use_cua_driver_native --> svc_computerUse
   pkg_experimental_memory_experience --> svc_experienceMemory
+  pkg_experimental_mydot --> svc_mydot
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -619,6 +622,7 @@ flowchart LR
 
 | ctx 键 | 角色 | 所属包 | 实现 | 直接消费方 | 配套插件 | 说明 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.mydot` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | - | - | 保存 Space 关联并投影现有 Session、子工作、文件和限定作用域的 Markdown；执行仍由相应的服务负责。 |
 | `ctx.experienceMemory` | `service` | [`experimental-memory-experience`](../packages/experimental/memory-experience) | - | - | - | 保存带源引用的观察和固定的当前上下文选择；人工命令在宿主目录作用域中检查和停用记录。 |
 | `ctx.cotTranslation` | `service` | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | - | - | 为展开的思考内容提供有界的 Session 翻译请求，不改变模型可见历史。 |
 | `ctx.translator` | `service` | [`experimental-translator`](../packages/experimental/translator) | - | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | 解析 Google 或 Bing 请求，并可选保留统一的实验性 Session 记录。 |

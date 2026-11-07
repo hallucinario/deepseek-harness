@@ -2491,6 +2491,86 @@
       "doc": "docs/subsystems/boot.md",
       "symbol": "PendingModule",
       "source": "packages/boot/hmr/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "SpaceId",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "Space",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "SpaceInput",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "StartJob",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "MemoryScope",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "DesktopState",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "JobView",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "ArtifactView",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "MyDotSnapshot",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "TextRead",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "TextSave",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "TextSaveResult",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "JobInput",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "JobAddress",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "SchedulePauseRequest",
+      "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/schedule.md",
+      "symbol": "SchedulePauseResult",
+      "source": "packages/schedule/schedule/src/types.ts"
     }
   ]
 }

@@ -62,12 +62,19 @@ jobs:
         run: >-
           pnpm exec vitest run
           packages/experimental/memory-experience/tests
+          packages/experimental/mydot/tests
+          packages/experimental/probability-guard/tests
+          packages/llm/llm-pi-ai/tests/probability-observation.spec.ts
+          packages/schedule/schedule/tests
+          packages/client/ui-schedule/tests
           packages/core/agent-loop/tests
           packages/core/system-prompt/tests
           packages/compaction/compaction-basic/tests
           packages/llm/llm/tests
           --coverage
           --coverage.include='packages/experimental/memory-experience/src/**/*.ts'
+          --coverage.include='packages/experimental/mydot/src/**/*.{ts,tsx}'
+          --coverage.include='packages/experimental/probability-guard/src/**/*.ts'
           --coverage.include='packages/core/agent-loop/src/runtime-context.ts'
       - run: pnpm run doc-sync
       - name: Keyless SDK current context lifetime

@@ -90,8 +90,9 @@ Space and selected memory text add input tokens on each step. Their byte bounds 
 
 Snapshots append after existing conversation input. Editing Space instructions or memory changes the next snapshot and can reduce prefix reuse from that point; unchanged earlier conversation entries remain reusable.
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
+
+<a id="known-limitations-and-deferred-work"></a>
 
 The package operates on current local Session and file capabilities:
 

@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 创建 Space，选择参考文件和执行工作区，并在两个本地子 Session 独立工作时继续对话。向指定子工作发送中途指示或排队文本，停止其中一个工作，并通过原始对话打开当前交付文件。使用版本检查编辑限定大小的 UTF-8 文件和个人或 Space Markdown 记忆。此可选实验性组合不增加工作数据库，默认不启用电脑操作或定期计划。
 
@@ -18,7 +18,7 @@ kind: "package-reference"
 - [进一步阅读](#further-exploration)
 - [模型体验](#model-experience)
 - [已知限制与后续工作](#known-limitations-and-deferred-work)
-- [开发说明](#dev-note)
+- [开发备注](#dev-note)
 
 -----
 
@@ -90,8 +90,9 @@ Space 和所选记忆文本在每一步增加输入 token，字节限制由配�
 
 快照追加在已有对话输入之后。编辑 Space 指示或记忆会改变下一次快照，可能减少从该点开始的前缀复用；此前不变的对话条目仍可复用。
 
-<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
+
+<a id="known-limitations-and-deferred-work"></a>
 
 此包使用当前本地 Session 和文件能力：
 
@@ -101,7 +102,7 @@ Space 和所选记忆文本在每一步增加输入 token，字节限制由配�
 - 外部一次性执行没有继续控制。运行结束和助手摘要不证明交付文件正确。
 
 <a id="dev-note"></a>
-### 开发说明
+### 开发备注
 
 <details>
 <summary>维护者上下文——点击展开</summary>

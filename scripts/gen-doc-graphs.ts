@@ -108,6 +108,13 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'mydot',
+    pkg: 'experimental-mydot',
+    title: 'Space-linked local work and current files',
+    mode: 'service',
+    note: 'Stores Space associations and projects existing Sessions, child jobs, files and scoped Markdown; execution remains in the owning services.',
+  },
+  {
     key: 'experienceMemory',
     pkg: 'experimental-memory-experience',
     title: 'Scoped execution experience recall',
