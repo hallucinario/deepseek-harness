@@ -36,9 +36,12 @@ Promotion requires a named product role, documented public behavior and limitati
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`mydot-integration-broker`](mydot-integration-broker/README.md) | Separately deployed account authorization and provider operations with mail sending prohibited | — |
+| [`mydot-integrations`](mydot-integrations/README.md) | Session-authorized Google Calendar and Outlook tools with a Client settings card | `ctx.tools` |
 | [`tool-session-query`](tool-session-query/README.md) | Workspace-authorized model session search, trace, and event reads | — |
 | [`session-search`](session-search/README.md) | Optional experimental global session search tools | — |
 | [`memory-experience`](memory-experience/README.md) | Scoped execution experience capture, retrieval, and retirement | `ctx.experienceMemory` |
+| [`probability-guard`](probability-guard/README.md) | Visible-token probability observation and pre-execution task flip | — |
 | [`ralph-bundle`](ralph-bundle/README.md) | Optional repeated delegation with an isolated workflow engine | — |
 | [`terminal-bundle`](terminal-bundle/README.md) | Optional global persistent terminal tools | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.md) | Optional powered-by-dsh badge skill | — |

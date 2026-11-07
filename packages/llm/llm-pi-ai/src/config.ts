@@ -153,6 +153,8 @@ export interface PiAiProviderProfile {
   defaultInput?: PiAiModality[]
   /** Provider request headers, validated against Fetch when the profile resolves; Harness attribution wins reserved names. */
   headers?: Record<string, string>
+  /** Opt-in OpenAI-compatible top-k probability sampling; absence leaves sampling unchanged. */
+  probabilityTopK?: number
   /** Provider-neutral pi-ai reasoning level. */
   reasoning?: ModelThinkingLevel
   /** Token budgets used by reasoning providers that support them. */
@@ -350,6 +352,7 @@ const profile = z.object({
   defaultMaxTokens: z.number().step(1).min(1).default(DEFAULT_MAX_TOKENS),
   defaultInput: z.array(z.union(MODALITIES)).default([...DEFAULT_INPUT]),
   headers: z.dict(z.string()),
+  probabilityTopK: z.number().step(1).min(1).max(5),
   reasoning: z.union(THINKING_LEVELS),
   thinkingBudgets,
   cacheRetention: z.union(['none', 'short', 'long']),
@@ -441,6 +444,10 @@ export function resolveProfiles(
       throw new Error(`llm-pi-ai: provider "${provider}" has an empty displayName`)
     }
     assertValidHeaders(provider, source.headers)
+    if (source.probabilityTopK !== undefined
+      && (!Number.isInteger(source.probabilityTopK) || source.probabilityTopK < 1 || source.probabilityTopK > 5)) {
+      throw new Error('llm-pi-ai: probabilityTopK must be an integer from 1 through 5')
+    }
     const streamIdleTimeoutMs = source.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
     if (!Number.isFinite(streamIdleTimeoutMs)
       || streamIdleTimeoutMs <= 0

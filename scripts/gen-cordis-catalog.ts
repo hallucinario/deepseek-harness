@@ -50,6 +50,7 @@ export { REGION_BEGIN, REGION_END }
  * errors, so the partition can never silently drift from the service API.
  */
 export const SERVICE_PAGE: Record<string, string> = {
+  mydot: 'mydot.md',
   experienceMemory: 'experience-memory.md',
   translator: 'translation.md',
   cotTranslation: 'translation.md',
@@ -163,10 +164,11 @@ export const SERVICE_PAGE: Record<string, string> = {
  * or names itself here. Client-face keys (the projection analyzes the host
  * face only) name the package README that owns their surface.
  *
- * Two categories remain, and neither is a projection gap a scanning rule could
- * close. An OPTIONAL key (`key?: X`) is a value the launcher or boot code
+ * These keys do not expose a renderable Host service class. An OPTIONAL key
+ * (`key?: X`) is a value the launcher or boot code
  * installs before the tree mounts, which the analyzer skips by rule because no
- * plugin provides it and `inject` cannot reach it. A client-face key belongs to
+ * plugin provides it and `inject` cannot reach it. A scalar readiness signal can
+ * gate a runner through `inject` without exposing a service API. A client-face key belongs to
  * the browser Context, which this host-face program never sees; the browser
  * surface has its own generated catalog (`scripts/gen-client-catalog.ts`, served
  * to a model as `cordis_runtime_inspect what:"client"`).
@@ -175,6 +177,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   invocation: 'not a service: per-call accessor (RemoteInvocation | undefined) the Gateway derives for each Remote call — packages/api/gateway/README.md owns the contract',
   webTerminals: 'client-side terminal view models — packages/api/terminal-controller/README.md owns the API',
   appReady: 'not a service: launcher-provided successful-startup signal — packages/boot/cmdline/README.md owns the launcher contract',
+  mydotIntegrationsReady: 'not a service: generation-owned scalar (true) published after MyDot config validation and tool registration — packages/experimental/mydot-integrations/README.md#understand-the-implementation owns this startup signal',
   appExit: 'not a service: launcher-provided bounded process-exit callback — packages/boot/cmdline/README.md owns the launcher contract',
   cmdlineArgs: 'not a service: launcher-provided immutable app argument accessor — packages/boot/cmdline/README.md owns the launcher contract',
   configuredAgentIdentities: 'not a service: launcher-provided boot-context value (ConfiguredAgentIdentities | undefined) — packages/core/agent-loop/README.md owns this launcher contract',
@@ -222,6 +225,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
  * {@link EVENT_WALK_EXEMPTIONS} names each one with its documentation owner.
  */
 export const EVENT_SCOPE_PAGE: Record<string, string> = {
+  'llm-pi-ai': 'llm-streaming.md',
   'app-boot': 'boot.md',
   hmr: 'boot.md',
   'plugin-manager': 'boot.md',
@@ -287,6 +291,23 @@ export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
  * appear on more than one page.
  */
 export const LINK_MAP: Readonly<Record<string, string>> = {
+  Space: 'mydot.md',
+  SpaceInput: 'mydot.md',
+  SpaceId: 'mydot.md',
+  StartJob: 'mydot.md',
+  MemoryScope: 'mydot.md',
+  DesktopState: 'mydot.md',
+  MyDotJobView: 'mydot.md',
+  ArtifactView: 'mydot.md',
+  MyDotSnapshot: 'mydot.md',
+  TextRead: 'mydot.md',
+  TextSave: 'mydot.md',
+  TextSaveResult: 'mydot.md',
+  JobInput: 'mydot.md',
+  JobAddress: 'mydot.md',
+  SessionRequestId: 'session.md',
+  SchedulePauseRequest: 'schedule.md',
+  SchedulePauseResult: 'schedule.md',
   Episode: 'experience-memory.md',
   ExperienceStatus: 'experience-memory.md',
   Principal: 'typert.md',

@@ -1160,6 +1160,160 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-experience -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->
+<a id="deepseek-aidsh-experimental-mydot"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot`
+
+- `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
+- `source`: [`packages/experimental/mydot/src/index.ts:45`](../packages/experimental/mydot/src/index.ts)
+
+```ts config-catalog
+/** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
+export interface Config {
+  /** Host directory containing personal and Space Markdown memory. */
+  memoryDirectory: string
+  /** Maximum UTF-8 bytes admitted by the current-file editor. */
+  maxTextBytes: number
+  /** Complete tool-name set sharing one physical desktop; empty disables coordination. */
+  desktopTools: string[]
+  /** Read-only image-capture tools within desktopTools, also allowed during human ownership. */
+  captureTools: string[]
+  /** Maximum characters quoted from a job’s latest logged assistant output. */
+  summaryCharacters: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integration-broker -->
+<a id="deepseek-aidsh-experimental-mydot-integration-broker"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot-integration-broker`
+
+- `source`: [`packages/experimental/mydot-integration-broker/src/index.ts:18`](../packages/experimental/mydot-integration-broker/src/index.ts)
+
+```ts config-catalog
+/** Required protected deployment paths and explicit service bounds. */
+export interface Config extends RuntimeOptions, ServerOptions {
+  /** Private, broker-user-owned directory containing encrypted SQLite records. */
+  stateDirectory: string
+  /** Protected file containing a 64-character hexadecimal AES-256 key. */
+  encryptionKeyFile: string
+  /** Protected execution credential shared only with the trusted Harness Host. */
+  executorTokenFile: string
+  /** Independent human administrator credential, unavailable to the agent process. */
+  adminTokenFile: string
+  /** Protected JSON configuration containing dedicated Google and/or Microsoft OAuth clients. */
+  oauthConfigFile: string
+}
+
+/** Explicit deployment bounds used by provider requests and the admission queue. */
+export interface RuntimeOptions {
+  /** Maximum duration of provider operations in milliseconds, including credential acquisition. */
+  requestTimeoutMs: number
+  /** Maximum encoded bytes accepted from providers or returned to the Harness. */
+  maxResponseBytes: number
+  /** Maximum number of admitted operations, including the active operation. */
+  maxQueuedRequests: number
+  /** Operator qualification of Microsoft event If-Match behavior; defaults to false. */
+  microsoftConditionalWritesVerified: boolean
+}
+
+/** HTTP-only deployment settings; all externally advertised callbacks use publicOrigin. */
+export interface ServerOptions {
+  /** Exact loopback address; remote access requires an authenticated deployment boundary. */
+  host: '127.0.0.1'
+  /** TCP listener port; zero permits an OS-assigned port for tests. */
+  port: number
+  /** Exact external HTTPS origin used by administrative forms and OAuth callbacks. */
+  publicOrigin: string
+  /** Maximum bytes in an incoming execution request or administrative form. */
+  maxBodyBytes: number
+  /** Maximum request duration in milliseconds. */
+  requestTimeoutMs: number
+  /** Maximum lifetime of a human-issued Session grant in milliseconds. */
+  maxGrantLifetimeMs: number
+  /** Protected Unix execution socket; omission starts an administrative-only broker. */
+  executorSocketPath?: string
+  /** Private administrative Unix socket; when configured, no TCP listener is opened. */
+  adminSocketPath?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integration-broker -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integrations -->
+<a id="deepseek-aidsh-experimental-mydot-integrations"></a>
+
+## `@deepseek-ai/dsh-experimental-mydot-integrations`
+
+- `inject`: `tools` · `systemPrompt`
+- `source`: [`packages/experimental/mydot-integrations/src/config.ts:7`](../packages/experimental/mydot-integrations/src/config.ts)
+
+```ts config-catalog
+/** Settings resolved once per plugin generation. */
+export interface Config {
+  /** Broker origin; HTTPS, or loopback HTTP on 127.0.0.1. */
+  brokerUrl: string
+  /** Private regular file containing only the Host executor credential. */
+  executorTokenFile: string
+  /** Protected Unix executor socket; when present, HTTP execution is never attempted. */
+  executorSocketPath?: string
+  /** Entire request deadline in milliseconds; defaults to 30000. */
+  requestTimeoutMs?: number
+  /** Complete model-visible UTF-8 result budget; defaults to 65536 bytes. */
+  maxResultBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integrations -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-probability-guard -->
+<a id="deepseek-aidsh-experimental-probability-guard"></a>
+
+## `@deepseek-ai/dsh-experimental-probability-guard`
+
+- `inject`: `llm` · `tools` · `agents` · `sessions`
+- `source`: [`packages/experimental/probability-guard/src/index.ts:19`](../packages/experimental/probability-guard/src/index.ts)
+
+```ts config-catalog
+/** Every policy value is deployment-owned; mounting does not imply calibration or adoption. */
+export interface Config extends DetectionPolicy {
+  /** Observe records coverage without confirmation/denial; enforce enables confirmation and blocking. */
+  mode: 'observe' | 'enforce'
+  /** Original configured provider route names protected by this instance. */
+  providers: string[]
+  /** Total raw provider-event bytes retained per inference. */
+  maxObservationBytes: number
+  /** Maximum individually checked candidates per response; overflow holds execution. */
+  maxChecks: number
+  /** Minimum exact execution string length eligible for a confirmed repeat. */
+  minExecutionChars: number
+  /** Output cap includes the confirmation inference reasoning budget. */
+  confirmationMaxTokens: number
+  /** Total wall-clock confirmation deadline, including Session flush. */
+  confirmationTimeoutMs: number
+  /** Explicit choice for incomplete visible coverage; allow never means inspected native arguments. */
+  missingObservation: 'hold' | 'allow-unobserved'
+  /** Explicit top-level string arguments naming execution content; no automatic command/path inference. */
+  executionFields: {
+    /** Exact model-visible tool name. */
+    tool: string
+    /** Top-level string argument containing the execution text. */
+    field: string
+  }[]
+}
+
+/** Explicit deployment policy; no empirical threshold is implied. */
+export interface DetectionPolicy {
+  /** Absolute top-token probability that a token must exceed to extend a run. */
+  probabilityThreshold: number
+  /** Minimum contiguous visible model-token count for an ordinary candidate. */
+  minRunTokens: number
+  /** Minimum contiguous count at the end of a visible channel, no larger than minRunTokens. */
+  minTailTokens: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-probability-guard -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 
@@ -1825,7 +1979,7 @@ export interface Config extends ProtocolConfig {
 
 - `inject`: `llm`
 - `refs`: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/llm/llm-pi-ai/src/config.ts:227`](../packages/llm/llm-pi-ai/src/config.ts)
+- `source`: [`packages/llm/llm-pi-ai/src/config.ts:229`](../packages/llm/llm-pi-ai/src/config.ts)
 
 ```ts config-catalog
 /** Plugin configuration: the provider routes this instance owns. */
@@ -1900,6 +2054,8 @@ export interface PiAiProviderProfile {
   defaultInput?: PiAiModality[]
   /** Provider request headers, validated against Fetch when the profile resolves; Harness attribution wins reserved names. */
   headers?: Record<string, string>
+  /** Opt-in OpenAI-compatible top-k probability sampling; absence leaves sampling unchanged. */
+  probabilityTopK?: number
   /** Provider-neutral pi-ai reasoning level. */
   reasoning?: ModelThinkingLevel
   /** Token budgets used by reasoning providers that support them. */
@@ -2779,7 +2935,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-schedule`
 
 - `inject`: `agents` · `sessions` · `storageDomain` · `sessionController` · `sessionPersistence`
-- `source`: [`packages/schedule/schedule/src/index.ts:72`](../packages/schedule/schedule/src/index.ts)
+- `source`: [`packages/schedule/schedule/src/index.ts:73`](../packages/schedule/schedule/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the Host Schedule domain. */
@@ -3617,7 +3773,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:263`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:264`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */

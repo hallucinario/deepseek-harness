@@ -27,6 +27,8 @@ Use `dsh-fs` when an application needs consistent filesystem operations across h
 
 You rarely load `dsh-fs` directly: you mount a backend that registers as `ctx.fs`, then either call the service from your own plugin or let the `dsh-tool-fs` tools call it for you. This page serves the two audiences that do touch it — deployments choosing a backend, and developers implementing or consuming the contract.
 
+Type-only consumers and generated Remote declarations use `@deepseek-ai/dsh-fs/types` for opaque filesystem identities such as `FsVersion`; runtime services remain at the root export.
+
 ### Choosing and mounting a backend
 
 Pick [`fs-local`](../fs-local/README.md) for ordinary host files or [`fs-sandbox`](../fs-sandbox/README.md) when a session's mutations must be confined to its workspace and temp roots. Mounting any backend populates `ctx.fs`; swapping backends changes nothing for the policy plugin, the tools, or the tool schemas. A composition that mounts no backend has no `ctx.fs` at all, and the tools fail at registration.

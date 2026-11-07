@@ -9,8 +9,53 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: e72ad7af437fa362
-  zh: d8f3683a4efe01b0
+  en: 012bd4a7e26eac07
+  zh: 7f97052de3ae2b94
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations:
+  en: 9cacd8971836f01c
+  zh: 9cacd8971836f01c
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-calendar-create:
+  en: 3f617035f799ed0e
+  zh: 15f3704d8e9ea9f4
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-calendar-delete:
+  en: 6cef8bec2858a496
+  zh: 8d77b3b47371065d
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-calendar-get:
+  en: 5bb5e328913c0511
+  zh: 8ad5cce6c9da62d3
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-calendar-list:
+  en: 2f9bcba5938f9634
+  zh: 5079b27b249b8f1e
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-calendar-update:
+  en: f7e69f3296163d44
+  zh: 536f2b3de8a9452e
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-connections-list:
+  en: bfcf6ad5ca3db5f0
+  zh: 16c388b73d17808d
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-createdraft:
+  en: f03b15e16a804ba4
+  zh: e0e00e66124f5cb0
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-forwarddraft:
+  en: b28766ca5f31ed09
+  zh: f8f9b28d89c7f6ad
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-get:
+  en: 371c64e09a466dc9
+  zh: 509736db630eec32
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-list:
+  en: 9395bb8a0c666489
+  zh: 2c5d247a1620dc79
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-organize:
+  en: 87e24323c7353213
+  zh: 1a766c778eada888
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-replydraft:
+  en: a7d6f92aea8a0a6d
+  zh: 78a665e680fba3b3
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-mail-updatedraft:
+  en: 2f61160a52075c02
+  zh: 9c49b603a2a67235
+/tool-schema-catalog/deepseek-ai-dsh-experimental-mydot-integrations/mydot-resources-list:
+  en: 7598d4153dc7e427
+  zh: 433ee1a8bd1d1e07
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762

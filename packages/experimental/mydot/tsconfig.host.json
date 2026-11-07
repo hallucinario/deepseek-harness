@@ -1,0 +1,61 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "include": [
+    "src/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../util/brand"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../fs/fs"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../storage/storage-domain"
+    },
+    {
+      "path": "../../session-query/session-query"
+    },
+    {
+      "path": "../../subagent/subagent"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../session/working-directory"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../deliverables/tool-present"
+    },
+    {
+      "path": "../../workspace/workspace"
+    }
+  ]
+}

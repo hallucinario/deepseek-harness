@@ -287,8 +287,16 @@ export default class ExperienceMemory extends Service {
       throw new Error(`cannot attribute child ${snapshot.session.id} to a durable parent task`)
     }
     const table = this.requireDomain().table('episodes')
+    for (const [id, stored] of table.entries()) {
+      if (stored.sessionId !== snapshot.session.id || stored.state === 'retired') continue
+      const mixed = snapshot.events.some(event => event.seq >= stored.startSeq && event.seq <= stored.endSeq
+        && event.type === 'working-directory/change' && event.data.cwd !== stored.scope.effectiveCwd)
+      if (mixed) await table.put(id, { ...stored, state: 'retired', retiredAt: Date.now() })
+    }
     for (const episode of extractEpisodes(snapshot, this.config, inheritedGroup)) {
-      if (table.get(episode.id) === undefined) await table.put(episode.id, episode)
+      const stored = table.get(episode.id)
+      if (stored === undefined) await table.put(episode.id, episode)
+      else if (stored.groupId !== episode.groupId) await table.put(episode.id, { ...stored, groupId: episode.groupId })
     }
   }
 
@@ -382,9 +390,20 @@ export default class ExperienceMemory extends Service {
   }
 
   private async transferGoal(session: Session): Promise<void> {
+    const snapshot = await this.ctx.sessionQuery.readSession(session.id)
+    const groups = new Map<WorkGroupId, WorkGroupId>()
+    for (const event of snapshot.events) {
+      if (event.seq < snapshot.inheritedEventCount || event.type !== 'turn/start') continue
+      const group = await this.rootGroup(snapshot, event.data.turn)
+      if (group !== undefined) groups.set(brandString<WorkGroupId>(`${session.id}:turn:${event.data.turn}`), group)
+    }
+    const episodes = this.requireDomain().table('episodes')
+    for (const [id, stored] of episodes.entries()) {
+      const groupId = groups.get(stored.groupId)
+      if (groupId !== undefined && groupId !== stored.groupId) await episodes.put(id, { ...stored, groupId })
+    }
     const work = this.active.get(session.id)
     if (work === undefined) return
-    const snapshot = await this.ctx.sessionQuery.readSession(session.id)
     const groupId = await this.rootGroup(snapshot, work.turn)
     if (groupId === undefined || groupId === work.selection.groupId) return
     const selection = { ...work.selection, groupId }

@@ -56,6 +56,7 @@ import * as ToolStrReplaceEditor from '@deepseek-ai/dsh-tool-str-replace-editor'
 import TerminalSessionService from '@deepseek-ai/dsh-terminal'
 import * as ToolPty from '@deepseek-ai/dsh-tool-terminal'
 import * as ToolGoal from '@deepseek-ai/dsh-tool-goal'
+import * as MyDotIntegrations from '@deepseek-ai/dsh-experimental-mydot-integrations'
 import * as ToolSchedule from '@deepseek-ai/dsh-tool-schedule'
 import type ScheduleService from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
@@ -189,6 +190,20 @@ export interface ToolPackage {
  * guard proves it is exhaustive against the on-disk glob.
  */
 const TOOL_PACKAGES: ToolPackage[] = [
+  {
+    pkg: '@deepseek-ai/dsh-experimental-mydot-integrations',
+    dir: 'mydot-integrations',
+    source: 'packages/experimental/mydot-integrations/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'an exact Session grant in the separately deployed broker'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(MyDotIntegrations, {
+        brokerUrl: 'https://broker.invalid',
+        executorTokenFile: resolve('catalog-unused-executor.token'),
+      })
+    },
+    note: 'Fourteen account-explicit operations support calendar reads, restricted personal calendar writes, mail reads, draft editing, and category/flag organization. Sending, meeting notifications, arbitrary provider requests, and inherited Session grants are unavailable.',
+  },
   {
     pkg: '@deepseek-ai/dsh-plugin-manager',
     dir: 'plugin-manager',

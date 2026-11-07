@@ -1,0 +1,54 @@
+{
+  "name": "@deepseek-ai/dsh-experimental-mydot-integrations",
+  "description": "Session-bound Google Calendar and Outlook tools for the isolated MyDot no-send broker",
+  "version": "0.2.1-rc.2",
+  "publishConfig": { "access": "public" },
+  "repository": { "type": "git", "url": "git+https://github.com/deepseek-ai/deepseek-harness.git", "directory": "packages/experimental/mydot-integrations" },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": { "client": { "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-plugin-manager"], "platform": "web" } },
+  "scripts": { "bundle": "tsdown", "watch": "tsdown --watch" },
+  "license": "MIT",
+  "files": ["lib/index.js", "lib/client.js", "lib/types/**/*.d.ts", "examples/**/*"],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh-brand": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-agent-default-model": "workspace:*",
+    "@deepseek-ai/dsh-app-boot": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:*",
+    "@deepseek-ai/dsh-session-query-sqlite": "workspace:*",
+    "@deepseek-ai/dsh-llm-pi-ai": "workspace:*",
+    "@deepseek-ai/dsh-headless": "workspace:*",
+    "@deepseek-ai/dsh-loader-smoke": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-experimental-mydot-integration-broker": "workspace:*",
+    "@deepseek-ai/dsh-client-locale": "workspace:*",
+    "@deepseek-ai/dsh-client-store": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-renderer": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-slots": "workspace:*",
+    "@deepseek-ai/dsh-client-test-runtime": "workspace:*",
+    "react": "^18.2.0"
+  }
+}

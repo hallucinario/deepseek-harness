@@ -44,16 +44,40 @@ jobs:
           packages/extensions/cordis-client-runner/tests/inspect-registry.client.spec.ts
       - run: pnpm run build:artifacts
       - run: pnpm run build:check
+      - name: MyDot account isolation and no-send regressions
+        run: >-
+          pnpm exec vitest run
+          packages/experimental/mydot-integration-broker/tests
+          packages/experimental/mydot-integrations/tests
+      - name: MyDot private Unix execution transport
+        run: >-
+          pnpm run test:e2e
+          packages/experimental/mydot-integrations/tests/unix-transport.e2e.ts
+          packages/experimental/mydot/tests/client-bundle.e2e.ts
+          --retry=0
+      - name: MyDot keyless recorded Session
+        run: >-
+          pnpm run test:snapshot snapshots/session/headless.snapshot.ts
+          -t 'mydot-no-send'
       - name: Experience memory and current context regressions
         run: >-
           pnpm exec vitest run
           packages/experimental/memory-experience/tests
+          packages/experimental/mydot/tests
+          packages/sandbox/sandbox-policy/tests/policy.spec.ts
+          packages/experimental/probability-guard/tests
+          packages/llm/llm-pi-ai/tests/probability-observation.spec.ts
+          packages/schedule/schedule/tests
+          packages/client/ui-schedule/tests
           packages/core/agent-loop/tests
           packages/core/system-prompt/tests
           packages/compaction/compaction-basic/tests
           packages/llm/llm/tests
           --coverage
           --coverage.include='packages/experimental/memory-experience/src/**/*.ts'
+          --coverage.include='packages/experimental/mydot/src/**/*.{ts,tsx}'
+          --coverage.include='packages/experimental/probability-guard/src/**/*.ts'
+          --coverage.include='packages/sandbox/sandbox-policy/src/**/*.ts'
           --coverage.include='packages/core/agent-loop/src/runtime-context.ts'
       - run: pnpm run doc-sync
       - name: Keyless SDK current context lifetime

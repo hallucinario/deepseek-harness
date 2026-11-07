@@ -36,9 +36,12 @@ kind: "package-group"
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
+| [`mydot-integration-broker`](mydot-integration-broker/README.zh.md) | 独立部署的账户授权与提供方操作，禁止发送邮件 | — |
+| [`mydot-integrations`](mydot-integrations/README.zh.md) | 按 Session 授权的 Google 日历与 Outlook 工具，附带 Client 设置卡片 | `ctx.tools` |
 | [`tool-session-query`](tool-session-query/README.zh.md) | 按工作区授权的模型会话搜索、追踪与事件读取 | — |
 | [`session-search`](session-search/README.zh.md) | 可选实验性全局会话搜索工具 | — |
 | [`memory-experience`](memory-experience/README.zh.md) | 按作用域捕捉、检索与停用执行经验 | `ctx.experienceMemory` |
+| [`probability-guard`](probability-guard/README.zh.md) | 可见 token 概率观察和工具执行前任务改写复查 | — |
 | [`ralph-bundle`](ralph-bundle/README.zh.md) | 带隔离 workflow 引擎的可选重复委派 | — |
 | [`terminal-bundle`](terminal-bundle/README.zh.md) | 可选全局持久终端工具 | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.zh.md) | 可选 powered-by-dsh 徽章技能 | — |

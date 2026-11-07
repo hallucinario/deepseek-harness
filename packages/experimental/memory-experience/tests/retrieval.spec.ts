@@ -5,7 +5,7 @@ import { selectExperiences, renderExperiences } from '../src/retrieval.ts'
 
 function episode(id: string, groupId = id, text = 'build failure with dependency cache') {
   return episodeSchema.parse({
-    id, groupId, scope: resolveScope(process.cwd(), process.cwd()), sessionId: 'past', turn: 1,
+    id, groupId, scope: resolveScope('/project', '/project'), sessionId: 'past', turn: 1,
     startSeq: 0, endSeq: 4, capturedAt: 1,
     request: { eventSeq: 1, text }, observations: [{ kind: 'result', eventSeq: 3, tool: 'bash', text: 'concrete build output' }],
     outcome: 'unknown', state: 'active', truncated: false,
@@ -25,8 +25,8 @@ describe('experience retrieval', () => {
     const meter = (text: string) => Array.from(text).length
     const all = renderExperiences([value], 100000, meter).text
     expect(all).toContain('Observed at:')
-    expect(all).toContain(`Project: ${process.cwd()}`)
-    expect(all).toContain(`Working directory: ${process.cwd()}`)
+    expect(all).toContain(`Project: ${'/project'}`)
+    expect(all).toContain(`Working directory: ${'/project'}`)
     expect(renderExperiences([value], 0, meter).text).toBe('')
     expect(renderExperiences([value], 1, meter).text).toBe('')
     expect(renderExperiences([value], meter(all), meter).text).toBe(all)

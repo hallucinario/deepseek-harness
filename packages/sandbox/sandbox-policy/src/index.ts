@@ -26,7 +26,7 @@ import { z as zod } from 'zod'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-agent'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import type { Session } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 
@@ -167,6 +167,21 @@ export class SandboxPolicyService extends Service {
       mode: request.mode ?? (session === undefined ? undefined : this.overrideOf(session)) ?? this.defaultMode,
       workspaceRoot: resolveWorkspaceRoot(session?.header.cwd ?? this.workspaceRoot),
       ...session === undefined ? {} : { sessionId: session.id },
+    }
+  }
+
+  /**
+   * Resolve one complete retained Session observation without activating a writer.
+   * @param header - Immutable metadata from the same observation as events.
+   * @param events - Complete contiguous logical log at the retained cut.
+   * @returns Recorded mode and original workspace, with deployment fallbacks; no escalation grant.
+   */
+  resolveRecorded(header: SessionHeader, events: readonly SessionEvent[]): SandboxExecutionPolicy {
+    const recorded = events.findLast(event => event.type === 'sandbox/mode')
+    return {
+      mode: recorded?.data.mode ?? this.defaultMode,
+      workspaceRoot: resolveWorkspaceRoot(header.cwd ?? this.workspaceRoot),
+      sessionId: header.id,
     }
   }
 

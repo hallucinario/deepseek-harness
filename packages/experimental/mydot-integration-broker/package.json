@@ -1,0 +1,35 @@
+{
+  "name": "@deepseek-ai/dsh-experimental-mydot-integration-broker",
+  "description": "Isolated, account-scoped Google Calendar and Outlook broker with an enforced no-send policy",
+  "version": "0.2.1-rc.2",
+  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/mydot-integration-broker"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./types": { "types": "./lib/types/types.d.ts", "default": "./lib/types/types.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/types/**/*.js", "lib/types/**/*.d.ts"],
+  "license": "MIT",
+  "peerDependencies": { "@deepseek-ai/cordis": "workspace:~" },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^7.2.0",
+    "@deepseek-ai/dsh-brand": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "google-auth-library": "^10.7.0",
+    "zod": "4.4.3"
+  }
+}

@@ -484,6 +484,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentContext = Omit<Context, \'remote\'> & {\n    readonly remote: ClientRemote & TypertRemoteScopeApi<\'agent\'>;\n};',
   },
   {
+    name: 'ArtifactView',
+    declaration: 'export interface ArtifactView {\n    sessionId: SessionId;\n    parentSessionId: SessionId;\n    path: string;\n    description?: string;\n    available: boolean;\n}',
+  },
+  {
     name: 'AssistantLiveChunkEvent',
     declaration: 'export interface AssistantLiveChunkEvent {\n    readonly type: \'assistant/live-chunk\';\n    readonly seq: number;\n    readonly time: number;\n    readonly data: {\n        readonly attemptId: LlmAttemptId;\n        readonly turn: number;\n        readonly step: number;\n        readonly chunk: StreamChunk;\n    };\n}',
   },
@@ -522,6 +526,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ClientRemote',
     declaration: 'export interface ClientRemote extends TypertClientRemote {\n    $stream<Item>(options: RemoteStreamOptions<Item>): RemoteStream<Item>;\n    readonly $host: RemoteHostFacts;\n}',
+  },
+  {
+    name: 'Commands',
+    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
   },
   {
     name: 'CommonKeyOf',
@@ -592,6 +600,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ConnectionWebSocketEventMap {\n    readonly open: object;\n    readonly error: object;\n    readonly close: object;\n    readonly message: {\n        readonly data: unknown;\n    };\n}',
   },
   {
+    name: 'DesktopState',
+    declaration: 'export interface DesktopState {\n    phase: \'free\' | \'agent\' | \'stopping\' | \'human\';\n    owner?: SessionId;\n    capturedAt?: number;\n    inFlight: number;\n}',
+  },
+  {
     name: 'DraftInitializationOptions',
     declaration: 'export interface DraftInitializationOptions {\n    readonly prompt?: string;\n    readonly clearPreviousDraft?: boolean;\n}',
   },
@@ -646,6 +658,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'HostObservable',
     declaration: 'export type HostObservable<T> = ObservableSnapshot<T>;',
+  },
+  {
+    name: 'Injected',
+    declaration: 'export type Injected = InjectFace<Commands>;',
   },
   {
     name: 'InjectFace',
@@ -736,6 +752,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type MatchedShare<E extends SlotEntryDef, M> = E[\'kind\'] extends \'chain\' ? {\n    matched: M;\n} : object;',
   },
   {
+    name: 'MemoryScope',
+    declaration: 'export type MemoryScope = {\n    kind: \'personal\';\n} | {\n    kind: \'space\';\n    spaceId: SpaceId;\n};',
+  },
+  {
+    name: 'MyDotJobView',
+    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
+  },
+  {
+    name: 'MyDotSnapshot',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+  },
+  {
     name: 'ObservableSnapshot',
     declaration: 'export interface ObservableSnapshot<T> {\n    getSnapshot(): T;\n    subscribe(fn: () => void): () => void;\n}',
   },
@@ -746,6 +774,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'OwnerOf',
     declaration: 'export type OwnerOf<K extends keyof SlotMap & string> = SlotMap[K] extends {\n    owner: infer O extends object;\n} ? O : object;',
+  },
+  {
+    name: 'PendingInput',
+    declaration: 'export interface PendingInput {\n    requestId: SubagentPromptRequestId;\n    text: string;\n    target: SessionId | null;\n    delivery: \'steer\' | \'queue\';\n}',
   },
   {
     name: 'PendingSubmission',
@@ -1012,6 +1044,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SnapshotSelectorHook<T> = <S>(sel: (s: T) => S, eq?: (a: S, b: S) => boolean) => S;',
   },
   {
+    name: 'Space',
+    declaration: 'export interface Space {\n    id: SpaceId;\n    name: string;\n    purpose: string;\n    instructions: string;\n    materials: string[];\n    workspaceId?: WorkspaceId | undefined;\n    archived: boolean;\n    revision: number;\n}',
+  },
+  {
+    name: 'SpaceId',
+    declaration: 'export type SpaceId = Branded<\'MyDotSpaceId\'>;',
+  },
+  {
+    name: 'SpaceInput',
+    declaration: 'export type SpaceInput = Omit<Space, \'id\' | \'revision\' | \'archived\'> & {\n    id?: SpaceId;\n    revision?: number;\n    archived?: boolean;\n};',
+  },
+  {
+    name: 'StartJob',
+    declaration: 'export interface StartJob {\n    parentSessionId: SessionId;\n    requestId: SessionRequestId;\n    label: string;\n    prompt: string;\n    provider: \'spawn\' | \'fork\';\n}',
+  },
+  {
     name: 'StartSessionOptions',
     declaration: 'export interface StartSessionOptions extends DraftInitializationOptions {\n    readonly agentPreset?: string;\n}',
   },
@@ -1048,6 +1096,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SubmissionHandle {\n    readonly requestId: SessionRequestId;\n    abandon(): void;\n}',
   },
   {
+    name: 'TextRead',
+    declaration: 'export type TextRead = {\n    kind: \'text\';\n    path: string;\n    content: string;\n    version: FsVersion;\n} | {\n    kind: \'missing\';\n    path: string;\n};',
+  },
+  {
+    name: 'TextSave',
+    declaration: 'export interface TextSave {\n    path: string;\n    content: string;\n    version: FsVersion | null;\n}',
+  },
+  {
+    name: 'TextSaveResult',
+    declaration: 'export type TextSaveResult = {\n    kind: \'saved\';\n    path: string;\n    version: FsVersion;\n    content: string;\n} | {\n    kind: \'conflict\';\n    path: string;\n    draft: string;\n    current: TextRead;\n};',
+  },
+  {
     name: 'ThemeDefinition',
     declaration: 'export interface ThemeDefinition {\n    id: string;\n    colorScheme: \'light\' | \'dark\';\n    tokens: ThemeTokens;\n}',
   },
@@ -1078,6 +1138,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UseFactorySlot',
     declaration: 'export type UseFactorySlot<F extends keyof SlotFactoryMap & string> = <N extends FactoryLocalNameOf<F>>(name: N, fallback: FactoryLocalComponent<F, N>) => SlotComponent<FactoryLocalInputPropsOf<F, N>>;',
+  },
+  {
+    name: 'ViewState',
+    declaration: 'export type ViewState = {\n    phase: \'loading\';\n} | {\n    phase: \'ready\';\n    value: MyDotSnapshot;\n    disconnected?: boolean;\n} | {\n    phase: \'failed\';\n    message: string;\n};',
   },
   {
     name: 'WorkspaceView',

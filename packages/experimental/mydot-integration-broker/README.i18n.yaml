@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/mydot-integration-broker/README.md
+/:
+  en: 06234b1c84468749
+  zh: d381373ddfc5c223
+/deepseek-ai-dsh-experimental-mydot-integration-broker:
+  en: 18794587cbc72298
+  zh: 9ba8e7073350c13f
+/deepseek-ai-dsh-experimental-mydot-integration-broker/summary:
+  en: 8558e9fdc26c35bd
+  zh: f1b97241853da82f
+/deepseek-ai-dsh-experimental-mydot-integration-broker/table-of-contents:
+  en: 8ead41339c8bc654
+  zh: 2442e0eeb09bd367
+/deepseek-ai-dsh-experimental-mydot-integration-broker/security-boundary:
+  en: 9f34da8142d7aa83
+  zh: 6a7f73fc9c09e5ea
+/deepseek-ai-dsh-experimental-mydot-integration-broker/deployment-configuration:
+  en: aad87ea8cb8a9d59
+  zh: f0346ee18a13b410
+/deepseek-ai-dsh-experimental-mydot-integration-broker/account-consent-and-permissions:
+  en: 76f4d61aec3854b0
+  zh: 1f57aec537824124
+/deepseek-ai-dsh-experimental-mydot-integration-broker/execution-and-recovery:
+  en: ac5c2f8efab904b2
+  zh: 986406bb8d398e2b
+/deepseek-ai-dsh-experimental-mydot-integration-broker/provider-behavior:
+  en: 6b50c81faad79eee
+  zh: c826383623936b28
+/deepseek-ai-dsh-experimental-mydot-integration-broker/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/deepseek-ai-dsh-experimental-mydot-integration-broker/model-experience/broker-operation-results:
+  en: dcef16000a0743b2
+  zh: 25502f0759cd7d47
+/deepseek-ai-dsh-experimental-mydot-integration-broker/model-experience/broker-operation-results/what-the-model-sees:
+  en: 79c8f14ae74d3203
+  zh: ca21c7f3e4fde11d
+/deepseek-ai-dsh-experimental-mydot-integration-broker/model-experience/broker-operation-results/token-effect:
+  en: 407696b904cefd0d
+  zh: ef6f209a8f37976f
+/deepseek-ai-dsh-experimental-mydot-integration-broker/model-experience/broker-operation-results/kv-cache-effect:
+  en: e3c6708a0623bdbd
+  zh: 753d8c8c1f475633
+/deepseek-ai-dsh-experimental-mydot-integration-broker/known-limitations-and-deferred-work:
+  en: c0596ad5143b8d9b
+  zh: 3367b8ea691e5598
+/deepseek-ai-dsh-experimental-mydot-integration-broker/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

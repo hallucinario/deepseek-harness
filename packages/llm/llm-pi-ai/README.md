@@ -92,9 +92,12 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 | `requestImagePixelBudget` | `4,194,304` | Total-pixel budget for each deterministic request image |
 | `requestImageMaxBytes` | `1 MiB` | Encoded-byte target for each request image before base64 expansion |
 | `maxRequestImageBytes` | `20 MiB` | Aggregate base64 image-payload bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED` |
+| `probabilityTopK` | absent | Opt-in OpenAI-compatible logprobs with 1–5 absolute top probabilities; provider support is not implied |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-llm-pi-ai) is the exhaustive source for every accepted field and its JSDoc.
+
+Probability consumers use the request-local llm-pi-ai/stream waterfall and serial llm-pi-ai/provider-event notifications before normalization. Both carry the same adapter request object, allowing middleware to await checks before tool dispatch while separating concurrent responses. Unsupported APIs emit no raw events; subscribing neither changes StreamChunk nor establishes native tool argument coverage.
 
 ### Sign in to a provider
 

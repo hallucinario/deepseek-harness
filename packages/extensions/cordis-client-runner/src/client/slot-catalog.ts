@@ -1186,6 +1186,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-conversation TodoDock id \'todo\'',
       'client-ui-goal GoalDock id \'goal\'',
       'experimental-client-ui-claude-code-mods Band id \'claude-code-mods\'',
+      'experimental-mydot MyDotDock id \'mydot\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.input.dock\', () => ctx.slots.register(\n      { name: \'conversation.input.dock\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -1303,6 +1304,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ownerPropsReferences: [
       'ModelCatalogModel',
       'ModelProviderGroup',
+      'Provider',
     ],
     standardProps: [
       'useRemoteAccess: (action: RemoteEndpoint) => boolean',
@@ -2267,7 +2269,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'useSessionAccess: (sessionId: SessionId, action: RemoteEndpoint) => boolean',
       'useWorkspaceAccess: (workspaceId: WorkspaceId, action: RemoteEndpoint) => boolean',
     ],
-    keyDomain: 'open: any string the owner dispatches (no compile-time key set), already taken: conversation',
+    keyDomain: 'open: any string the owner dispatches (no compile-time key set), already taken: conversation, mydot',
     hookContext: '',
     slotInject: '',
     declaredBy: 'an entry in \'root\' (client-ui-layout), so it exists while that entry is mounted',
@@ -2275,6 +2277,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-conversation ConversationPanel key \'conversation\'',
       'client-ui-plugin-manager PluginManagerPage',
       'client-ui-schedule TaskManagerPage',
+      'experimental-mydot MyDotPanel key \'mydot\'',
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'main\', () => ctx.slots.register(\n      { name: \'main\', key: \'<one key the owner dispatches>\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -2662,6 +2665,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-settings-subagent SubagentCard id \'subagent\'',
       'client-ui-settings-web-search-ollama OllamaSearchCard id \'web-ollama-api\'',
       'client-ui-settings-web-search WebSearchCard id \'web-search\'',
+      'experimental-mydot-integrations IntegrationCard',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'plugins.item\', () => ctx.slots.register(\n      { name: \'plugins.item\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -3542,6 +3546,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       '/** Owner currency of one quota notice offered to the frame-wide chain. */\nexport interface QuotaNoticeOwnerProps {\n  /** Stable failure code retained in the Session log. */\n  code: QuotaNoticeCode\n  /** Provider-neutral notice copy in the active locale. */\n  message: string\n  /** Take the notice down. */\n  dismiss: () => void\n  /**\n   * Prevent later quota failures from replacing this notice. Dismissal clears\n   * all holds; releasing the last hold resumes future notices without replay.\n   * Callers must release on unmount.\n   * @returns idempotent release that cannot clear another hold.\n   */\n  keepOpen: () => () => void\n}',
     ],
     ownerPropsReferences: [
+      'Provider',
       'QuotaNoticeCode',
     ],
     standardProps: [
@@ -3805,6 +3810,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [
       'client-ui-plugin-manager PluginsPanelIcon',
       'client-ui-schedule TaskManagerIcon',
+      'experimental-mydot MyDotIcon id \'mydot\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.panellist\', () => ctx.slots.register(\n      { name: \'sidebar.panellist\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',

@@ -331,7 +331,7 @@ type ScheduleCatalogEntry = ScheduleRecord & {
   /** Session receiving this reminder when it becomes due. */
   readonly sessionId: SessionId
   /** Inactive reminders remain visible but never schedule another delivery. */
-  readonly status: 'active' | 'inactive'
+  readonly status: 'active' | 'paused' | 'inactive'
   /** Most recent durably acknowledged inbox delivery, when available. */
   readonly lastDelivery?: ScheduleDeliveryReceipt
 }
@@ -437,6 +437,26 @@ Plugin-sourced `followup()` synchronously appends the message to the Session inb
 
 A failure to resolve the Session, enqueue the message, or confirm persistence leaves the task stored and reports a Host warning. A later management change or Host restart retries it. Session persistence and the task put are not atomic across stores. A crash after inbox persistence but before the task put can repeat delivery; the receipt does not close this gap. Schedule provides no model-result acknowledgement, execution cancellation, or external notification channel.
 
+## `SchedulePauseRequest`
+
+```ts type-equiv
+/** Change future admission without changing the reminder identity or inbox history. */
+interface SchedulePauseRequest {
+  readonly id: ScheduleId
+  readonly sessionId: SessionId
+  readonly paused: boolean
+}
+```
+
+## `SchedulePauseResult`
+
+```ts type-equiv
+/** Pausing never cancels an already delivered inbox item or active turn. */
+type SchedulePauseResult =
+  | { readonly id: ScheduleId; readonly status: 'active' | 'paused' }
+  | { readonly id: ScheduleId; readonly code: 'schedule_not_found' | 'schedule_ended' }
+```
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -523,6 +543,15 @@ async create(sessionId: SessionId, request: ScheduleCreateRequest, signal?: Abor
  * Storage and lifecycle failures reject; cancellation after a write starts does not roll it back.
  */
 @Remote('update') async update(request: ScheduleUpdateRequest, signal?: AbortSignal): Promise<ScheduleUpdateResult>
+
+/**
+ * Suspend or resume future deliveries, preserving identity and delivery history.
+ * Pausing is serialized with delivery: a delivery already admitted completes first.
+ * Resume skips missed recurring occurrences and delivers an overdue one-shot once.
+ * @param request - Exact Session binding and desired pause state.
+ * @returns Committed admission state or a non-mutating lookup/ended result.
+ */
+@Remote('setPaused') async setPaused(request: SchedulePauseRequest): Promise<SchedulePauseResult>
 ```
 
 Types: [SessionId](core.md)

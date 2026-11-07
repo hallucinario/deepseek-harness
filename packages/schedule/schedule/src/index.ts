@@ -14,10 +14,11 @@ import { resolveScheduleUpdate } from './update.ts'
 import {
   foldScheduleEvents, ScheduleInputError, ScheduleLogError, ScheduleId, createAfterScheduleRecord, createAtScheduleRecord,
   createEveryScheduleRecord, createDailyScheduleRecord, createWeeklyScheduleRecord, createCronScheduleRecord,
-  scheduleTitle,
+  scheduleTitle, isRecurringScheduleRecord, resolveRecurringOccurrence,
 } from './domain.ts'
 import type {
-  DeliveryRetentionBounds, ScheduleCatalogEntry, ScheduleCreateRequest, ScheduleDeleteRequest, ScheduleDeleteResult,
+  SchedulePauseRequest, SchedulePauseResult, DeliveryRetentionBounds, ScheduleCatalogEntry,
+  ScheduleCreateRequest, ScheduleDeleteRequest, ScheduleDeleteResult,
   ScheduleDeliveryHistoryRequest, ScheduleDeliveryHistoryResult, ScheduleListRequest, ScheduleRecord,
   ScheduleUpdateRequest, ScheduleUpdateResult, SubagentSessionError,
 } from './types.ts'
@@ -169,7 +170,6 @@ export class ScheduleService extends TypertRemoteService {
       // legacy stream must warn here instead of blocking Session creation.
       let activeLegacy = 0
       try {
-        // oxlint-disable-next-line typescript/no-deprecated -- Explicit warning for legacy Schedule history.
         activeLegacy = foldScheduleEvents(session.ownEvents()).active.length
       } catch (error: unknown) {
         /* v8 ignore next -- foldScheduleEvents normalizes every rejected stream to ScheduleLogError. */
@@ -370,6 +370,37 @@ export class ScheduleService extends TypertRemoteService {
       this.emitChanged()
       this.runtime?.requestDrive()
       return result
+    })
+  }
+
+  /**
+   * Suspend or resume future deliveries, preserving identity and delivery history.
+   * Pausing is serialized with delivery: a delivery already admitted completes first.
+   * Resume skips missed recurring occurrences and delivers an overdue one-shot once.
+   * @param request - Exact Session binding and desired pause state.
+   * @returns Committed admission state or a non-mutating lookup/ended result.
+   */
+  @Remote('setPaused')
+  async setPaused(request: SchedulePauseRequest): Promise<SchedulePauseResult> {
+    return this.serialize<SchedulePauseResult>(async () => {
+      const tasks = (await this.getDomain()).table('tasks')
+      const current = tasks.get(request.id)
+      if (current === undefined || current.sessionId !== request.sessionId) {
+        return { id: request.id, code: 'schedule_not_found' }
+      }
+      if (current.status === 'inactive') return { id: request.id, code: 'schedule_ended' }
+      const status = request.paused ? 'paused' : 'active'
+      if (current.status === status) return { id: request.id, status }
+      let record = current.record
+      if (!request.paused && isRecurringScheduleRecord(record) && Date.parse(record.scheduledAt) <= Date.now()) {
+        const occurrence = resolveRecurringOccurrence(record, Date.now())
+        if (occurrence.nextScheduledAt === undefined) return { id: request.id, code: 'schedule_ended' }
+        record = { ...record, scheduledAt: occurrence.nextScheduledAt }
+      }
+      await tasks.put(request.id, { ...current, record, status })
+      this.emitChanged()
+      this.runtime?.requestDrive()
+      return { id: request.id, status }
     })
   }
 

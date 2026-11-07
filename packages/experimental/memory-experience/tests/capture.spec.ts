@@ -1,3 +1,5 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
+import type {} from '@deepseek-ai/dsh-subagent'
 import { describe, expect, it } from 'vitest'
 import { createAssistantMessage, createUserMessage, createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
@@ -27,6 +29,19 @@ function task(snapshot: SessionLogSnapshot, turn = 1, args = '{"command":"pnpm r
 }
 
 describe('experience extraction', () => {
+  it('excludes a turn that visits another directory and returns before ending', () => {
+    const snapshot = fixture()
+    add(snapshot, 'turn/start', { turn: 1 })
+    add(snapshot, 'user/message', createUserMessage({ content: [{ type: 'text', text: 'Repair the build failure' }], source: { kind: 'user' } }))
+    add(snapshot, 'working-directory/change', { cwd: '/other-project' })
+    add(snapshot, 'tool/call', { turn: 1, step: 1, callId: ToolCallId('foreign'), name: 'bash', arguments: '{}' })
+    add(snapshot, 'tool/result', { turn: 1, step: 1, message: createToolResultMessage({ callId: ToolCallId('foreign'), content: [{ type: 'text', text: 'foreign build evidence' }], isError: false }) })
+    add(snapshot, 'working-directory/change', { cwd: snapshot.session.cwd! })
+    add(snapshot, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+    task(snapshot, 2)
+    expect(extractEpisodes(snapshot, { maxRecordChars: 12000, maxObservations: 24 }).map(value => value.turn)).toEqual([2])
+  })
+
   it('keeps admitted request and actual tool references without declaring task success', () => {
     const snapshot = fixture()
     task(snapshot)

@@ -274,7 +274,12 @@ flowchart TD
     pkg_experimental_cua_macos["experimental-cua-macos"]
     pkg_experimental_inspector["experimental-inspector"]
     pkg_experimental_inspector_profile["experimental-inspector-profile"]
+    pkg_experimental_memory_experience["experimental-memory-experience"]
+    pkg_experimental_mydot["experimental-mydot"]
+    pkg_experimental_mydot_integration_broker["experimental-mydot-integration-broker"]
+    pkg_experimental_mydot_integrations["experimental-mydot-integrations"]
     pkg_experimental_plugin_market_bundle["experimental-plugin-market-bundle"]
+    pkg_experimental_probability_guard["experimental-probability-guard"]
     pkg_experimental_ptc_runtime_python["experimental-ptc-runtime-python"]
     pkg_experimental_ralph_bundle["experimental-ralph-bundle"]
     pkg_experimental_session_inspector["experimental-session-inspector"]
@@ -618,6 +623,11 @@ flowchart TD
   pkg_experimental_api_speech_to_text --> pkg_experimental_speech_to_text
   pkg_experimental_api_speech_to_text --> pkg_typert_protocol
   pkg_experimental_client_ui_cot_translation --> pkg_experimental_translator
+  pkg_experimental_mydot --> pkg_fs
+  pkg_experimental_mydot --> pkg_llm
+  pkg_experimental_mydot --> pkg_session
+  pkg_experimental_mydot --> pkg_storage_domain
+  pkg_experimental_mydot --> pkg_workspace
   pkg_experimental_speech_to_text_sensevoice --> pkg_experimental_speech_to_text
   pkg_experimental_speech_to_text_sensevoice --> pkg_subprocess
   pkg_hook_protocol --> pkg_session
@@ -944,6 +954,12 @@ flowchart TD
   pkg_experimental_cua_macos --> pkg_system_prompt
   pkg_experimental_cua_macos --> pkg_tools
   pkg_experimental_cua_macos --> pkg_user_questions
+  pkg_experimental_probability_guard --> pkg_agent
+  pkg_experimental_probability_guard --> pkg_llm
+  pkg_experimental_probability_guard --> pkg_llm_pi_ai
+  pkg_experimental_probability_guard --> pkg_session
+  pkg_experimental_probability_guard --> pkg_timeout
+  pkg_experimental_probability_guard --> pkg_tools
   pkg_experimental_tool_worktree --> pkg_experimental_worktree
   pkg_experimental_tool_worktree --> pkg_tools
   pkg_hooks_codex --> pkg_agent
@@ -1351,6 +1367,17 @@ flowchart TD
   pkg_experimental_agent_team --> pkg_session_persistence
   pkg_experimental_agent_team --> pkg_session_projection
   pkg_experimental_agent_team --> pkg_subagent
+  pkg_experimental_memory_experience --> pkg_agent
+  pkg_experimental_memory_experience --> pkg_commands
+  pkg_experimental_memory_experience --> pkg_goal
+  pkg_experimental_memory_experience --> pkg_llm
+  pkg_experimental_memory_experience --> pkg_session
+  pkg_experimental_memory_experience --> pkg_session_query
+  pkg_experimental_memory_experience --> pkg_storage_domain
+  pkg_experimental_memory_experience --> pkg_subagent
+  pkg_experimental_memory_experience --> pkg_system_prompt
+  pkg_experimental_memory_experience --> pkg_token_meter
+  pkg_experimental_memory_experience --> pkg_working_directory
   pkg_hooks_claude_code --> pkg_agent
   pkg_hooks_claude_code --> pkg_hook_protocol
   pkg_hooks_claude_code --> pkg_llm
@@ -1550,6 +1577,8 @@ flowchart TD
 | [`experimental-cot-translation-bundle`](../packages/experimental/cot-translation-bundle) | `experimental` | — |
 | [`experimental-inspector`](../packages/experimental/inspector) | `experimental` | — |
 | [`experimental-inspector-profile`](../packages/experimental/inspector-profile) | `experimental` | — |
+| [`experimental-mydot-integration-broker`](../packages/experimental/mydot-integration-broker) | `experimental` | — |
+| [`experimental-mydot-integrations`](../packages/experimental/mydot-integrations) | `experimental` | — |
 | [`experimental-plugin-market-bundle`](../packages/experimental/plugin-market-bundle) | `experimental` | — |
 | [`experimental-ralph-bundle`](../packages/experimental/ralph-bundle) | `experimental` | — |
 | [`experimental-session-inspector`](../packages/experimental/session-inspector) | `experimental` | — |
@@ -1646,6 +1675,7 @@ flowchart TD
 | [`api-workspace-controller`](../packages/api/workspace-controller) | `api` | [`api-gateway`](../packages/api/gateway), [`client-connection`](../packages/client/connection), [`host-directory-picker`](../packages/host/directory-picker), [`session`](../packages/core/session), [`storage-domain`](../packages/storage/storage-domain), [`typert-protocol`](../packages/typert/protocol), [`workspace`](../packages/workspace/workspace) |
 | [`experimental-api-speech-to-text`](../packages/experimental/api-speech-to-text) | `experimental` | [`experimental-speech-to-text`](../packages/experimental/speech-to-text), [`typert-protocol`](../packages/typert/protocol) |
 | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | `experimental` | [`experimental-translator`](../packages/experimental/translator) |
+| [`experimental-mydot`](../packages/experimental/mydot) | `experimental` | [`fs`](../packages/fs/fs), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`storage-domain`](../packages/storage/storage-domain), [`workspace`](../packages/workspace/workspace) |
 | [`experimental-speech-to-text-sensevoice`](../packages/experimental/speech-to-text-sensevoice) | `experimental` | [`experimental-speech-to-text`](../packages/experimental/speech-to-text), [`subprocess`](../packages/subprocess/subprocess) |
 | [`hook-protocol`](../packages/experimental/hook-protocol) | `experimental` | [`session`](../packages/core/session), [`shell`](../packages/shell/shell) |
 | [`lsp-stdio`](../packages/lsp/lsp-stdio) | `lsp` | [`brand`](../packages/util/brand), [`fs`](../packages/fs/fs), [`llm`](../packages/llm/llm), [`lsp`](../packages/lsp/lsp), [`subprocess`](../packages/subprocess/subprocess), [`timeout`](../packages/util/timeout) |
@@ -1713,6 +1743,7 @@ flowchart TD
 | [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | `experimental` | [`agent`](../packages/core/agent), [`browser-use`](../packages/browser-use/browser-use), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | `experimental` | [`computer-use`](../packages/computer-use/computer-use), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`experimental-cua-macos`](../packages/experimental/cua-macos) | `experimental` | [`agent`](../packages/core/agent), [`computer-use`](../packages/computer-use/computer-use), [`subprocess`](../packages/subprocess/subprocess), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools), [`user-questions`](../packages/interaction/user-questions) |
+| [`experimental-probability-guard`](../packages/experimental/probability-guard) | `experimental` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout), [`tools`](../packages/core/tools) |
 | [`experimental-tool-worktree`](../packages/experimental/tool-worktree) | `experimental` | [`experimental-worktree`](../packages/experimental/worktree), [`tools`](../packages/core/tools) |
 | [`hooks-codex`](../packages/experimental/hooks-codex) | `experimental` | [`agent`](../packages/core/agent), [`hook-protocol`](../packages/experimental/hook-protocol), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`tools`](../packages/core/tools), [`working-directory`](../packages/session/working-directory) |
 | [`session-title-all-prompts-llm`](../packages/experimental/session-title-all-prompts-llm) | `experimental` | [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-title`](../packages/session/session-title), [`session-title-llm`](../packages/session/session-title-llm) |
@@ -1777,6 +1808,7 @@ flowchart TD
 | [`compaction-basic`](../packages/compaction/compaction-basic) | `compaction` | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`compaction`](../packages/compaction/compaction), [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`token-meter`](../packages/llm/token-meter) |
 | [`session-reference`](../packages/context/session-reference) | `context` | [`agent`](../packages/core/agent), [`compaction`](../packages/compaction/compaction), [`llm`](../packages/llm/llm), [`output-retention`](../packages/util/output-retention), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`session-projection-cache`](../packages/session/session-projection-cache), [`session-query`](../packages/session-query/session-query), [`session-title`](../packages/session/session-title), [`spill`](../packages/spill/spill), [`subagent`](../packages/subagent/subagent), [`system-prompt`](../packages/core/system-prompt), [`typert-protocol`](../packages/typert/protocol) |
 | [`experimental-agent-team`](../packages/experimental/agent-team) | `experimental` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`session-projection`](../packages/session/session-projection), [`subagent`](../packages/subagent/subagent) |
+| [`experimental-memory-experience`](../packages/experimental/memory-experience) | `experimental` | [`agent`](../packages/core/agent), [`commands`](../packages/interaction/commands), [`goal`](../packages/goal/goal), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-query`](../packages/session-query/session-query), [`storage-domain`](../packages/storage/storage-domain), [`subagent`](../packages/subagent/subagent), [`system-prompt`](../packages/core/system-prompt), [`token-meter`](../packages/llm/token-meter), [`working-directory`](../packages/session/working-directory) |
 | [`hooks-claude-code`](../packages/experimental/hooks-claude-code) | `experimental` | [`agent`](../packages/core/agent), [`hook-protocol`](../packages/experimental/hook-protocol), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools), [`working-directory`](../packages/session/working-directory) |
 | [`tool-ralph`](../packages/experimental/tool-ralph) | `experimental` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`subagent`](../packages/subagent/subagent), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools), [`workflow`](../packages/workflow/workflow) |
 | [`sdk-protocol`](../packages/sdk/protocol) | `sdk` | [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent) |

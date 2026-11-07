@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/mydot/README.md
+/:
+  en: 446fd5c4ceb77cdb
+  zh: 0fa85379746b69df
+/deepseek-ai-dsh-experimental-mydot:
+  en: 77918a8d7d815aa5
+  zh: 1308cfc63b2de2c6
+/deepseek-ai-dsh-experimental-mydot/summary:
+  en: a3602a7801e44e5d
+  zh: 33d109cd45588830
+/deepseek-ai-dsh-experimental-mydot/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 87d7d2dbd7777429
+/deepseek-ai-dsh-experimental-mydot/use-this-package:
+  en: cae70d8903a2c711
+  zh: e2f2e69911480830
+/deepseek-ai-dsh-experimental-mydot/understand-the-implementation:
+  en: 698b9087333eb368
+  zh: 8761f7ba0fa2adf8
+/deepseek-ai-dsh-experimental-mydot/further-exploration:
+  en: f9acc1cf671bb19d
+  zh: 06594d2d62ad2d7b
+/deepseek-ai-dsh-experimental-mydot/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory:
+  en: 33ab835232e67c85
+  zh: 3f3960fef35f3d8d
+/deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/what-the-model-sees:
+  en: 638fea97befca4c0
+  zh: e0f5e7b0bfeaebda
+/deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/token-effect:
+  en: e35ea95630cbc33e
+  zh: 6e019d8772a669ca
+/deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/kv-cache-effect:
+  en: f0bc18c74ea84577
+  zh: e7a27d302d423182
+/deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work:
+  en: ff1ffbe64eb5721c
+  zh: deec4bd2ae6a8496
+/deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 6df6019931844fb2

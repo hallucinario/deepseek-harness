@@ -975,6 +975,25 @@ describe('bubblewrap preparation script', () => {
 })
 
 describe('HLC reconnect workflow', () => {
+  it('covers MyDot, its execution guard and Schedule in the existing keyless regression job', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/hlc-reconnect.yml'), 'reconnect')
+    if (!Array.isArray(job.steps)) throw new TypeError('HLC reconnect workflow must define steps')
+    const regression = job.steps.filter(isRecord)
+      .find(step => step.name === 'Experience memory and current context regressions')
+    const command = String(regression?.run)
+    for (const path of [
+      'packages/experimental/mydot/tests', 'packages/experimental/probability-guard/tests',
+      'packages/sandbox/sandbox-policy/tests/policy.spec.ts',
+      'packages/llm/llm-pi-ai/tests/probability-observation.spec.ts',
+      'packages/schedule/schedule/tests', 'packages/client/ui-schedule/tests',
+    ]) expect(command).toContain(path)
+    expect(command).toContain("--coverage.include='packages/experimental/mydot/src/**/*.{ts,tsx}'")
+    expect(command).toContain("--coverage.include='packages/experimental/probability-guard/src/**/*.ts'")
+    expect(command).toContain("--coverage.include='packages/sandbox/sandbox-policy/src/**/*.ts'")
+    expect(command).not.toContain('DEEPSEEK_API_KEY')
+    expect(job.steps.filter(isRecord).filter(step => step.run === 'pnpm install --frozen-lockfile')).toHaveLength(1)
+  })
+
   it('builds the native persistence addon before the experience memory regressions', () => {
     const job = workflowJob(loadWorkflow('.github/workflows/hlc-reconnect.yml'), 'reconnect')
     if (!Array.isArray(job.steps)) throw new TypeError('HLC reconnect workflow must define steps')
