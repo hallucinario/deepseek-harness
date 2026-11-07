@@ -96,6 +96,25 @@ export type {
 export { recordKeyFor } from './auth.ts'
 export { supportedProtocols } from './provider.ts'
 
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Request-local middleware around the pi-ai adapter stream, before tool dispatch.
+     * @param request - adapter request; raw events carry this exact object identity.
+     * @param next - delegate to the provider once.
+     * @mode waterfall
+     */
+    'llm-pi-ai/stream'(request: import('@deepseek-ai/dsh-llm').GenerateOptions, next: () => AsyncIterable<import('@deepseek-ai/dsh-llm').StreamChunk>): AsyncIterable<import('@deepseek-ai/dsh-llm').StreamChunk>
+    /**
+     * Read-only provider events before normalization; unsupported APIs emit none.
+     * @param request - exact adapter request identifying this response.
+     * @param data - unvalidated provider-owned parsed event.
+     * @mode serial
+     */
+    'llm-pi-ai/provider-event'(request: import('@deepseek-ai/dsh-llm').GenerateOptions, data: unknown): void | Promise<void>
+  }
+}
+
 export const name = 'llm-pi-ai'
 export const inject = ['llm']
 
@@ -227,6 +246,8 @@ export function apply(ctx: Context, config: Config): void {
   const adapter = new PiAiAdapter({
     profiles,
     resolveApiKey,
+    onProviderStreamEvent: (request, data) => ctx.serial('llm-pi-ai/provider-event', request, data),
+    wrapStream: (request, next) => ctx.waterfall('llm-pi-ai/stream', request, next),
     auth,
     resolveAttachments: () => ctx.get('attachments'),
     resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(

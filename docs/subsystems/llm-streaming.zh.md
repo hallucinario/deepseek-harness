@@ -1238,4 +1238,44 @@ Waterfall around every streaming model call (retry, replay, routing). Bound to t
 ```
 
 Source: [`packages/llm/llm/src/index.ts`](../../packages/llm/llm/src/index.ts)
+
+<a id="llm-pi-ai-events"></a>
+
+### `llm-pi-ai/*` events
+
+<a id="llm-pi-aiprovider-event--serial"></a>
+
+#### `llm-pi-ai/provider-event` — serial
+
+Read-only provider events before normalization; unsupported APIs emit none.
+
+```ts cordis-catalog
+/**
+ * Read-only provider events before normalization; unsupported APIs emit none.
+ * @param request - exact adapter request identifying this response.
+ * @param data - unvalidated provider-owned parsed event.
+ * @mode serial
+ */
+'llm-pi-ai/provider-event'(request: import('@deepseek-ai/dsh-llm').GenerateOptions, data: unknown): void | Promise<void>
+```
+
+Source: [`packages/llm/llm-pi-ai/src/index.ts`](../../packages/llm/llm-pi-ai/src/index.ts)
+
+<a id="llm-pi-aistream--waterfall"></a>
+
+#### `llm-pi-ai/stream` — waterfall
+
+Request-local middleware around the pi-ai adapter stream, before tool dispatch.
+
+```ts cordis-catalog
+/**
+ * Request-local middleware around the pi-ai adapter stream, before tool dispatch.
+ * @param request - adapter request; raw events carry this exact object identity.
+ * @param next - delegate to the provider once.
+ * @mode waterfall
+ */
+'llm-pi-ai/stream'(request: import('@deepseek-ai/dsh-llm').GenerateOptions, next: () => AsyncIterable<import('@deepseek-ai/dsh-llm').StreamChunk>): AsyncIterable<import('@deepseek-ai/dsh-llm').StreamChunk>
+```
+
+Source: [`packages/llm/llm-pi-ai/src/index.ts`](../../packages/llm/llm-pi-ai/src/index.ts)
 <!-- END GENERATED cordis-surface -->

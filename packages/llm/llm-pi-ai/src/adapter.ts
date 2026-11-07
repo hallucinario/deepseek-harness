@@ -121,6 +121,10 @@ export interface PiAiAdapterOptions {
    * `MISSING_CREDENTIAL` rather than falling back.
    */
   resolveApiKey: (provider: string, apiKeyEnv: CredentialRef | undefined) => Promise<string | undefined>
+  /** Read-only raw provider events, awaited before normalization; unsupported APIs emit none. */
+  onProviderStreamEvent?: (request: GenerateOptions, data: unknown) => void | Promise<void>
+  /** Request-local stream middleware; the same request identity accompanies raw events. */
+  wrapStream?: (request: GenerateOptions, next: () => AsyncIterable<StreamChunk>) => AsyncIterable<StreamChunk>
   /** Clock the peak windows read; defaults to `Date.now`. */
   now?: () => number
   /**
@@ -183,6 +187,7 @@ function profileOptions(
   return {
     ...apiKey === undefined ? {} : { apiKey },
     ...enabledReasoning === undefined ? {} : { reasoning: enabledReasoning },
+    ...profile.probabilityTopK === undefined ? {} : { samplingParams: { logprobs: true, top_logprobs: profile.probabilityTopK } },
     ...profile.thinkingBudgets === undefined ? {} : { thinkingBudgets: profile.thinkingBudgets },
     ...profile.cacheRetention === undefined ? {} : { cacheRetention: profile.cacheRetention },
     ...profile.transport === undefined ? {} : { transport: profile.transport },
@@ -510,13 +515,18 @@ export class PiAiAdapter extends LlmAdapter {
         primary.configuredMaxTokens.get(model),
         routingOf(primary, model),
       ),
-      stream: options => this.streamWithSnapshot(options, snapshot, effective),
+      stream: options => this.observedStream(options, snapshot, effective),
     })
   }
 
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     const snapshot = this.current()
-    return this.streamWithSnapshot(options, snapshot, this.routeFor(snapshot, options.provider, options.model, this.now()))
+    return this.observedStream(options, snapshot, this.routeFor(snapshot, options.provider, options.model, this.now()))
+  }
+
+  private observedStream(options: GenerateOptions, snapshot: PiAiSnapshot, effective: EffectiveRoute): AsyncIterable<StreamChunk> {
+    const next = () => this.streamWithSnapshot(options, snapshot, effective)
+    return this.config.wrapStream === undefined ? next() : this.config.wrapStream(options, next)
   }
 
   private async * streamWithSnapshot(
@@ -582,6 +592,9 @@ export class PiAiAdapter extends LlmAdapter {
         }, onReplayDegrade)
       const events = snapshot.models.streamSimple(model, context, {
         ...profileOptions(profile, reasoning, apiKey),
+        ...this.config.onProviderStreamEvent === undefined ? {} : {
+          onProviderStreamEvent: (data: unknown) => this.config.onProviderStreamEvent?.(options, data),
+        },
         ...options.temperature === undefined ? {} : { temperature: options.temperature },
         ...options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens },
         ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },

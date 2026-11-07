@@ -1,3 +1,5 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
+import type {} from '@deepseek-ai/dsh-subagent'
 import { describe, expect, it } from 'vitest'
 import { createAssistantMessage, createUserMessage, createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
@@ -33,7 +35,7 @@ describe('experience extraction', () => {
     add(snapshot, 'user/message', createUserMessage({ content: [{ type: 'text', text: 'Repair the build failure' }], source: { kind: 'user' } }))
     add(snapshot, 'working-directory/change', { cwd: '/other-project' })
     add(snapshot, 'tool/call', { turn: 1, step: 1, callId: ToolCallId('foreign'), name: 'bash', arguments: '{}' })
-    add(snapshot, 'tool/result', { turn: 1, step: 1, message: createToolResultMessage({ callId: ToolCallId('foreign'), content: [{ type: 'text', text: 'foreign build evidence' }] }) })
+    add(snapshot, 'tool/result', { turn: 1, step: 1, message: createToolResultMessage({ callId: ToolCallId('foreign'), content: [{ type: 'text', text: 'foreign build evidence' }], isError: false }) })
     add(snapshot, 'working-directory/change', { cwd: snapshot.session.cwd! })
     add(snapshot, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
     task(snapshot, 2)

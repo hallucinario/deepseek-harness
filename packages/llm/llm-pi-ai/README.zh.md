@@ -92,9 +92,12 @@ pi-ai 的已安装目录是它所随附的每个提供方的权威答案，被�
 | `requestImagePixelBudget` | `4,194,304` | 每张确定性请求图片的总像素预算 |
 | `requestImageMaxBytes` | `1 MiB` | 每张请求图片在 base64 扩展前的编码字节目标 |
 | `maxRequestImageBytes` | `20 MiB` | base64 图片载荷总上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败 |
+| `probabilityTopK` | 无 | 显式请求 OpenAI 兼容 logprobs 与 1–5 个绝对 top 概率；不保证提供方支持 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-pi-ai)是每个受支持字段及其 JSDoc 的穷尽式真源。
+
+概率订阅者使用请求局部的 llm-pi-ai/stream waterfall 和正規化前串行 llm-pi-ai/provider-event 通知。两者携带同一个适配器请求对象，因此中间件可以在工具分派前等待检查，并隔离并发响应。不支持的 API 不发出原始事件；订阅不改变普通 StreamChunk 类型，也不证明原生工具参数覆盖。
 
 ### 登录提供方
 

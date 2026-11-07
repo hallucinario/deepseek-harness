@@ -287,6 +287,12 @@ export default class ExperienceMemory extends Service {
       throw new Error(`cannot attribute child ${snapshot.session.id} to a durable parent task`)
     }
     const table = this.requireDomain().table('episodes')
+    for (const [id, stored] of table.entries()) {
+      if (stored.sessionId !== snapshot.session.id || stored.state === 'retired') continue
+      const mixed = snapshot.events.some(event => event.seq >= stored.startSeq && event.seq <= stored.endSeq
+        && event.type === 'working-directory/change' && event.data.cwd !== stored.scope.effectiveCwd)
+      if (mixed) await table.put(id, { ...stored, state: 'retired', retiredAt: Date.now() })
+    }
     for (const episode of extractEpisodes(snapshot, this.config, inheritedGroup)) {
       const stored = table.get(episode.id)
       if (stored === undefined) await table.put(episode.id, episode)

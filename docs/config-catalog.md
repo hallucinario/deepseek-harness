@@ -1241,6 +1241,54 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot-integrations -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-probability-guard -->
+<a id="deepseek-aidsh-experimental-probability-guard"></a>
+
+## `@deepseek-ai/dsh-experimental-probability-guard`
+
+- `inject`: `llm` · `tools` · `agents` · `sessions`
+- `source`: [`packages/experimental/probability-guard/src/index.ts:19`](../packages/experimental/probability-guard/src/index.ts)
+
+```ts config-catalog
+/** Every policy value is deployment-owned; mounting does not imply calibration or adoption. */
+export interface Config extends DetectionPolicy {
+  /** Observe records coverage without confirmation/denial; enforce enables confirmation and blocking. */
+  mode: 'observe' | 'enforce'
+  /** Original configured provider route names protected by this instance. */
+  providers: string[]
+  /** Total raw provider-event bytes retained per inference. */
+  maxObservationBytes: number
+  /** Maximum individually checked candidates per response; overflow holds execution. */
+  maxChecks: number
+  /** Minimum exact execution string length eligible for a confirmed repeat. */
+  minExecutionChars: number
+  /** Output cap includes the confirmation inference reasoning budget. */
+  confirmationMaxTokens: number
+  /** Total wall-clock confirmation deadline, including Session flush. */
+  confirmationTimeoutMs: number
+  /** Explicit choice for incomplete visible coverage; allow never means inspected native arguments. */
+  missingObservation: 'hold' | 'allow-unobserved'
+  /** Explicit top-level string arguments naming execution content; no automatic command/path inference. */
+  executionFields: {
+    /** Exact model-visible tool name. */
+    tool: string
+    /** Top-level string argument containing the execution text. */
+    field: string
+  }[]
+}
+
+/** Explicit deployment policy; no empirical threshold is implied. */
+export interface DetectionPolicy {
+  /** Absolute top-token probability that a token must exceed to extend a run. */
+  probabilityThreshold: number
+  /** Minimum contiguous visible model-token count for an ordinary candidate. */
+  minRunTokens: number
+  /** Minimum contiguous count at the end of a visible channel, no larger than minRunTokens. */
+  minTailTokens: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-probability-guard -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 
@@ -1906,7 +1954,7 @@ export interface Config extends ProtocolConfig {
 
 - `inject`: `llm`
 - `refs`: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/llm/llm-pi-ai/src/config.ts:227`](../packages/llm/llm-pi-ai/src/config.ts)
+- `source`: [`packages/llm/llm-pi-ai/src/config.ts:229`](../packages/llm/llm-pi-ai/src/config.ts)
 
 ```ts config-catalog
 /** Plugin configuration: the provider routes this instance owns. */
@@ -1981,6 +2029,8 @@ export interface PiAiProviderProfile {
   defaultInput?: PiAiModality[]
   /** Provider request headers, validated against Fetch when the profile resolves; Harness attribution wins reserved names. */
   headers?: Record<string, string>
+  /** Opt-in OpenAI-compatible top-k probability sampling; absence leaves sampling unchanged. */
+  probabilityTopK?: number
   /** Provider-neutral pi-ai reasoning level. */
   reasoning?: ModelThinkingLevel
   /** Token budgets used by reasoning providers that support them. */

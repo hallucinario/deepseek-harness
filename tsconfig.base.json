@@ -28,6 +28,7 @@
     // not declaration path aliases, keep each package/vendor source compiled
     // under its own tsconfig boundary.
     "paths": {
+      "@deepseek-ai/dsh-experimental-probability-guard": ["./packages/experimental/probability-guard/src/index.ts"],
       "@deepseek-ai/dsh-experimental-mydot-integrations": ["./packages/experimental/mydot-integrations/src/index.ts"],
       "@deepseek-ai/dsh-experimental-mydot-integrations/client": ["./packages/experimental/mydot-integrations/src/client/index.ts"],
       "@deepseek-ai/dsh-experimental-mydot-integration-broker": ["./packages/experimental/mydot-integration-broker/src/index.ts"],
