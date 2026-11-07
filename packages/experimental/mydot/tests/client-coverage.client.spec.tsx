@@ -40,6 +40,7 @@ async function click(name: string) { await act(async () => { fireEvent.click(scr
 
 it('names the targeted composer in the active locale and clears an accepted parent draft', async () => {
   const b = bench()
+  b.snapshot.artifacts.push({ sessionId: parent, parentSessionId: child, path: '/own', available: true }, { sessionId: child, parentSessionId: child, path: '/unrelated', available: true })
   render(<MyDotDock {...b.dockProps} />)
   await click(ja.title)
   fireEvent.change(screen.getByRole('textbox', { name: ja.send }), { target: { value: 'Parent only' } })

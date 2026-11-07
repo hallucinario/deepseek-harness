@@ -77,6 +77,7 @@ it('mounts the Remote contribution, renders registered root slots and disposes t
   const b = await bench()
   expect(b.mount).toHaveBeenCalledWith(contribution)
   expect(b.rt.slots.entries('conversation.input.dock')).toHaveLength(1)
+  expect(b.rt.slots.entries('conversation.input.dock')[0]!.inject!()).toBe(b.commands)
   const view = b.rt.renderSlot('main', {}, { entryKey: 'mydot' })
   expect(view.view.getByRole('status')).toBeTruthy()
   await act(async () => { b.streams[0]!.push(b.snapshot) })
@@ -155,4 +156,37 @@ it('reports stream failure before an opening snapshot and retries or resets with
   b.commands.openConversation(child)
   expect(b.openSession).toHaveBeenLastCalledWith({ parentSessionId: parent, childSessionId: child, mode: 'unknown' })
   expect(b.remote.send).not.toHaveBeenCalled()
+})
+
+it('withdraws its mounted Remote when Client activation fails and resolves the localized sidebar label', async () => {
+  const b = await bench()
+  const sidebar = b.rt.slots.entries('sidebar.panellist')[0]!
+  const label = sidebar.options.label
+  expect(typeof label === 'function' ? label() : label).toBe('MyDot')
+  await b.dispose()
+  const disposeFailedActivation = vi.fn(async () => {})
+  const failedActivation = Object.assign(Promise.reject(new Error('activation failed')), { dispose: disposeFailedActivation })
+  vi.spyOn(b.rt.ctx, 'inject').mockReturnValueOnce(failedActivation as never)
+  await expect(mountMyDot(b.rt.ctx, contribution)).rejects.toThrow('activation failed')
+  expect(disposeFailedActivation).toHaveBeenCalledOnce()
+  expect(b.unmount).toHaveBeenCalledTimes(2)
+})
+
+it('ignores late frames and failures from an aborted watch generation', async () => {
+  const b = await bench()
+  let deliver: ((value: IteratorResult<MyDotSnapshot>) => void) | undefined
+  let reject: ((error: Error) => void) | undefined
+  const late = {
+    dispose: vi.fn(),
+    [Symbol.asyncIterator]() { return this },
+    next: () => new Promise<IteratorResult<MyDotSnapshot>>((resolve, fail) => { deliver = resolve; reject = fail }),
+  }
+  b.remote.watch.mockReturnValueOnce(late as never)
+  b.commands.retry()
+  await act(async () => { deliver!({ done: false, value: b.snapshot }); b.commands.retry() })
+  expect(b.commands.hooks.mydot.getSnapshot()).toEqual({ phase: 'loading' })
+  b.remote.watch.mockReturnValueOnce(late as never)
+  b.commands.retry()
+  await act(async () => { reject!(new Error('aborted stream')); b.commands.retry() })
+  expect(b.commands.hooks.mydot.getSnapshot()).toEqual({ phase: 'loading' })
 })
