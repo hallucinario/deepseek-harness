@@ -2,6 +2,9 @@
 export const NS = 'mydot'
 /** English MyDot product copy. */
 export const en = {
+  workspaceNone: 'No workspace selected (default execution directory)', workspaceDefault: 'Default workspace',
+  workspaceUnavailable: 'Workspace unavailable (association retained)', workspaceLoading: 'Loading workspaces…',
+  workspaceFailed: 'Could not load workspaces. The association is retained.', workspaceEmpty: 'No registered workspaces.',
   deliveryFailed: 'Some child files have not reached the parent inbox. Open the parent and retry.', sourceFailed: 'The source conversation or its files could not be read. Retry or open the original conversation.',
   desktopDisabled: 'Desktop coordination is disabled. Configure all desktop tools before using handoff.', desktopStopping: 'Waiting for desktop operations to finish', desktopAgent: 'Job owns the desktop', desktopFree: 'Desktop is available', release: 'Release for the next job', screen: 'Open owner conversation and screen',
   title: 'MyDot', spaces: 'Spaces', jobs: 'Jobs', artifacts: 'Artifacts', memory: 'Memory', desktop: 'PC handoff',
@@ -24,6 +27,9 @@ export const en = {
 export type MyDotKey = keyof typeof en
 /** Japanese MyDot product copy. */
 export const ja = {
+  workspaceNone: 'Workspace 未選択（既定の実行先）', workspaceDefault: '既定の Workspace',
+  workspaceUnavailable: '利用できない Workspace（関連付けは保持されています）', workspaceLoading: 'Workspace を読み込み中…',
+  workspaceFailed: 'Workspace を読み込めません。関連付けは保持されています。', workspaceEmpty: '登録済みの Workspace はありません。',
   deliveryFailed: '子の成果物参照を親へ提示できていません。親の会話を開いて再試行してください。', sourceFailed: '原典の会話またはファイルを読み込めません。再試行するか原典を開いてください。',
   desktopDisabled: 'PC の制御は無効です。引継ぎ前に対象となる全ツールの設定が必要です。', desktopStopping: '実行中の PC 操作の終了待ち', desktopAgent: '仕事が PC を担当中', desktopFree: 'PC の担当なし', release: '次の仕事へ解放', screen: '担当会話と画面を開く',
   title: 'MyDot', spaces: 'Space', jobs: '仕事', artifacts: '成果物', memory: '記憶', desktop: 'PC の引継ぎ',
@@ -44,6 +50,9 @@ export const ja = {
 } satisfies Record<MyDotKey, string>
 /** Chinese MyDot product copy. */
 export const zh = {
+  workspaceNone: '未选择工作区（默认执行目录）', workspaceDefault: '默认工作区',
+  workspaceUnavailable: '工作区不可用（关联已保留）', workspaceLoading: '正在加载工作区…',
+  workspaceFailed: '无法加载工作区，关联已保留。', workspaceEmpty: '没有已注册的工作区。',
   deliveryFailed: '子工作文件尚未提交到父对话，请打开父对话后重试', sourceFailed: '无法读取原始对话或文件，请重试或打开原始对话',
   desktopDisabled: '电脑协调未启用，交接前请配置全部电脑操作工具', desktopStopping: '等待正在执行的电脑操作结束', desktopAgent: '工作正在使用电脑', desktopFree: '电脑尚未分配', release: '释放给下一项工作', screen: '打开负责对话和屏幕',
   title: 'MyDot', spaces: 'Space', jobs: '工作', artifacts: '交付文件', memory: '记忆', desktop: '电脑交接',
