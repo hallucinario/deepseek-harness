@@ -67,7 +67,7 @@ it('rejects invalid admission and missing parents without reserving the identity
   const request = { parentSessionId: SessionId('missing'), requestId: 'retry' as SessionRequestId, label: 'A', prompt: 'Analyze', provider: 'spawn' as const }
   await expect(ctx.mydot.startJob({ ...request, label: ' ' }, signal())).rejects.toThrow('name and request')
   await expect(ctx.mydot.startJob({ ...request, prompt: ' ' }, signal())).rejects.toThrow('name and request')
-  await expect(ctx.mydot.startJob(request, signal())).rejects.toThrow('Resume the original parent')
+  await expect(ctx.mydot.startJob(request, signal())).rejects.toThrow('session "missing" not found')
   ctx.llm.registerAdapter(['mock'], new MockAdapter([textResponse('done'), textResponse('received')]))
   const parent = await ctx.agentLoop.create(request.parentSessionId, { provider: 'mock', model: 'mock' })
   expect((await ctx.mydot.startJob(request, signal())).childSessionId).toBe('mydot-retry')
@@ -91,7 +91,9 @@ it('shares pending starts and compares cataloged requests after Host reload', as
   expect(await first).toEqual(await second)
   spy.mockRestore()
   await ctx.subagents.waitForChildren(parent)
+  const retiring = entry.fiber!
   await entry.update({ disabled: true })
+  await retiring.dispose()
   await entry.update({ disabled: false })
   await entry.fiber!.await()
   expect(await ctx.mydot.startJob(request, signal())).toEqual({ childSessionId: SessionId('mydot-pending') })

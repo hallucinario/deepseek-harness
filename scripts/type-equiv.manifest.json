@@ -2524,7 +2524,7 @@
     },
     {
       "doc": "docs/subsystems/mydot.md",
-      "symbol": "JobView",
+      "symbol": "MyDotJobView",
       "source": "packages/experimental/mydot/src/types.ts"
     },
     {

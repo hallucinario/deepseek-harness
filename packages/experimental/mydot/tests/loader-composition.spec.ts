@@ -107,6 +107,7 @@ it('runs two independent children, presents both current files to the parent inb
   ctx.tools.register(defineContentToolFixture({
     name: 'report', description: 'Write a report in this test execution directory', parameters: { file: { type: 'string' } },
     async execute(args) {
+      if (args.file === undefined) throw new Error('report filename is required')
       await writeFile(join(root, args.file), `report ${args.file}`)
       return [{ type: 'text', text: args.file }]
     },
@@ -191,7 +192,7 @@ it('steers A exactly once during generation, keeps parent conversation available
   expect(receipts[0]).toEqual(receipts[1])
   await aSteered.promise
   using source = await ctx.sessionQuery.observeSession(a.id)
-  expect(source.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user' && event.data.source.rpcId === input.requestId)).toHaveLength(1)
+  expect(source.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user' && 'rpcId' in event.data.source && event.data.source.rpcId === input.requestId)).toHaveLength(1)
   expect(JSON.stringify(aScript.requests[1]?.messages)).toContain('Change only A')
   expect(JSON.stringify(bScript.requests)).not.toContain('Change only A')
   expect(ctx.mydot.stop({ parentSessionId: parent.id, childSessionId: a.id })).toEqual({ accepted: true })
@@ -216,7 +217,9 @@ it('restores Space and memory after Host restart and unloads/reloads without dup
   expect(await second.ctx.mydot.readMemory({ kind: 'space', spaceId: space.id })).toMatchObject({ content: 'Persistent Space decision' })
   expect((await second.ctx.mydot.snapshot()).spaces).toEqual([space])
   const entry = [...second.ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-experimental-mydot')!
+  const retiring = entry.fiber!
   await entry.update({ disabled: true })
+  await retiring.dispose()
   expect(second.ctx.get('mydot')).toBeUndefined()
   await entry.update({ disabled: false })
   await entry.fiber!.await()

@@ -18,7 +18,7 @@ function setup(send = vi.fn(async () => {})) {
     spaces: [], conversations: [], artifacts: [], desktop: { phase: 'free', inFlight: 0 },
     jobs: ['A', 'B'].map(name => ({ parentSessionId: 'parent' as SessionId, childSessionId: name as SessionId, label: `仕事 ${name}`, mode: 'continuable', status: 'running' })),
   } })
-  const stop = vi.fn(async () => {})
+  const stop = vi.fn(async (_job: unknown) => {})
   const props = { sessionId: 'parent' as SessionId, useMydot: bindSnapshotSelector(source), useStore: bindSnapshotSelector(state), actions: state.actions,
     t: makeTranslate(ja), send, stop, open: vi.fn(), newRequestId: () => 'stable-request', retry: vi.fn(), readFile: vi.fn(), startJob: vi.fn(), preview: vi.fn(), flushPreview: vi.fn(),
   } as DockProps
@@ -56,7 +56,7 @@ it('keeps the same uncertain request across remount and never automatically rese
   first.unmount()
   render(<MyDotDock {...b.props} />)
   expect(send).toHaveBeenCalledTimes(1)
-  expect((screen.getByRole('textbox')).value).toBe('草稿')
+  expect(screen.getByRole<HTMLTextAreaElement>('textbox').value).toBe('草稿')
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: '再試行' })) })
   expect(send.mock.calls[1]).toEqual(send.mock.calls[0])
 })
@@ -73,7 +73,7 @@ it('retains both initial job requests and their IDs after a partial start failur
   await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: ja.startJobs }).at(-1)!) })
   first.unmount()
   render(<MyDotDock {...props} />)
-  expect((screen.getByLabelText(ja.requestA)).value).toBe('Read report A')
+  expect(screen.getByLabelText<HTMLTextAreaElement>(ja.requestA).value).toBe('Read report A')
   await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: ja.startJobs }).at(-1)!) })
   expect(startJob.mock.calls[2]).toEqual(startJob.mock.calls[0])
   expect(startJob.mock.calls[3]).toEqual(startJob.mock.calls[1])

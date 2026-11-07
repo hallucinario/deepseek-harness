@@ -27,7 +27,7 @@ export interface DesktopState { phase: 'free' | 'agent' | 'stopping' | 'human'; 
 
 
 /** A job is an existing direct child, never another task record. */
-export interface JobView {
+export interface MyDotJobView {
   parentSessionId: SessionId
   childSessionId: SessionId
   label: string
@@ -48,7 +48,7 @@ export interface ArtifactView {
 export interface MyDotSnapshot {
   spaces: Space[]
   conversations: { sessionId: SessionId; spaceId: Space['id']; cwd: string }[]
-  jobs: JobView[]
+  jobs: MyDotJobView[]
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean

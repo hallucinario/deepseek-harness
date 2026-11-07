@@ -2,7 +2,7 @@
 import type { HostObservable, PropsLocale, PropsRuntime, PropsStore, InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Space, SpaceId, SpaceInput } from '../types.ts'
-import type { MyDotSnapshot, JobView, ArtifactView } from '../types.ts'
+import type { MyDotSnapshot, MyDotJobView, ArtifactView } from '../types.ts'
 import type { TextRead, TextSave, TextSaveResult } from '../types.ts'
 import type { MemoryScope, StartJob } from '../types.ts'
 import type { PendingInput, createMyDotStore } from './store.ts'
@@ -21,8 +21,8 @@ export interface Commands {
   attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>
   startJob: (input: StartJob) => Promise<void>
   send: (sessionId: SessionId, input: PendingInput) => Promise<void>
-  stop: (job: JobView) => Promise<void>
-  open: (job: JobView) => void
+  stop: (job: MyDotJobView) => Promise<void>
+  open: (job: MyDotJobView) => void
   openConversation: (sessionId: SessionId) => void
   preview: (artifact: ArtifactView) => void
   flushPreview: (sessionId: SessionId) => void
@@ -38,6 +38,6 @@ export interface Commands {
 /** Renderer turns the declared observable into its subscribed selector hook. */
 export type Injected = InjectFace<Commands>
 /** Conversation-scoped dock and persisted viewing state. */
-export type DockProps = PropsRuntime<'conversation.input.dock'> & PropsLocale<typeof NS> & PropsStore<ReturnType<typeof createMyDotStore>> & Injected
+export type DockProps = Pick<PropsRuntime<'conversation.input.dock'>, 'sessionId'> & PropsLocale<typeof NS> & PropsStore<ReturnType<typeof createMyDotStore>> & Injected
 /** Global panel uses the same Host source and navigation commands. */
-export type PanelProps = PropsRuntime<'main'> & PropsLocale<typeof NS> & Injected
+export type PanelProps = Pick<PropsRuntime<'main'>, 'useWorkspaces'> & PropsLocale<typeof NS> & Injected

@@ -55,11 +55,11 @@ type MemoryScope = { kind: 'personal' } | { kind: 'space'; spaceId: SpaceId }
 interface DesktopState { phase: 'free' | 'agent' | 'stopping' | 'human'; owner?: SessionId; capturedAt?: number; inFlight: number }
 ```
 
-## `JobView`
+## `MyDotJobView`
 
 ```ts type-equiv
 /** A job is an existing direct child, never another task record. */
-interface JobView {
+interface MyDotJobView {
   parentSessionId: SessionId
   childSessionId: SessionId
   label: string
@@ -90,7 +90,7 @@ interface ArtifactView {
 interface MyDotSnapshot {
   spaces: Space[]
   conversations: { sessionId: SessionId; spaceId: Space['id']; cwd: string }[]
-  jobs: JobView[]
+  jobs: MyDotJobView[]
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean

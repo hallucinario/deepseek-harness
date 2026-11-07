@@ -297,7 +297,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   StartJob: 'mydot.md',
   MemoryScope: 'mydot.md',
   DesktopState: 'mydot.md',
-  JobView: 'mydot.md',
+  MyDotJobView: 'mydot.md',
   ArtifactView: 'mydot.md',
   MyDotSnapshot: 'mydot.md',
   TextRead: 'mydot.md',
