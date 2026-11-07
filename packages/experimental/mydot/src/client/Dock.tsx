@@ -79,7 +79,7 @@ export function MyDotDock(props: DockProps) {
           onChange={(event) =>{  actions.delivery(event.target.value === 'steer' ? 'steer' : 'queue') }}>
           <option value="steer">{t('steer')}</option><option value="queue">{t('queue')}</option>
         </select>
-        <textarea className={css.input} value={draft.text} disabled={sending || draft.pending !== null}
+        <textarea aria-label={t('send')} className={css.input} value={draft.text} disabled={sending || draft.pending !== null}
           onChange={(event) =>{  actions.text(event.target.value) }} />
         <div className={css.row}><Button disabled={sending || (draft.pending === null && draft.text.trim() === '') || (draft.target !== null && selected === undefined)}
           onClick={() => { void send() }}>{t(draft.pending === null ? 'send' : 'retry')}</Button></div>
