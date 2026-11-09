@@ -32,8 +32,11 @@ function repository(files: Record<string, string>): string {
 }
 
 const OWNER_SOURCE = 'export function appendPluginRecord(session, type, data) { return commit(session, type, data) }\n'
+  + 'export function createPluginRecord(type, data, seq) { return make(type, data, seq) }\n'
 const EXPERIMENTAL = 'packages/experimental/bridge/src/index.ts'
 const RELEASE = 'packages/core/agent/src/index.ts'
+const DEPENDENCY_POLICY = 'scripts/package-dependency-policy.ts'
+const SESSION_EXPORT_CLASSIFICATION = "const PEER_REQUIRED_HOST_EXPORTS = { '@deepseek-ai/dsh-session': ['appendPluginRecord', 'createPluginRecord'] } as const satisfies HostDependencyExports"
 
 /** A source-only compiler fixture whose production map declares one bridge record. */
 function declaredRepository(source: string, extra: Record<string, string> = {}): string {
@@ -47,7 +50,7 @@ function declaredRepository(source: string, extra: Record<string, string> = {}):
     'packages/core/session/package.json': JSON.stringify({ name: '@deepseek-ai/dsh-session' }),
     'packages/experimental/bridge/package.json': JSON.stringify({ name: '@deepseek-ai/dsh-experimental-bridge' }),
     'packages/core/session/src/types.ts': 'export interface PluginRecordMap {}\n',
-    [OWNER_FILE]: "import type { PluginRecordMap } from './types.ts'\nexport function appendPluginRecord<K extends keyof PluginRecordMap>(session: object, type: K, data: NoInfer<PluginRecordMap[K]>): number { return 0 }\n",
+    [OWNER_FILE]: "import type { PluginRecordMap } from './types.ts'\nexport function appendPluginRecord<K extends keyof PluginRecordMap>(session: object, type: K, data: NoInfer<PluginRecordMap[K]>): number { return 0 }\nexport function createPluginRecord<K extends keyof PluginRecordMap>(type: K, data: NoInfer<PluginRecordMap[K]>, seq: number): object { return {} }\n",
     'packages/experimental/bridge/src/types.ts': [
       'export interface Entry { value: number }',
       "declare module '@deepseek-ai/dsh-session/types' {",
@@ -92,6 +95,17 @@ describe('verify-plugin-record-callers', () => {
     expect(checkPluginRecordCallers(corpus(`${source}\n`))).toEqual([{ file: RELEASE, line: 1, text: source }])
   })
 
+  it.each([
+    "import { createPluginRecord as build } from '@deepseek-ai/dsh-session'",
+    "export { createPluginRecord } from '@deepseek-ai/dsh-session'",
+    "S.createPluginRecord('plugin:a', {}, 0)",
+    'const { createPluginRecord: build } = S',
+    "S['createPluginRecord']('plugin:a', {}, 0)",
+    "S['\\x63reatePluginRecord']('plugin:a', {}, 0)",
+  ])('rejects cold record construction in release source: %s', (source) => {
+    expect(checkPluginRecordCallers(corpus(source))).toEqual([{ file: RELEASE, line: 1, text: source }])
+  })
+
   it('parses JSX and JavaScript sources by extension', () => {
     const files = corpus('', {
       'packages/client/ui/src/view.tsx': 'const view = <div>{S.appendPluginRecord(session, "plugin:a", {})}</div>\n',
@@ -132,6 +146,43 @@ describe('verify-plugin-record-callers', () => {
     expect(checkPluginRecordCallers(corpus(source))).toEqual([])
   })
 
+  it('admits only literal Session export classifications in the owning dependency policy', () => {
+    expect(checkPluginRecordCallers(corpus('', { [DEPENDENCY_POLICY]: SESSION_EXPORT_CLASSIFICATION }))).toEqual([])
+    expect(isAdmittedCaller(DEPENDENCY_POLICY)).toBe(false)
+    expect(checkPluginRecordCallers(corpus(SESSION_EXPORT_CLASSIFICATION))).toHaveLength(2)
+  })
+
+  it.each([
+    SESSION_EXPORT_CLASSIFICATION.replace('PEER_REQUIRED_HOST_EXPORTS', 'OTHER_EXPORTS'),
+    SESSION_EXPORT_CLASSIFICATION.replace('@deepseek-ai/dsh-session', '@deepseek-ai/other'),
+    SESSION_EXPORT_CLASSIFICATION.replace('const PEER_REQUIRED', 'let PEER_REQUIRED'),
+    `function classify() { ${SESSION_EXPORT_CLASSIFICATION} }`,
+    "const PEER_REQUIRED_HOST_EXPORTS = { nested: { '@deepseek-ai/dsh-session': ['appendPluginRecord', 'createPluginRecord'] } }",
+  ])('rejects restricted names outside the exact policy declaration: %s', (source) => {
+    const callers = checkPluginRecordCallers(corpus('', { [DEPENDENCY_POLICY]: source }))
+    expect(callers).toHaveLength(2)
+    expect(callers.every(caller => caller.file === DEPENDENCY_POLICY)).toBe(true)
+  })
+
+  it.each([
+    "import { appendPluginRecord } from '@deepseek-ai/dsh-session'",
+    "export { createPluginRecord } from '@deepseek-ai/dsh-session'",
+    "S.createPluginRecord('plugin:a', {}, 0)",
+    "S['appendPluginRecord'](session, 'plugin:a', {})",
+  ])('keeps runtime references beside policy metadata restricted: %s', (source) => {
+    expect(checkPluginRecordCallers(corpus('', {
+      [DEPENDENCY_POLICY]: `${SESSION_EXPORT_CLASSIFICATION}\n${source}`,
+    }))).toEqual([{ file: DEPENDENCY_POLICY, line: 2, text: source }])
+  })
+
+  it.each(['appendPluginRecord', "S['createPluginRecord']"])(
+    'rejects executable references inside the classification array: %s', (reference) => {
+      const source = `const PEER_REQUIRED_HOST_EXPORTS = { '@deepseek-ai/dsh-session': [${reference}] }`
+      expect(checkPluginRecordCallers(corpus('', { [DEPENDENCY_POLICY]: source })))
+        .toEqual([{ file: DEPENDENCY_POLICY, line: 1, text: source }])
+    },
+  )
+
   it('admits experimental source, the owner, tests, and this gate', () => {
     for (const file of [
       EXPERIMENTAL,
@@ -159,6 +210,11 @@ describe('verify-plugin-record-callers', () => {
       else files.set(OWNER_FILE, owner)
       expect(() => checkPluginRecordCallers(files)).toThrow(/no longer exports function appendPluginRecord/)
     }
+  })
+
+  it('refuses a corpus whose owner no longer exports the cold factory', () => {
+    expect(() => checkPluginRecordCallers(corpus('', { [OWNER_FILE]: 'export function appendPluginRecord() {}' })))
+      .toThrow(/no longer exports function createPluginRecord/)
   })
 
   it('refuses a corpus without experimental or release package source', () => {
@@ -221,6 +277,16 @@ describe('verify-plugin-record-callers', () => {
       expect.stringContaining('not assignable'),
       expect.stringContaining('not assignable'),
     ])
+  })
+
+  it('validates cold factory keys and payloads against production declarations', () => {
+    const root = declaredRepository([
+      "import { createPluginRecord as build } from '@deepseek-ai/dsh-session'",
+      "build('plugin:bridge/state', { value: 1 }, 0)",
+      "build('plugin:bridge/missing', {}, 1)",
+      "build('plugin:bridge/state', { value: 'wrong' }, 2)",
+    ].join('\n'))
+    expect(checkDeclaredPluginRecordWrites(root, readRepositorySources(root)).map(error => error.line)).toEqual([3, 4])
   })
 
   it('does not authorize a production write with a test-only declaration', () => {

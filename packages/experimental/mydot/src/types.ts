@@ -3,6 +3,8 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { VerificationView, VerificationCheck } from './verification-types.ts'
+export type * from './verification-types.ts'
 /** Opaque Space identity independent of a display name. */
 export type SpaceId = Branded<'MyDotSpaceId'>
 /** Durable small Space metadata. */
@@ -35,6 +37,7 @@ export interface MyDotJobView {
   request?: string | undefined
   summary?: string | undefined
   status: 'running' | 'inactive'
+  verification?: VerificationView
 }
 /** Source coordinates and current file availability for a durable declaration. */
 export interface ArtifactView {
@@ -44,7 +47,7 @@ export interface ArtifactView {
   description?: string
   available: boolean
 }
-/** All lists are reconstructed; only Space metadata and Session links are new storage. */
+/** Lists are reconstructed; Space metadata and links use the MyDot storage domain. */
 export interface MyDotSnapshot {
   spaces: Space[]
   conversations: { sessionId: SessionId; spaceId: Space['id']; cwd: string }[]
@@ -52,6 +55,7 @@ export interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  verificationChecks?: VerificationCheck[]
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }
 

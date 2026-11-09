@@ -45,6 +45,16 @@ kind: "package-reference"
 
 现有定期执行页面使用同一 ID 暂停或恢复后续投递。已投递请求和正在执行的轮次保持不变，投递回执不代表输出成功。参见[定期执行参考](../../../docs/subsystems/schedule.zh.md)。
 
+### 观察已有的持续集成结果
+
+`verificationChecks` 默认为 `[]`，禁用证据控件及外部读取。启用条件时，配置稳定的 `id`、采用 `owner/name` 形式的 GitHub `repository`、`workflowPath`、已审核工作流的精确 Git blob `workflowFileSha`、精确 `jobName` 和面向用户的 `description`。审核工作流的任务语义，并确认检出操作测试事件提交且没有 `ref` 覆盖。首个提供方只接受提交和工作流 blob 精确匹配的 `push` 与 `merge_group` 运行，不从 `pull_request` 运行推断被测提交。工作流更新后，需要重新审核并更新配置中的 blob SHA。
+
+在子工作的验证控件中，选择原始用户请求、已配置条件及完整的 40 字符提交 SHA，然后输入已有 GitHub Actions 运行 ID 获取证据。Host 使用已认证的 `gh` 可执行程序发起只读 GitHub API 请求；仅选择目标不会读取外部服务。已完成的子工作及重启后的历史通过现有持久化写入器执行短记录事务，不激活 Session 或 Agent。写入器冲突或不可用时，操作保持未确认并可重试。这些控件不会启动模型轮次、工作流重跑、轮询或自动修正。
+
+卡片将执行活动与验证分开显示。尚未观察的条件保持未观察；只有选定任务已完成且结论为 `success` 才表示通过。`failure` 和 `timed_out` 表示失败。任务缺失或不唯一、跳过或中性结论、未完成运行、不支持的事件、工作流来源变化以及无法读取，都表示不可确认。整个工作流成功不会让被跳过的任务通过。证据记录精确请求、提交、条件版本、运行尝试、来源事件、任务链接和观察时间。读取器收集任务后再次检查运行，拒绝读取过程中已变化的尝试。
+
+选择其他请求或提交、替换选定请求的消息，或修改已配置条件后，旧证据不能满足当前选择。旧观察保留原始目标并继续显示；普通的追加对话不会改写明确选定的请求。刷新由用户显式触发，记录 GitHub 在当时返回的结果；已保存证据不证明后续重跑、可变本地文件、部署或用户验收的结果。读取失败仍然可见，并可重试，不会据此产生成功结果。`verificationTimeoutMs` 默认为 30000，限制整个读取过程；`verificationOutputBytes` 默认为每个响应 1048576 字节，截断响应不会产生通过结论。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -55,6 +65,8 @@ kind: "package-reference"
 
 `mydot` 存储域拥有小型 Space 记录和权威 Session 到 Space 的关联。各记录分别提交，不存在跨记录事务。工作状态、请求去重和交付文件来自现有 Session 目录、收件箱变更及交付事件。Remote 流使用现有 WebSocket 传输，在卸载时中止。无法读取的来源不会清除其他结果，并会显示诊断。重新加载先关闭域句柄并移除监听器，再打开新实例。
 
+持续集成目标和观察使用子会话现有 Session 日志中带版本的 `plugin:mydot/verification-*` 记录。注册的 `mydotEvidence` 投影验证记录并重建当前和历史绑定，不增加另一套工作数据库。分支继承的父会话记录不能满足子请求。独立的 `mydotEvidence` Remote 服务拥有显式读取，并等待现有 Session 写入器完成 flush 后才确认已保存结果。实时视图显示新证据前，必须确认现有 Session 写入器的检查点；失败的检查点保持不可确认。小型内存游标只缓存精确实时 Session 已确认的前缀，插件重载后会重新执行检查点。冷视图使用持久投影，并通过短期持久化写入句柄对尚未确认的来源版本执行检查点；它们从不发布实时 Session。冷写入在验证、追加及 flush 期间保持同一写入句柄的所有权，并在任何 GitHub 读取之前释放它。子进程调用遵循 Host 取消信号和输出上限；证据不包含凭据或命令标准错误内容。
+
 | 源码 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Host 组合、已记录上下文和 Remote 操作 |
@@ -62,6 +74,9 @@ kind: "package-reference"
 | [`src/control.ts`](src/control.ts) | 每个子工作的接收及持久请求去重 |
 | [`src/files.ts`](src/files.ts) | 一致性读取及带版本检查的编辑 |
 | [`src/desktop.ts`](src/desktop.ts) | 软件所有权和交接接收控制 |
+| [`src/verification.ts`](src/verification.ts) | 显式持续集成读取和持久证据接收 |
+| [`src/verification-records.ts`](src/verification-records.ts) | 经过验证的 Session 记录、投影和目标当前性 |
+| [`src/verification-github.ts`](src/verification-github.ts) | 精确匹配 GitHub 工作流尝试和任务 |
 | [`src/client/mount.ts`](src/client/mount.ts) | 共享订阅、导航和 Slot 注册 |
 
 </details>
@@ -84,6 +99,8 @@ kind: "package-reference"
 
 每个关联 Session 接收已记录的 `mydot` 快照，包含 Space ID、名称、目的、指示、参考路径、个人 `MEMORY.md` 及当前 Space 的 `MEMORY.md`，并记录源路径和观察版本。不包含其他 Space 的历史和记忆。本地子工作以 `MyDot job request: <JSON>` 开始，列明精确父对话、请求标识、名称和请求。父对话文件通知使用 `Child-declared current files; their contents are not verified.`，后附来源坐标。
 
+持续集成观察显示在 MyDot 用户界面及持久插件记录中，不增加模型提示、工具或自动继续执行；助手的完成文本不能提交或替换持续集成结论。
+
 #### Token 影响
 
 Space 和所选记忆文本在每一步增加输入 token，字节限制由配置决定。子工作请求和文件通知保留在持久对话历史中，直到现有压缩机制改变请求。
@@ -102,6 +119,7 @@ Space 和所选记忆文本在每一步增加输入 token，字节限制由配�
 - 记忆是显式可编辑 Markdown，不要求外部嵌入服务或跨 Space 历史注入。
 - 电脑所有权属于单个 Host 实例，仅限制已配置工具。真实人工交接及手机键盘、照片和导航验收需要设备测试。
 - 外部一次性执行没有继续控制。运行结束和助手摘要不证明交付文件正确。
+- 持续集成证据当前支持明确审核的 GitHub `push` 和 `merge_group` 工作流，并匹配一个精确任务名。拉取请求合并映射、推断条件、外部结果提供方和自动实验留待后续。
 
 <a id="dev-note"></a>
 ### 开发备注

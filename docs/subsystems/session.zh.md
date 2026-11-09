@@ -760,6 +760,8 @@ interface TurnEndReasonMap {
 
 实验性包在 `PluginRecordMap` 中声明插件自有的状态：`appendPluginRecord()` 根据每项声明约束名称与 payload 类型，并在 `plugin:` 命名空间中追加一条带 `ignorable: true` 标记的事件。`pluginRecordOf()` 读取已存记录，其 payload 为未知类型，不受当前声明约束。[实验性持久化目录](../experimental-persistence-catalog.zh.md)列出当前声明。调用方限制、保留方式与读取路径见[包 README](../../packages/core/session/README.zh.md#write-experimental-plugin-records)。
 
+`createPluginRecord()` 为冷写入所有者构造相同信封，不创建 Session 或 Agent。所有者持有规范持久化写入句柄，检查当前前缀并追加，然后等待其持久化检查点；工厂本身既不取得所有权，也不写入存储。
+
 ```ts type-equiv
 /**
  * Event type of an experimental plugin record: `plugin:` followed by

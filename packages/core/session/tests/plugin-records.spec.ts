@@ -3,6 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, {
   appendPluginRecord,
+  createPluginRecord,
   buildForkSeed,
   pluginRecordOf,
   Session,
@@ -22,6 +23,27 @@ function openTurn(session: Session): void {
 }
 
 describe('plugin records', () => {
+  it('constructs a cold record without a Session and snapshots the same canonical envelope', () => {
+    const data = { count: 1 }
+    const record = createPluginRecord('plugin:test/state', data, SessionSeq(7))
+    data.count = 2
+    expect(record).toEqual({ type: 'plugin:test/state', seq: 7, time: record.time, data: { count: 1 }, ignorable: true })
+    expect(Object.isFrozen(record)).toBe(true)
+    expect(Object.isFrozen(record.data)).toBe(true)
+    expect(pluginRecordOf(record)).toEqual({ type: 'plugin:test/state', seq: 7, time: record.time, data: { count: 1 } })
+  })
+
+  it('rejects invalid cold sequences, record names and payloads before constructing an event', () => {
+    for (const seq of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN]) {
+      // Bypass the public numeric constructor to exercise the factory's own runtime boundary.
+      expect(() => createPluginRecord('plugin:test/state', { count: 1 }, seq as SessionSeq))
+        .toThrow('plugin record sequence must be a non-negative safe integer')
+    }
+    // @ts-expect-error -- runtime callers still require a valid plugin record name.
+    expect(() => createPluginRecord('turn/start', {}, SessionSeq(0))).toThrow('plugin record type')
+    expect(() => createPluginRecord('plugin:test/number', Number.NaN, SessionSeq(0))).toThrow('non-JSON-serializable data')
+  })
+
   it('commits an ignorable record outside the model-visible surface', () => {
     const session = Session.create(SessionId('record'))
     openTurn(session)

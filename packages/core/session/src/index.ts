@@ -465,6 +465,40 @@ function assertPluginRecordEvent(value: unknown): asserts value is SessionEvent 
 /** Module-private access to {@link Session}'s record commit, assigned once by its static block. */
 let commitPluginRecord: (session: Session, type: PluginRecordType, data: unknown) => SessionSeq
 
+function snapshotPluginRecordData(type: PluginRecordType, data: unknown): unknown {
+  const snapshot = snapshotJsonValue(data)
+  if (snapshot === undefined) throw new Error(`plugin record "${type}" carries non-JSON-serializable data`)
+  return snapshot
+}
+
+function pluginRecordEvent(type: PluginRecordType, data: unknown, seq: SessionSeq): SessionEvent {
+  if (!Number.isSafeInteger(seq) || seq < 0) throw new Error('plugin record sequence must be a non-negative safe integer')
+  const record: unknown = deepFreeze({ type, seq, time: Date.now(), data, ignorable: true })
+  assertPluginRecordEvent(record)
+  return record
+}
+
+/**
+ * Construct one validated experimental record for an owned cold persistence append.
+ * Only experimental production callers may use this factory, under the same
+ * declared-name, JSON snapshot and caller restrictions as {@link appendPluginRecord}.
+ * The caller must own the stored Session's write handle, supply its exact next
+ * sequence, append the returned record and await that handle's flush. This
+ * function does not publish a Session, claim write ownership or promise durability.
+ * @param type - declared plugin record name.
+ * @param data - payload snapshotted before it enters the immutable envelope.
+ * @param seq - exact next position in the owned Session log.
+ * @returns one frozen, ignorable record accepted by Session persistence.
+ * @throws when the name, payload or sequence is invalid.
+ */
+export function createPluginRecord<K extends Extract<keyof PluginRecordMap, PluginRecordType>>(
+  type: K,
+  data: NoInfer<PluginRecordMap[K]>,
+  seq: SessionSeq,
+): SessionEvent {
+  return pluginRecordEvent(type, snapshotPluginRecordData(type, data), seq)
+}
+
 /**
  * Append one experimental plugin record: an event marked `ignorable` whose
  * type is declared in {@link PluginRecordMap}, outside {@link SessionEventMap}.
@@ -837,19 +871,9 @@ export class Session {
    * @returns the record's sequence number.
    */
   #appendRecord(type: PluginRecordType, data: unknown): SessionSeq {
-    const dataSnapshot = snapshotJsonValue(data)
-    if (dataSnapshot === undefined) {
-      throw new Error(`plugin record "${type}" carries non-JSON-serializable data`)
-    }
+    const dataSnapshot = snapshotPluginRecordData(type, data)
     const entry = this.publicationEntry()
-    const record: unknown = deepFreeze({
-      type,
-      seq: SessionSeq(this.log.length),
-      time: Date.now(),
-      data: dataSnapshot,
-      ignorable: true,
-    })
-    assertPluginRecordEvent(record)
+    const record = pluginRecordEvent(type, dataSnapshot, SessionSeq(this.log.length))
     this.commit(record, entry)
     return record.seq
   }

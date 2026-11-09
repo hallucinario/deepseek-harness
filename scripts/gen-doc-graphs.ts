@@ -115,6 +115,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Stores Space associations and projects existing Sessions, child jobs, files and scoped Markdown; execution remains in the owning services.',
   },
   {
+    key: 'mydotEvidence',
+    pkg: 'experimental-mydot',
+    title: 'Request-bound existing CI evidence',
+    mode: 'service',
+    note: 'Binds a recorded request and reviewed CI condition to a commit; reads existing GitHub Actions jobs and persists observations in the source Session.',
+  },
+  {
     key: 'experienceMemory',
     pkg: 'experimental-memory-experience',
     title: 'Scoped execution experience recall',

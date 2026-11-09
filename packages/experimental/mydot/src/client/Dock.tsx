@@ -5,6 +5,7 @@ import type { SubagentPromptRequestId } from '@deepseek-ai/dsh-subagent/client'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { DockProps } from './props.ts'
 import type { PendingInput } from './store.ts'
+import { MyDotVerification } from './Verification.tsx'
 import css from './MyDot.module.css'
 
 /** Render existing child jobs alongside an explicit targeted text composer. */
@@ -65,6 +66,10 @@ export function MyDotDock(props: DockProps) {
               void props.stop(job).then(() =>{  actions.stopping(job.childSessionId) }).catch((reason: unknown) =>{  setError(t('error', { message: String(reason) })) })
             }}>{t('stop')}</Button>}
           </div>
+          <MyDotVerification sessionId={job.childSessionId} verification={job.verification} checks={view.value.verificationChecks ?? []}
+            disabled={view.disconnected === true} setVerificationTarget={props.setVerificationTarget}
+            refreshVerification={props.refreshVerification}
+            openConversation={props.openConversation} t={t} />
         </article>)}</div>
         {jobs.length > 0 && <p className={css.muted}>{t('unverified')}</p>}
         <label className={css.field}>{t('destination', { name: destination })}

@@ -1,5 +1,5 @@
 /** Compile-time calls to the public plugin-record writer; excluded from production declarations. */
-import { appendPluginRecord, pluginRecordOf } from '@deepseek-ai/dsh-session'
+import { appendPluginRecord, createPluginRecord, pluginRecordOf, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { LlmCallConfig, RequestUserInput } from '@deepseek-ai/dsh-llm'
 
@@ -27,6 +27,11 @@ declare module '@deepseek-ai/dsh-session/types' {
 export function checkPluginRecordWriteTypes(session: Session, request: PluginRequestFixture): void {
   appendPluginRecord(session, 'plugin:test/request', request)
   appendPluginRecord(session, 'plugin:test.bridge/entry_1', ['a', 2] as const)
+  createPluginRecord('plugin:test/request', request, SessionSeq(0))
+  // @ts-expect-error -- the cold factory requires a declared name too.
+  createPluginRecord('plugin:test/undeclared', request, SessionSeq(0))
+  // @ts-expect-error -- the cold payload must match the selected declaration.
+  createPluginRecord('plugin:test/state', request, SessionSeq(0))
   // @ts-expect-error -- an undeclared record name has no writable payload type.
   appendPluginRecord(session, 'plugin:test/undeclared', request)
   // @ts-expect-error -- the payload must match the selected record's declaration.

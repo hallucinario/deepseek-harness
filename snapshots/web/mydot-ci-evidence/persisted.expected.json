@@ -1,0 +1,113 @@
+[
+  {
+    "type": "plugin:mydot/verification-target",
+    "seq": 16,
+    "time": "{{timestamp}}",
+    "data": {
+      "version": 1,
+      "request": {
+        "seq": 8,
+        "text": "Reply with exactly: child answer 42.\nYour parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+      },
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "check": {
+        "id": "repo-lint",
+        "repository": "owner/repo",
+        "workflowPath": ".github/workflows/ci.yml",
+        "workflowFileSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "jobName": "Lint (Static)",
+        "description": "The selected commit passes the configured static checks."
+      },
+      "checkRevision": "80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572"
+    },
+    "ignorable": true
+  },
+  {
+    "type": "plugin:mydot/verification-observation",
+    "seq": 17,
+    "time": "{{timestamp}}",
+    "data": {
+      "version": 1,
+      "targetSeq": 16,
+      "observedAt": "{{timestamp}}",
+      "outcome": "passed",
+      "reason": "condition-passed",
+      "run": {
+        "id": 101,
+        "attempt": 2,
+        "url": "https://github.com/owner/repo/actions/runs/101/attempts/2",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "event": "push"
+      },
+      "job": {
+        "id": 1101,
+        "name": "Lint (Static)",
+        "conclusion": "success",
+        "url": "https://github.com/owner/repo/actions/runs/101/job/1101"
+      }
+    },
+    "ignorable": true
+  },
+  {
+    "type": "plugin:mydot/verification-observation",
+    "seq": 18,
+    "time": "{{timestamp}}",
+    "data": {
+      "version": 1,
+      "targetSeq": 16,
+      "observedAt": "{{timestamp}}",
+      "outcome": "failed",
+      "reason": "condition-failed",
+      "run": {
+        "id": 102,
+        "attempt": 2,
+        "url": "https://github.com/owner/repo/actions/runs/102/attempts/2",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "event": "push"
+      },
+      "job": {
+        "id": 1102,
+        "name": "Lint (Static)",
+        "conclusion": "failure",
+        "url": "https://github.com/owner/repo/actions/runs/102/job/1102"
+      }
+    },
+    "ignorable": true
+  },
+  {
+    "type": "plugin:mydot/verification-observation",
+    "seq": 19,
+    "time": "{{timestamp}}",
+    "data": {
+      "version": 1,
+      "targetSeq": 16,
+      "observedAt": "{{timestamp}}",
+      "outcome": "unavailable",
+      "reason": "provider-unavailable"
+    },
+    "ignorable": true
+  },
+  {
+    "type": "plugin:mydot/verification-target",
+    "seq": 20,
+    "time": "{{timestamp}}",
+    "data": {
+      "version": 1,
+      "request": {
+        "seq": 8,
+        "text": "Reply with exactly: child answer 42.\nYour parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+      },
+      "commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "check": {
+        "id": "repo-lint",
+        "repository": "owner/repo",
+        "workflowPath": ".github/workflows/ci.yml",
+        "workflowFileSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "jobName": "Lint (Static)",
+        "description": "The selected commit passes the configured static checks."
+      },
+      "checkRevision": "80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572"
+    },
+    "ignorable": true
+  }
+]

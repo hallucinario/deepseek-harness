@@ -1,17 +1,19 @@
 /**
- * Verify that only experimental packages call `appendPluginRecord` from production source.
+ * Verify that only experimental packages construct or append plugin records from production source.
  *
  * `appendPluginRecord` in `@deepseek-ai/dsh-session` appends an ignorable `plugin:` record that the
  * experimental persistence catalogue lists and that a Session format migration keeps only on a best-effort
  * basis. Experimental packages may rely on that; a release package must declare its events instead.
  * The owning module and test files, which exercise the operation, are exempt.
  *
- * Discovery is syntax-aware: every identifier spelled `appendPluginRecord` counts — an import, a
+ * Discovery is syntax-aware: every identifier spelled `appendPluginRecord` or `createPluginRecord` counts — an import, a
  * named re-export, a call, a namespace member, a destructured binding, or an alias source — and so
  * does a string literal of exactly that name, which reaches the function by element access.
  * Comments, including JSDoc links, and longer strings do not count. A wildcard re-export
  * (`export * from`) names no identifier and is not reported; code that calls the function through
- * it still names the function, and that reference is. A file is parsed when its text, or its text
+ * it still names the function, and that reference is. Exact Session export-name literals in the
+ * dependency policy's top-level `PEER_REQUIRED_HOST_EXPORTS` declaration are classification data;
+ * other references in that file remain restricted. A file is parsed when its text, or its text
  * with its escapes unescaped, contains the name, so a spelling that escapes part of it (`\u0061`,
  * `\x61`, `\u{61}`, `\141`, `\a`, a line continuation) is still found.
  * Production writes must name a record in the production-only `PluginRecordMap` inventory;
@@ -27,8 +29,8 @@ import { faceConfigs } from './ts-project.ts'
 
 const root = resolve(import.meta.dirname, '..')
 
-/** The restricted function. */
-export const RESTRICTED_NAME = 'appendPluginRecord'
+/** The restricted construction and append functions. */
+export const RESTRICTED_NAMES: readonly string[] = ['appendPluginRecord', 'createPluginRecord']
 
 /** The module that declares the restricted function. */
 export const OWNER_FILE = 'packages/core/session/src/index.ts'
@@ -112,14 +114,34 @@ function scriptKind(file: string): ts.ScriptKind {
   return ts.ScriptKind.TS
 }
 
+/** Admit literal export names only in the owning policy's top-level Session classification array. */
+function isSessionExportClassification(file: string, node: ts.Node): boolean {
+  if (file !== 'scripts/package-dependency-policy.ts' || !ts.isStringLiteral(node)) return false
+  const array = node.parent
+  if (!ts.isArrayLiteralExpression(array)) return false
+  const property = array.parent
+  if (!ts.isPropertyAssignment(property) || property.initializer !== array
+    || !ts.isStringLiteral(property.name) || property.name.text !== '@deepseek-ai/dsh-session') return false
+  let initializer: ts.Node = property.parent
+  if (!ts.isObjectLiteralExpression(initializer)) return false
+  while (ts.isAsExpression(initializer.parent) || ts.isSatisfiesExpression(initializer.parent)
+    || ts.isParenthesizedExpression(initializer.parent)) initializer = initializer.parent
+  const declaration = initializer.parent
+  if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== initializer
+    || !ts.isIdentifier(declaration.name) || declaration.name.text !== 'PEER_REQUIRED_HOST_EXPORTS') return false
+  const list = declaration.parent
+  return ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0
+    && ts.isVariableStatement(list.parent) && ts.isSourceFile(list.parent.parent)
+}
+
 /**
  * Find references to the restricted function in one source file, admitted or not.
  * @param file - repository-relative path; its extension selects the parser.
  * @param source - file contents.
- * @returns one entry per referencing identifier or exact-name string literal, in source order.
+ * @returns one entry per reference in source order, excluding the owning export-policy data.
  */
 export function findPluginRecordReferences(file: string, source: string): PluginRecordCaller[] {
-  if (!source.includes(RESTRICTED_NAME) && !unescaped(source).includes(RESTRICTED_NAME)) return []
+  if (!RESTRICTED_NAMES.some(name => source.includes(name) || unescaped(source).includes(name))) return []
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, scriptKind(file))
   const lines = source.split(/\r?\n/u)
   const references: PluginRecordCaller[] = []
@@ -127,7 +149,7 @@ export function findPluginRecordReferences(file: string, source: string): Plugin
     const named = ts.isIdentifier(node)
       || ts.isStringLiteral(node)
       || ts.isNoSubstitutionTemplateLiteral(node)
-    if (named && node.text === RESTRICTED_NAME) {
+    if (named && RESTRICTED_NAMES.includes(node.text) && !isSessionExportClassification(file, node)) {
       const line = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line
       references.push({ file, line: line + 1, text: lines[line]?.trim() ?? '' })
     }
@@ -138,10 +160,10 @@ export function findPluginRecordReferences(file: string, source: string): Plugin
 }
 
 /** Whether the owner still exports a function declaration under the restricted name. */
-function declaresRestrictedFunction(source: string): boolean {
+function declaresRestrictedFunction(source: string, name: string): boolean {
   const sourceFile = ts.createSourceFile(OWNER_FILE, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   return sourceFile.statements.some(statement => ts.isFunctionDeclaration(statement)
-    && statement.name?.text === RESTRICTED_NAME
+    && statement.name?.text === name
     && ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) === true)
 }
 
@@ -154,8 +176,10 @@ function declaresRestrictedFunction(source: string): boolean {
  */
 export function checkPluginRecordCallers(files: ReadonlyMap<string, string>): PluginRecordCaller[] {
   const owner = files.get(OWNER_FILE)
-  if (owner === undefined || !declaresRestrictedFunction(owner)) {
-    throw new Error(`verify-plugin-record-callers: ${OWNER_FILE} no longer exports function ${RESTRICTED_NAME}; update this gate with the move or rename.`)
+  for (const name of RESTRICTED_NAMES) {
+    if (owner === undefined || !declaresRestrictedFunction(owner, name)) {
+      throw new Error(`verify-plugin-record-callers: ${OWNER_FILE} no longer exports function ${name}; update this gate with the move or rename.`)
+    }
   }
   const paths = [...files.keys()]
   if (!paths.some(file => file.startsWith(EXPERIMENTAL_PREFIX))

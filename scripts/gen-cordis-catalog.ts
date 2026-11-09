@@ -51,6 +51,7 @@ export { REGION_BEGIN, REGION_END }
  */
 export const SERVICE_PAGE: Record<string, string> = {
   mydot: 'mydot.md',
+  mydotEvidence: 'mydot.md',
   experienceMemory: 'experience-memory.md',
   translator: 'translation.md',
   cotTranslation: 'translation.md',
@@ -300,6 +301,9 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   MyDotJobView: 'mydot.md',
   ArtifactView: 'mydot.md',
   MyDotSnapshot: 'mydot.md',
+  VerificationTarget: 'mydot.md',
+  VerificationTargetInput: 'mydot.md',
+  VerificationView: 'mydot.md',
   TextRead: 'mydot.md',
   TextSave: 'mydot.md',
   TextSaveResult: 'mydot.md',
