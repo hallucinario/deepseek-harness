@@ -143,7 +143,7 @@ const invalidObservations: [string, (record: ReturnType<typeof observed>) => unk
   ['failure with success reason', record => ({ ...record, outcome: 'failed', job: { ...record.job, conclusion: 'failure' } })],
   ['failure from a cancelled job', record => ({ ...record, outcome: 'failed', reason: 'condition-failed', job: { ...record.job, conclusion: 'cancelled' } })],
 ]
-it.each(invalidObservations)('rejects restored provenance: %s', (_name, change) => {
+it.each(invalidObservations)('rejects inconsistent stored observation fields: %s', (_name, change) => {
   const session = setup()
   stored(session, 'plugin:mydot/verification-observation', change(observed(selected(session))))
   expect(verificationView(state(session), [check])).toMatchObject({ status: 'unavailable', invalidRecords: true, history: [] })

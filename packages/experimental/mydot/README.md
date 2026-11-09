@@ -97,9 +97,7 @@ CI targets and observations use versioned `plugin:mydot/verification-*` records 
 
 #### What the model sees
 
-Each linked Session receives a logged `mydot` snapshot containing Space ID, name, purpose, instructions, reference paths, personal `MEMORY.md` and that Space’s `MEMORY.md`, including source paths and observed versions. Other Spaces’ history and memory are excluded. A local child starts with `MyDot job request: <JSON>` naming the exact parent, request identity, label and request. Parent file notices use `Child-declared current files; their contents are not verified.` followed by source coordinates.
-
-CI observations appear in MyDot's user interface and persisted plugin records. They add no model prompt, tool or automatic continuation; assistant completion text cannot submit or replace CI conclusions.
+Each linked Session receives a logged `mydot` snapshot containing Space ID, name, purpose, instructions, reference paths, personal `MEMORY.md` and that Space’s `MEMORY.md`, including source paths and observed versions. Other Spaces’ history and memory are excluded. A local child starts with `MyDot job request: <JSON>` naming the exact parent, request identity, label and request. Parent file notices use `Child-declared current files; their contents are not verified.` followed by source coordinates. CI observations appear in MyDot's user interface and persisted plugin records. They add no model prompt, tool or automatic continuation; assistant completion text cannot submit or replace CI conclusions.
 
 #### Token effect
 

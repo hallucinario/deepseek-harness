@@ -97,9 +97,7 @@ kind: "package-reference"
 
 #### 模型看到的内容
 
-每个关联 Session 接收已记录的 `mydot` 快照，包含 Space ID、名称、目的、指示、参考路径、个人 `MEMORY.md` 及当前 Space 的 `MEMORY.md`，并记录源路径和观察版本。不包含其他 Space 的历史和记忆。本地子工作以 `MyDot job request: <JSON>` 开始，列明精确父对话、请求标识、名称和请求。父对话文件通知使用 `Child-declared current files; their contents are not verified.`，后附来源坐标。
-
-持续集成观察显示在 MyDot 用户界面及持久插件记录中，不增加模型提示、工具或自动继续执行；助手的完成文本不能提交或替换持续集成结论。
+每个关联 Session 接收已记录的 `mydot` 快照，包含 Space ID、名称、目的、指示、参考路径、个人 `MEMORY.md` 及当前 Space 的 `MEMORY.md`，并记录源路径和观察版本。不包含其他 Space 的历史和记忆。本地子工作以 `MyDot job request: <JSON>` 开始，列明精确父对话、请求标识、名称和请求。父对话文件通知使用 `Child-declared current files; their contents are not verified.`，后附来源坐标。持续集成观察显示在 MyDot 用户界面及持久插件记录中，不增加模型提示、工具或自动继续执行；助手的完成文本不能提交或替换持续集成结论。
 
 #### Token 影响
 
