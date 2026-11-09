@@ -11,6 +11,7 @@ import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-test
 import Storage from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
@@ -30,7 +31,10 @@ import '../src/index.ts'
 const contexts: Context[] = []
 afterEach(async () => { await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose())) })
 
-async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string }) {
+async function setup(
+  existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string },
+  materialSearch?: { maxFiles: number; maxContextBytes: number },
+) {
   const root = existing?.root ?? await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-loader-')))
   const ctx = new Context()
   contexts.push(ctx)
@@ -56,7 +60,8 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   // by SessionController and is not replaced with a simulated implementation.
   ctx.provide('sessionController', {} as never)
   const file = join(root, 'cordis.yml')
-  await writeFile(file, `- name: '@deepseek-ai/dsh-experimental-mydot'\n  config:\n    memoryDirectory: '${root}/memory'\n`)
+  await writeFile(file, `- name: '@deepseek-ai/dsh-experimental-mydot'\n  config:\n    memoryDirectory: '${root}/memory'\n`
+    + (materialSearch === undefined ? '' : `    materialSearch: ${JSON.stringify(materialSearch)}\n`))
   ctx.baseUrl = pathToFileURL(root).href + '/'
   ctx.loader.builtins.include = Include
   ctx.loader.internal = undefined
@@ -65,6 +70,69 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
   return { ctx, root, row, pool }
 }
+
+it('logs bounded selected material excerpts beside unchanged scoped memory and keeps ordinary work after missing sources', async () => {
+  const { ctx, root } = await setup(undefined, undefined, { maxFiles: 4, maxContextBytes: 2048 })
+  const adapter = new MockAdapter([textResponse('draft ready'), textResponse('unrelated request answered')])
+  ctx.llm.registerAdapter(['mock'], adapter)
+  const parent = await ctx.agentLoop.create(SessionId('material-parent'), { provider: 'mock', model: 'mock' }, { cwd: root })
+  const space = await ctx.mydot.saveSpace({ name: 'Example', purpose: '', instructions: '', materials: ['source.md', 'missing.md'] })
+  const other = await ctx.mydot.saveSpace({ name: 'Other', purpose: '', instructions: '', materials: ['private.md'] })
+  await ctx.mydot.attach(parent.id, space.id)
+  await ctx.mydot.saveMemory({ kind: 'personal' }, { version: null, content: 'Personal premise remains.' })
+  await ctx.mydot.saveMemory({ kind: 'space', spaceId: space.id }, { version: null, content: 'Selected Space memory remains.' })
+  await ctx.mydot.saveMemory({ kind: 'space', spaceId: other.id }, { version: null, content: 'Other Space secret memory.' })
+  await writeFile(join(root, 'source.md'), '# Received material\n足場の端部には防護が必要。')
+  await writeFile(join(root, 'private.md'), '足場の端部 SECRET FROM ANOTHER SPACE')
+  parent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '足場の端部について返信下書きを作る' }] }))
+  await parent.whenIdle()
+  using observed = await ctx.sessionQuery.observeSession(parent.id)
+  const injected = observed.events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'mydot'
+    && event.data.source.sections.some(section => section.name === 'mydot-material-search') ? [event.data] : [])
+  expect(injected).toHaveLength(1)
+  const materialText = injected[0]?.content.find(block => block.type === 'text')
+  if (materialText?.type !== 'text') throw new Error('Expected recorded material excerpt')
+  expect(Buffer.byteLength(materialText.text)).toBeLessThanOrEqual(2048)
+  expect(JSON.parse(materialText.text)).toMatchObject({ status: 'matched', incomplete: true,
+    results: [{ path: join(root, 'source.md'), line: 2, text: '足場の端部には防護が必要。' }],
+    issues: [{ reference: 'missing.md', code: 'FS_NOT_FOUND' }] })
+  const input = JSON.stringify(adapter.requests[0]?.messages)
+  expect(input).toContain('Personal premise remains.')
+  expect(input).toContain('Selected Space memory remains.')
+  expect(input).toContain('足場の端部には防護が必要。')
+  expect(input).not.toContain('SECRET FROM ANOTHER SPACE')
+  expect(input).not.toContain('Other Space secret memory.')
+  parent.followup(createUserMessage({ source: { kind: 'user' }, content: [
+    { type: 'text', text: 'orbital launch mechanics' },
+    { type: 'image', attachment: { attachmentId: AttachmentId('fixture-image'), mediaType: 'image/png', bytes: 1, width: 1, height: 1, name: '足場.png' } },
+  ] }))
+  await parent.whenIdle()
+  expect(adapter.requests).toHaveLength(2)
+  using after = await ctx.sessionQuery.observeSession(parent.id)
+  const last = after.events.findLast(event => event.type === 'user/message' && event.data.source.kind === 'mydot'
+    && event.data.source.sections.some(section => section.name === 'mydot-material-search'))
+  expect(JSON.stringify(last)).toContain('no-match')
+})
+
+it('does not search its injected material snapshot again on a tool continuation', async () => {
+  const { ctx, root } = await setup(undefined, undefined, { maxFiles: 2, maxContextBytes: 2048 })
+  const { toolCallResponse } = await import('../../../core/agent-loop/tests/mock-adapter.ts')
+  const { defineContentToolFixture } = await import('@deepseek-ai/dsh-tools')
+  ctx.tools.register(defineContentToolFixture({ name: 'material_check', description: 'A deterministic test action', parameters: {},
+    execute: async () => [{ type: 'text', text: 'checked' }] }))
+  const adapter = new MockAdapter([toolCallResponse('call-material', 'material_check', {}), textResponse('done')])
+  ctx.llm.registerAdapter(['mock'], adapter)
+  const parent = await ctx.agentLoop.create(SessionId('material-continuation'), { provider: 'mock', model: 'mock' }, { cwd: root })
+  const space = await ctx.mydot.saveSpace({ name: 'Example', purpose: '', instructions: '', materials: ['source.md'] })
+  await ctx.mydot.attach(parent.id, space.id)
+  await writeFile(join(root, 'source.md'), 'scaffold decision recorded')
+  parent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'scaffold decision' }] }))
+  await parent.whenIdle()
+  expect(adapter.requests).toHaveLength(2)
+  using observed = await ctx.sessionQuery.observeSession(parent.id)
+  expect(observed.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'mydot'
+    && event.data.source.sections.some(section => section.name === 'mydot-material-search'))).toHaveLength(1)
+})
 
 it('edits only the configured memory root and historical conversation workspace under the actual file sandbox', async ({ onTestFinished }) => {
   const root = await realpath(await mkdtemp(join(outsideTempWorkspaceParent(), '.dsh-mydot-policy-')))

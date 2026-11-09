@@ -1168,7 +1168,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:45`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:46`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
@@ -1183,6 +1183,16 @@ export interface Config {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+  /** Explicit material-file search limits; omit to retain memory-only context. */
+  materialSearch?: MaterialSearchConfig | undefined
+}
+
+/** Explicit opt-in limits; omitted configuration performs no material reads. */
+export interface MaterialSearchConfig {
+  /** Maximum selected file references attempted, in Space order. */
+  maxFiles: number
+  /** Maximum UTF-8 bytes of the complete added message, including source metadata. */
+  maxContextBytes: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->

@@ -33,6 +33,22 @@ kind: "package-reference"
 
 [配置目录](../../../docs/config-catalog.zh.md)定义可接受字段。`memoryDirectory` 默认为 Host 用户的 `~/MyDot`；个人记忆使用 `MEMORY.md`，Space 记忆使用 `spaces/<SpaceId>/MEMORY.md`。`maxTextBytes` 默认为 262144，`summaryCharacters` 默认为 240。`desktopTools` 和 `captureTools` 默认为空数组。
 
+要在普通 Space 对话请求前搜索所选资料，请设置 `materialSearch`。省略此项会保留现有的纯记忆上下文。两个限制都必须显式提供；以下示例最多尝试四个所选来源，并最多追加 4 KiB 文本，包括全部来源元数据和 JSON 转义：
+
+```yaml
+- name: '@deepseek-ai/dsh-experimental-mydot'
+  config:
+    materialSearch:
+      maxFiles: 4
+      maxContextBytes: 4096
+```
+
+在该 Space 的参考路径中列出具体 UTF-8 文本文件，例如 `received-report.md` 和 `reply-draft.md`，然后在普通对话输入区询问相关主题。相对路径以接收 Session 的当前执行目录解析。只尝试前 `maxFiles` 个路径；不会遍历目录，也不会枚举其他 Space、未选文件、交付文件或经验记录。读取沿用现有文件系统提供方及其权限。选择 Space 不构成文件系统安全边界；选中的绝对路径和符号链接保留提供方的现有行为。
+
+搜索按词匹配，忽略大小写并对日语分词，每个文件选取匹配最佳的一行。忽略常见日语助词和礼貌表达词尾，保留有意义的单字符查询。每个文件受 `maxTextBytes` 限制，大小未知时的流式读取也受限。结果包含规范来源路径、从一开始的行号和 Unicode 字符列号、观察到的文件系统版本、读取文本的 SHA-256 及读取时间。过长行围绕匹配词裁剪。摘录明确标为不可信的历史来源数据；旧说法不会因为被检索到就成为现行事实，引用的指令也不会获得执行权威。
+
+额外的 `mydot-material-search` 消息以发送给模型的原文记录在现有 Session 日志中。它区分匹配、无匹配、无可用查询和上下文预算不足；文件失败保留诊断代码及其他可用结果。`incomplete` 和省略计数标明未纳入的文件、摘录或诊断。来源缺失、不可读、读取中变化或失败后，普通工作仍继续；取消仍会取消准备。`maxContextBytes` 必须容纳完整的 29 字节 `{"status":"budget-exhausted"}` 诊断。调整限制或所选来源后发送新请求即可重试。仅工具继续执行时沿用日志历史，不会再次搜索自己注入的文本。个人及 Space 记忆和经验记录的保存与选择保持不变。
+
 直接编辑记忆时保留文件系统提供方的部署模式，并以配置的记忆目录作为写入范围。文档编辑使用原会话记录的模式和执行目录，Host 重启后也保持一致。只读模式仍拒绝写入；提供方在发布前重新检查规范化后的包含关系，指向允许根目录外部的符号链接不会获得写权限。这些编辑器操作不会向智能体工具授予更广泛的文件访问权限。
 
 通过 MyDot 侧栏创建或编辑 Space 元数据、列出参考路径、选择已有工作区 ID，并开始新对话。归档保留文件、对话和现有关联。一个对话只关联一个 Space；修改 Space 元数据不会改写现有 Session 的目录。对话输入区可启动两个本地 Spawn 工作，按精确 ID 选择目标，并选择中途指示或排队。普通对话输入区仍可处理附件及常规对话。
@@ -61,6 +77,7 @@ kind: "package-reference"
 | [`src/spaces.ts`](src/spaces.ts) | 串行元数据写入和不可变关联 |
 | [`src/control.ts`](src/control.ts) | 每个子工作的接收及持久请求去重 |
 | [`src/files.ts`](src/files.ts) | 一致性读取及带版本检查的编辑 |
+| [`src/material-search.ts`](src/material-search.ts) | 所选文件的词汇摘录及完整消息限制 |
 | [`src/desktop.ts`](src/desktop.ts) | 软件所有权和交接接收控制 |
 | [`src/client/mount.ts`](src/client/mount.ts) | 共享订阅、导航和 Slot 注册 |
 
@@ -82,11 +99,11 @@ kind: "package-reference"
 
 #### 模型看到的内容
 
-每个关联 Session 接收已记录的 `mydot` 快照，包含 Space ID、名称、目的、指示、参考路径、个人 `MEMORY.md` 及当前 Space 的 `MEMORY.md`，并记录源路径和观察版本。不包含其他 Space 的历史和记忆。本地子工作以 `MyDot job request: <JSON>` 开始，列明精确父对话、请求标识、名称和请求。父对话文件通知使用 `Child-declared current files; their contents are not verified.`，后附来源坐标。
+每个关联 Session 接收已记录的 `mydot` 快照，包含 Space ID、名称、目的、指示、参考路径、个人 `MEMORY.md` 及当前 Space 的 `MEMORY.md`，并记录源路径和观察版本。不包含其他 Space 的历史和记忆。本地子工作以 `MyDot job request: <JSON>` 开始，列明精确父对话、请求标识、名称和请求。父对话文件通知使用 `Child-declared current files; their contents are not verified.`，后附来源坐标。启用资料搜索后，会在已接收的人工文本和普通记忆快照之后，追加独立的 `mydot-material-search` 消息，包含来源摘录与诊断。
 
 #### Token 影响
 
-Space 和所选记忆文本在每一步增加输入 token，字节限制由配置决定。子工作请求和文件通知保留在持久对话历史中，直到现有压缩机制改变请求。
+Space 和所选记忆文本在每一步增加输入 token，字节限制由配置决定。子工作请求和文件通知保留在持久对话历史中，直到现有压缩机制改变请求。资料搜索为每次接收的人工请求最多追加 `maxContextBytes` 文本。这是 UTF-8 字节限制，不是 token 或计费估算；先前摘录沿用普通 Session 历史与压缩规则。
 
 #### KV Cache 影响
 
@@ -100,6 +117,7 @@ Space 和所选记忆文本在每一步增加输入 token，字节限制由配�
 
 - 文本编辑支持限定大小的 UTF-8 Markdown/文本，不支持完整 Office 编辑或不可变文件版本。
 - 记忆是显式可编辑 Markdown，不要求外部嵌入服务或跨 Space 历史注入。
+- 资料搜索只读取当前文本。它不解析 PDF/Office 文件，也不恢复旧版文件；日志保留引用证据和内容标识。关键词匹配可能遗漏同义词，或对常见词赋予过高排名。语义搜索扩展及自动来源采集不在此选项范围内。
 - 电脑所有权属于单个 Host 实例，仅限制已配置工具。真实人工交接及手机键盘、照片和导航验收需要设备测试。
 - 外部一次性执行没有继续控制。运行结束和助手摘要不证明交付文件正确。
 
