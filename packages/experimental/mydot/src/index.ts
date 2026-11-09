@@ -15,7 +15,7 @@ import type { FsVersion } from '@deepseek-ai/dsh-fs/types'
 import type { SubagentPromptReceipt, SubagentInterruptReceipt } from '@deepseek-ai/dsh-subagent'
 import type { SessionPromptValue } from '@deepseek-ai/dsh-api-session-controller'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId, pluginRecordOf } from '@deepseek-ai/dsh-session'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { mydotDomain } from './storage.ts'
@@ -27,12 +27,16 @@ import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
 import type { ArtifactView, MyDotSnapshot, StartJob, MemoryScope } from './types.ts'
+import type { VerificationCheck } from './verification-types.ts'
+import { MyDotEvidence } from './verification.ts'
+import { verificationCheckSchema } from './verification-records.ts'
 
 export type * from './types.ts'
 export type { SpaceId, SpaceInput, Space } from './storage.ts'
 export type { JobInput, JobAddress } from './control.ts'
 export type { TextRead, TextSave, TextSaveResult } from './files.ts'
 export type { DesktopState } from './desktop.ts'
+export { MyDotEvidence } from './verification.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context { mydot: MyDotService }
@@ -53,6 +57,15 @@ export interface Config {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+  /** Reviewed CI conditions; an empty list disables evidence reads and UI. */
+  verificationChecks?: (Omit<VerificationCheck, 'id'> & {
+    /** Deployment-owned stable condition identifier. */
+    id: string
+  })[]
+  /** Whole read deadline, including every GitHub page and subprocess. */
+  verificationTimeoutMs?: number
+  /** Maximum captured bytes per GitHub response; truncation is never parsed as evidence. */
+  verificationOutputBytes?: number
 }
 
 /** MyDot metadata, projected work and current-file access. */
@@ -64,6 +77,11 @@ export class MyDotService extends TypertRemoteService {
     desktopTools: z.array(z.string()).default([]),
     captureTools: z.array(z.string()).default([]),
     summaryCharacters: z.number().step(1).min(1).default(240),
+    verificationChecks: z.array(z.object({ id: z.string().required(), repository: z.string().required(),
+      workflowPath: z.string().required(), workflowFileSha: z.string().required(),
+      jobName: z.string().required(), description: z.string().required() })).default([]),
+    verificationTimeoutMs: z.number().step(1).min(1).default(30000),
+    verificationOutputBytes: z.number().step(1).min(1).default(1048576),
   })
 
   private domain!: Domain<typeof mydotDomain>
@@ -80,13 +98,21 @@ export class MyDotService extends TypertRemoteService {
   private readonly presentations = new Map<SessionId, Promise<void>>()
   private readonly deliveries = new Set<Promise<void>>()
   private readonly deliveryFailures = new Set<SessionId>()
+  private readonly verificationChecks: VerificationCheck[]
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'mydot')
     if (config.captureTools.some(tool => !config.desktopTools.includes(tool))) throw new Error('captureTools must be a subset of desktopTools')
+    this.verificationChecks = (config.verificationChecks ?? []).map(check => verificationCheckSchema.parse(check))
+    const evidence = this.verificationChecks.length === 0 ? undefined : ctx.plugin(MyDotEvidence, {
+      checks: this.verificationChecks, timeoutMs: config.verificationTimeoutMs ?? 30000,
+      maxOutputBytes: config.verificationOutputBytes ?? 1048576,
+      changed: () =>{  this.notify() },
+    })
     this.files = new TextFiles(ctx.fs, config.maxTextBytes)
     this.controls = new JobControls(ctx)
     this.initialized = ctx.effect(async () => {
+      if (evidence !== undefined) await evidence
       this.domain = await ctx.storageDomain.open(mydotDomain)
       this.spaces = new Spaces(this.domain)
       return async () => {
@@ -107,6 +133,7 @@ export class MyDotService extends TypertRemoteService {
     })
     ctx.on('session/event', (_session, event) => {
       if (event.type === 'deliverables/presented' || event.type === 'subagent/catalog') this.notify()
+      if (this.verificationChecks.length > 0 && (event.type === 'user/message' || pluginRecordOf(event)?.type.startsWith('plugin:mydot/verification-'))) this.notify()
     })
     ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
       const decision = await next()
@@ -276,6 +303,11 @@ export class MyDotService extends TypertRemoteService {
         conversations.push({ sessionId, spaceId: binding.spaceId, cwd })
         const job = jobs.find(item => item.childSessionId === sessionId)
         if (job !== undefined) {
+          if (this.verificationChecks.length > 0) {
+            const evidence = this.ctx.get('mydotEvidence')
+            if (evidence === undefined) throw new Error('MyDot verification service is unavailable')
+            job.verification = await evidence.view(source)
+          }
           for (const event of source.events.slice(source.inheritedEventCount)) {
             if (event.type === 'user/message' && job.request === undefined) {
               for (const block of event.data.content) {
@@ -303,7 +335,8 @@ export class MyDotService extends TypertRemoteService {
       }
     }
     return { spaces, conversations, jobs, artifacts: [...artifacts.values()], desktop: this.desktop.snapshot(),
-      desktopEnabled: this.config.desktopTools.length > 0, issues }
+      desktopEnabled: this.config.desktopTools.length > 0, issues,
+      ...(this.verificationChecks.length === 0 ? {} : { verificationChecks: this.verificationChecks }) }
   }
 
   /** Retry parent inbox presentation from the existing durable child declarations.

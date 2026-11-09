@@ -4,6 +4,8 @@
 
 可选的 [MyDot 插件](../../packages/experimental/mydot/README.zh.md) 拥有 Space 元数据、Session 关联、子任务投影、当前文件编辑及限定范围 Markdown 记忆。执行与持久化正本仍由现有 Session、Subagent、文件系统及 Schedule 服务所有。接收不代表消费或完成。桌面协调仅约束此 Host 中明确配置的工具，不宣称独立 OpenClaw 进程的控制权。
 
+持续集成证据通过已审核的 `verificationChecks` 显式启用。独立的 `mydotEvidence` 能力读取已有 GitHub Actions 运行，绑定明确选定的子请求、条件版本和精确提交。带版本的插件记录保留在原始 Session 中，注册的投影将执行状态、验证结果和历史观察分开。实时证据必须通过现有 Session 写入器的持久化检查点后才可显示；冷读取无需激活即可重建已保存投影。工作流审核、支持的来源事件、显式刷新及失败行为由包 README 说明。
+
 ## `SpaceId`
 
 ```ts type-equiv
@@ -67,6 +69,7 @@ interface MyDotJobView {
   request?: string | undefined
   summary?: string | undefined
   status: 'running' | 'inactive'
+  verification?: VerificationView
 }
 ```
 
@@ -86,7 +89,7 @@ interface ArtifactView {
 ## `MyDotSnapshot`
 
 ```ts type-equiv
-/** All lists are reconstructed; only Space metadata and Session links are new storage. */
+/** Lists are reconstructed; Space metadata and links use the MyDot storage domain. */
 interface MyDotSnapshot {
   spaces: Space[]
   conversations: { sessionId: SessionId; spaceId: Space['id']; cwd: string }[]
@@ -94,7 +97,121 @@ interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  verificationChecks?: VerificationCheck[]
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
+}
+```
+
+## `VerificationCheckId`
+
+```ts type-equiv
+/** Deployment-owned identity of one CI condition. */
+type VerificationCheckId = Branded<'MyDotVerificationCheckId'>
+```
+
+## `VerificationCheck`
+
+```ts type-equiv
+/** Reviewed workflow whose push and merge-group source checkout and job semantics are known. */
+interface VerificationCheck {
+  /** Deployment-owned stable condition identifier. */
+  id: VerificationCheckId
+  /** GitHub repository in owner/name form. */
+  repository: string
+  /** Reviewed workflow path within .github/workflows. */
+  workflowPath: string
+  /** Git blob SHA of the reviewed workflow with an unmodified default source checkout. */
+  workflowFileSha: string
+  /** Exact job name whose conclusion constitutes this condition. */
+  jobName: string
+  /** User-visible explanation of what this condition establishes. */
+  description: string
+}
+```
+
+## `VerificationRequest`
+
+```ts type-equiv
+/** One local user message, independent of subsequent conversation turns. */
+interface VerificationRequest { seq: SessionSeq; text: string }
+```
+
+## `VerificationTargetInput`
+
+```ts type-equiv
+/** User selection; conclusions are supplied only by the Host's CI reader. */
+interface VerificationTargetInput { requestSeq: SessionSeq; checkId: VerificationCheckId; commit: string }
+```
+
+## `VerificationTarget`
+
+```ts type-equiv
+/** Immutable condition and request bound to a particular repository commit. */
+interface VerificationTarget {
+  seq: SessionSeq
+  request: VerificationRequest
+  commit: string
+  check: VerificationCheck
+  checkRevision: string
+}
+```
+
+## `VerificationRun`
+
+```ts type-equiv
+/** GitHub's current workflow attempt, without claiming that a mutable worktree was tested. */
+interface VerificationRun { id: number; attempt: number; url: string; commit: string; event: string }
+```
+
+## `VerificationJob`
+
+```ts type-equiv
+/** One exact CI job from the recorded workflow attempt. */
+interface VerificationJob { id: number; url: string; name: string; conclusion: string | null }
+```
+
+## `VerificationReason`
+
+```ts type-equiv
+/** Stable reason codes displayed through the Client's locale dictionaries. */
+type VerificationReason = 'condition-passed' | 'condition-failed' | 'job-not-completed' | 'job-not-passed'
+  | 'job-missing' | 'job-ambiguous' | 'run-mismatch' | 'unsupported-event' | 'workflow-changed'
+  | 'attempt-changed' | 'provider-unavailable' | 'invalid-response' | 'cancelled'
+```
+
+## `VerificationObservation`
+
+```ts type-equiv
+/** A persisted observation; an unsuccessful read is evidence of uncertainty, never success. */
+interface VerificationObservation {
+  seq: SessionSeq
+  targetSeq: SessionSeq
+  observedAt: number
+  outcome: 'passed' | 'failed' | 'unavailable'
+  reason: VerificationReason
+  run?: VerificationRun | undefined
+  job?: VerificationJob | undefined
+}
+```
+
+## `VerificationHistory`
+
+```ts type-equiv
+/** A historical observation retains the original target even after selection changes. */
+interface VerificationHistory { target: VerificationTarget; observation: VerificationObservation; current: boolean }
+```
+
+## `VerificationView`
+
+```ts type-equiv
+/** Projection consumed by MyDot; missing, invalid, and stale observations never pass. */
+interface VerificationView {
+  requests: VerificationRequest[]
+  target: VerificationTarget | null
+  status: 'unobserved' | 'passed' | 'failed' | 'unavailable'
+  definitionCurrent: boolean
+  history: VerificationHistory[]
+  invalidRecords: boolean
 }
 ```
 
@@ -266,4 +383,38 @@ MyDot metadata, projected work and current-file access.
 Types: [FsVersion](filesystem.zh.md) · [SessionId](core.zh.md) · [SessionPromptValue](session.zh.md) · [SessionRequestId](session.zh.md) · [SubagentInterruptReceipt](subagent.zh.md) · [SubagentPromptReceipt](subagent.zh.md)
 
 Source: [`packages/experimental/mydot/src/index.ts`](../../packages/experimental/mydot/src/index.ts)
+
+<a id="ctxmydotevidence--mydotevidence"></a>
+
+### `ctx.mydotEvidence` — `MyDotEvidence`
+
+User-triggered CI reads; never starts a model turn, test, retry, or external write.
+
+```ts cordis-catalog
+/** Publish only evidence that reached the existing Session durability checkpoint.
+ * @param source - One exact live or persisted projection cut from SessionQuery.
+ * @returns Current evidence; failed checkpoints retain only the acknowledged prefix.
+ */
+async view(source: SessionObservation): Promise<VerificationView>
+
+/** Bind a local request and configured condition to an exact commit.
+ * @param sessionId - Live or stored source Session whose own user message is selected.
+ * @param input - Request position, condition identity and full commit SHA.
+ * @returns The persisted immutable selection; selecting it again is idempotent.
+ */
+@Remote({ resources: { session: sessionId => sessionId } }) async setTarget(sessionId: SessionId, input: VerificationTargetInput): Promise<VerificationTarget>
+
+/** Record an existing GitHub run for the caller's exact, still-selected target.
+ * @param sessionId - Live or stored source Session; no Agent activation is required.
+ * @param targetSeq - Selection observed by the caller; stale selections reject before I/O.
+ * @param runId - Existing positive GitHub Actions run ID.
+ * @param signal - Caller cancellation, combined with plugin disposal and deployment deadline.
+ * @returns After the observation is durable; a newer target keeps this result as history.
+ */
+@Remote({ resources: { session: sessionId => sessionId } }) async refresh(sessionId: SessionId, targetSeq: SessionSeq, runId: number, signal: AbortSignal): Promise<void>
+```
+
+Types: [SessionId](core.zh.md) · [SessionObservation](session-query.zh.md) · [SessionSeq](session.zh.md)
+
+Source: [`packages/experimental/mydot/src/verification.ts`](../../packages/experimental/mydot/src/verification.ts)
 <!-- END GENERATED cordis-surface -->

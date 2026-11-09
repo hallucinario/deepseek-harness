@@ -2539,6 +2539,61 @@
     },
     {
       "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationCheckId",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationCheck",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationRequest",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationTargetInput",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationTarget",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationRun",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationJob",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationReason",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationObservation",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationHistory",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "VerificationView",
+      "source": "packages/experimental/mydot/src/verification-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
       "symbol": "TextRead",
       "source": "packages/experimental/mydot/src/types.ts"
     },

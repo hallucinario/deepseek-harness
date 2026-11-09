@@ -15,11 +15,14 @@
   en: d152484eb41ac6b4
   zh: 87d7d2dbd7777429
 /deepseek-ai-dsh-experimental-mydot/use-this-package:
-  en: cae70d8903a2c711
-  zh: e2f2e69911480830
+  en: 02b284164ae3aa07
+  zh: 339c57868b93021d
+/deepseek-ai-dsh-experimental-mydot/use-this-package/observe-an-existing-ci-result:
+  en: da4405fafa5e3929
+  zh: 59a568b2b7b7dbca
 /deepseek-ai-dsh-experimental-mydot/understand-the-implementation:
-  en: 698b9087333eb368
-  zh: 8761f7ba0fa2adf8
+  en: 0970d2a433fdaca5
+  zh: ec2704d146f8868e
 /deepseek-ai-dsh-experimental-mydot/further-exploration:
   en: f9acc1cf671bb19d
   zh: 06594d2d62ad2d7b
@@ -30,8 +33,8 @@
   en: 33ab835232e67c85
   zh: 3f3960fef35f3d8d
 /deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/what-the-model-sees:
-  en: 638fea97befca4c0
-  zh: e0f5e7b0bfeaebda
+  en: 4cf8087b934c7f1f
+  zh: 484b97f1ff5998ef
 /deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/token-effect:
   en: e35ea95630cbc33e
   zh: 6e019d8772a669ca
@@ -39,8 +42,8 @@
   en: f0bc18c74ea84577
   zh: e7a27d302d423182
 /deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work:
-  en: ff1ffbe64eb5721c
-  zh: deec4bd2ae6a8496
+  en: b534bdd25aaa8d6e
+  zh: 641c243c77e1834d
 /deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 6df6019931844fb2

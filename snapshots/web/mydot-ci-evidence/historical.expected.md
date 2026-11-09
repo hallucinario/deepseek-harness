@@ -1,0 +1,133 @@
+- region "CI evidence":
+  - strong: CI evidence
+  - status: No observation for this target
+  - text: owner/repo · Lint (Static)
+  - paragraph:
+    - text: Full commit SHA ·
+    - code: dddddddddddddddddddddddddddddddddddddddd
+  - button "Show CI details" [expanded]
+  - paragraph: Evidence applies only to the selected request, condition and commit. It does not verify current files, uncommitted edits or acceptance of the whole job.
+  - term: Source request
+  - definition:
+    - text: "Message #8"
+    - paragraph: "Reply with exactly: child answer 42. Your parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+  - term: Repository
+  - definition: owner/repo
+  - term: Full commit SHA
+  - definition:
+    - code: dddddddddddddddddddddddddddddddddddddddd
+  - term: Condition
+  - definition:
+    - text: The selected commit passes the configured static checks.
+    - paragraph: Lint (Static)
+  - term: Condition ID and revision
+  - definition:
+    - code: repo-lint · 80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572
+  - term: Workflow source and version
+  - definition:
+    - code: .github/workflows/ci.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  - button "Open request conversation"
+  - text: Source request
+  - combobox "Source request":
+    - 'option "Message #8 · Reply with exactly: child answer 42. Your parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn." [selected]'
+  - text: Condition
+  - combobox "Condition":
+    - option "The selected commit passes the configured static checks. · owner/repo · Lint (Static)" [selected]
+  - text: Full commit SHA
+  - textbox "Full commit SHA": dddddddddddddddddddddddddddddddddddddddd
+  - button "Save target"
+  - text: Existing GitHub Actions run ID
+  - textbox "Existing GitHub Actions run ID"
+  - paragraph: Reads the existing run only. Does not start or retry CI.
+  - button "Read existing CI result" [disabled]
+  - group:
+    - text: Observation history
+    - article:
+      - strong: Historical observation; not evidence for the selected target
+      - text: Specified condition confirmed for this commit
+      - paragraph: The configured job completed successfully for this commit and condition.
+      - text: Observed at
+      - time: {{observedAt:1}}
+      - term: Source request
+      - definition:
+        - text: "Message #8"
+        - paragraph: "Reply with exactly: child answer 42. Your parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+      - term: Repository
+      - definition: owner/repo
+      - term: Full commit SHA
+      - definition:
+        - code: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - term: Condition
+      - definition:
+        - text: The selected commit passes the configured static checks.
+        - paragraph: Lint (Static)
+      - term: Condition ID and revision
+      - definition:
+        - code: repo-lint · 80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572
+      - term: Workflow source and version
+      - definition:
+        - code: .github/workflows/ci.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      - paragraph:
+        - text: Run trigger ·
+        - code: push
+      - link "Workflow run 101, attempt 2":
+        - /url: https://github.com/owner/repo/actions/runs/101/attempts/2
+      - link "Lint (Static) · job 1101":
+        - /url: https://github.com/owner/repo/actions/runs/101/job/1101
+    - article:
+      - strong: Historical observation; not evidence for the selected target
+      - text: Specified condition failed
+      - paragraph: The configured job completed with a failure.
+      - text: Observed at
+      - time: {{observedAt:2}}
+      - term: Source request
+      - definition:
+        - text: "Message #8"
+        - paragraph: "Reply with exactly: child answer 42. Your parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+      - term: Repository
+      - definition: owner/repo
+      - term: Full commit SHA
+      - definition:
+        - code: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - term: Condition
+      - definition:
+        - text: The selected commit passes the configured static checks.
+        - paragraph: Lint (Static)
+      - term: Condition ID and revision
+      - definition:
+        - code: repo-lint · 80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572
+      - term: Workflow source and version
+      - definition:
+        - code: .github/workflows/ci.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      - paragraph:
+        - text: Run trigger ·
+        - code: push
+      - link "Workflow run 102, attempt 2":
+        - /url: https://github.com/owner/repo/actions/runs/102/attempts/2
+      - link "Lint (Static) · job 1102":
+        - /url: https://github.com/owner/repo/actions/runs/102/job/1102
+    - article:
+      - strong: Historical observation; not evidence for the selected target
+      - text: Could not confirm the condition
+      - paragraph: GitHub evidence is unavailable. Check the host connection and GitHub access, then retry.
+      - text: Observed at
+      - time: {{observedAt:3}}
+      - term: Source request
+      - definition:
+        - text: "Message #8"
+        - paragraph: "Reply with exactly: child answer 42. Your parent agent id is \"mydot-evidence-recorded-parent\". Before you finish, send your result to that agent with send_message({ agent_id: \"mydot-evidence-recorded-parent\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+      - term: Repository
+      - definition: owner/repo
+      - term: Full commit SHA
+      - definition:
+        - code: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - term: Condition
+      - definition:
+        - text: The selected commit passes the configured static checks.
+        - paragraph: Lint (Static)
+      - term: Condition ID and revision
+      - definition:
+        - code: repo-lint · 80f119f0b40463700a0df71bf3aa837c50e8790565a458a22a71b4f2b5c61572
+      - term: Workflow source and version
+      - definition:
+        - code: .github/workflows/ci.yml@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

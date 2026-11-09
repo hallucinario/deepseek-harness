@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from '
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
@@ -25,12 +25,16 @@ import { TestSessionQuery } from '../../../subagent/subagent/tests/test-session-
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
-import '../src/index.ts'
+import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { VerificationCheck } from '../src/types.ts'
+import { check as evidenceCheck, commit as evidenceCommit, run as evidenceRun, job as evidenceJob } from './verification-fixture.ts'
+import { MyDotEvidence, MyDotService } from '../src/index.ts'
 
 const contexts: Context[] = []
 afterEach(async () => { await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose())) })
 
-async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string }) {
+async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string },
+  evidence?: { check: VerificationCheck; read: (spec: SubprocessSpawnSpec) => unknown }, programmaticChecks?: boolean) {
   const root = existing?.root ?? await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-loader-')))
   const ctx = new Context()
   contexts.push(ctx)
@@ -55,8 +59,30 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   // These scenarios use existing live Sessions; conversation creation is owned
   // by SessionController and is not replaced with a simulated implementation.
   ctx.provide('sessionController', {} as never)
+  if (evidence !== undefined) ctx.provide('subprocess', {
+    resolveExecutable: async () => '/trusted/gh',
+    spawn: (spec: SubprocessSpawnSpec) => {
+      let output = ''
+      const done = Promise.resolve().then(async () => {
+        output = JSON.stringify(await evidence.read(spec)); return { exitCode: 0, signal: null }
+      })
+      return { done, collected: { stdout: { readFrom: () => ({ text: output, nextOffset: output.length, lossy: false }) } },
+        terminate: () => undefined, waitForExit: async () => true }
+    },
+  } as never)
+  if (programmaticChecks !== undefined) {
+    // Constructor consumers omit optional settings without passing through Loader defaults.
+    const service = new MyDotService(ctx, {
+      memoryDirectory: join(root, 'memory'), maxTextBytes: 1024, summaryCharacters: 240, desktopTools: [], captureTools: [],
+      ...(programmaticChecks && evidence !== undefined ? { verificationChecks: [evidence.check] } : {}),
+    })
+    await service.snapshot()
+    return { ctx, root, pool, row: undefined }
+  }
   const file = join(root, 'cordis.yml')
-  await writeFile(file, `- name: '@deepseek-ai/dsh-experimental-mydot'\n  config:\n    memoryDirectory: '${root}/memory'\n`)
+  await writeFile(file, JSON.stringify([{ name: '@deepseek-ai/dsh-experimental-mydot', config: {
+    memoryDirectory: join(root, 'memory'), ...(evidence === undefined ? {} : { verificationChecks: [evidence.check] }),
+  } }]))
   ctx.baseUrl = pathToFileURL(root).href + '/'
   ctx.loader.builtins.include = Include
   ctx.loader.internal = undefined
@@ -65,6 +91,120 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
   return { ctx, root, row, pool }
 }
+
+it('imports existing CI into the exact child request, streams it and restores its evidence after Host restart', async () => {
+  let conclusion = 'success'
+  const read = vi.fn((spec: SubprocessSpawnSpec) => {
+    expect(spec.argv.slice(0, 6)).toEqual(['/trusted/gh', 'api', '--hostname', 'github.com', '--method', 'GET'])
+    const endpoint = spec.argv[6]!
+    return endpoint.includes('/contents/') ? { type: 'file', sha: evidenceCheck.workflowFileSha }
+      : endpoint.includes('/jobs?') ? { jobs: [{ ...evidenceJob, conclusion }] } : evidenceRun
+  })
+  const evidence = { check: evidenceCheck, read }
+  const first = await setup(undefined, undefined, evidence)
+  const { ctx, root } = first
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([textResponse('child done'), textResponse('received')]))
+  const parent = await ctx.agentLoop.create(SessionId('evidence-parent'), { provider: 'mock', model: 'mock' }, { cwd: root })
+  const space = await ctx.mydot.saveSpace({ name: 'Evidence', purpose: '', instructions: '', materials: [] })
+  await ctx.mydot.attach(parent.id, space.id)
+  const started = await ctx.mydot.startJob({ parentSessionId: parent.id, requestId: 'evidence' as SessionRequestId,
+    label: 'Code change', prompt: 'Fix the parser', provider: 'spawn' }, new AbortController().signal)
+  await ctx.subagents.waitForChildren(parent)
+  const initial = (await ctx.mydot.snapshot()).jobs[0]!.verification!
+  expect(initial).toMatchObject({ target: null, status: 'unobserved', history: [], requests: [{ text: 'Fix the parser' }] })
+  expect(read).not.toHaveBeenCalled()
+  const input = { requestSeq: initial.requests[0]!.seq, checkId: evidenceCheck.id, commit: evidenceCommit }
+  expect(ctx.sessions.get(started.childSessionId)).toBeUndefined()
+  const target = await ctx.mydotEvidence.setTarget(started.childSessionId, input)
+  expect(await ctx.mydotEvidence.setTarget(started.childSessionId, input)).toEqual(target)
+  const cancel = new AbortController()
+  const watch = ctx.mydot.watch(cancel.signal)[Symbol.asyncIterator]()
+  await watch.next()
+  const changed = watch.next()
+  await ctx.mydotEvidence.refresh(started.childSessionId, target.seq, evidenceRun.id, cancel.signal)
+  const update = await changed
+  if (update.done) throw new Error('Watch ended before the saved evidence arrived')
+  expect(update.value.jobs[0]?.verification).toMatchObject({ status: 'passed', history: [{ current: true, observation: { reason: 'condition-passed' } }] })
+  conclusion = 'skipped'
+  await ctx.mydotEvidence.refresh(started.childSessionId, target.seq, evidenceRun.id, cancel.signal)
+  const current = (await ctx.mydot.snapshot()).jobs[0]!.verification!
+  expect(current.status).toBe('unavailable')
+  expect(current.history.map(item => item.observation.outcome)).toEqual(['passed', 'unavailable'])
+  expect(ctx.sessions.get(started.childSessionId)).toBeUndefined()
+  expect(ctx.agents.get(started.childSessionId)).toBeUndefined()
+  cancel.abort()
+  expect(await watch.next()).toEqual({ done: true, value: undefined })
+  await ctx.fiber.dispose()
+  const cold = await setup(first, undefined, evidence)
+  expect((await cold.ctx.mydot.snapshot()).jobs[0]!.verification).toEqual(current)
+  expect(read).toHaveBeenCalledTimes(8)
+  expect(await cold.ctx.mydotEvidence.setTarget(started.childSessionId, input)).toEqual(target)
+  await cold.ctx.mydotEvidence.refresh(started.childSessionId, target.seq, evidenceRun.id, new AbortController().signal)
+  expect((await cold.ctx.mydot.snapshot()).jobs[0]!.verification?.history).toHaveLength(3)
+  expect(cold.ctx.sessions.get(started.childSessionId)).toBeUndefined()
+  expect(cold.ctx.agents.get(started.childSessionId)).toBeUndefined()
+  expect(read).toHaveBeenCalledTimes(12)
+  const [capability] = [...cold.ctx.registry.get(MyDotEvidence)!.fibers]
+  await capability!.dispose()
+  const unavailable = await cold.ctx.mydot.snapshot()
+  expect(unavailable.jobs[0]!.verification).toBeUndefined()
+  expect(unavailable.issues).toContainEqual({ sessionId: started.childSessionId, kind: 'unavailable' })
+  expect(read).toHaveBeenCalledTimes(12)
+})
+
+it.each([false, true])('keeps programmatic composition defaults compatible when verification opt-in is %s', async (enabled) => {
+  const read = vi.fn(() => { throw new Error('Configuring evidence must not read GitHub') })
+  const { ctx } = await setup(undefined, undefined, { check: evidenceCheck, read }, enabled)
+  expect((await ctx.mydot.snapshot()).verificationChecks).toEqual(enabled ? [evidenceCheck] : undefined)
+  if (enabled) expect(ctx.get('mydotEvidence')?.config).toMatchObject({ timeoutMs: 30000, maxOutputBytes: 1048576 })
+  else expect(ctx.get('mydotEvidence')).toBeUndefined()
+  expect(read).not.toHaveBeenCalled()
+})
+
+it.each(['false', 'rejected'] as const)('withholds CI success through a pending or %s durability checkpoint and plugin reload', async (failure) => {
+  const read = vi.fn((spec: SubprocessSpawnSpec) => spec.argv[6]!.includes('/contents/')
+    ? { type: 'file', sha: evidenceCheck.workflowFileSha }
+    : spec.argv[6]!.includes('/jobs?') ? { jobs: [evidenceJob] } : evidenceRun)
+  const { ctx, root } = await setup(undefined, undefined, { check: evidenceCheck, read })
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([textResponse('done'), textResponse('received')]))
+  const parent = await ctx.agentLoop.create(SessionId(`barrier-parent-${failure}`), { provider: 'mock', model: 'mock' }, { cwd: root })
+  const space = await ctx.mydot.saveSpace({ name: 'Durability', purpose: '', instructions: '', materials: [] })
+  await ctx.mydot.attach(parent.id, space.id)
+  const started = await ctx.mydot.startJob({ parentSessionId: parent.id, requestId: `barrier-${failure}` as SessionRequestId,
+    label: 'Code change', prompt: 'Fix the parser', provider: 'spawn' }, new AbortController().signal)
+  await ctx.subagents.waitForChildren(parent)
+  await ctx.agents.resume({ resumeSessionId: started.childSessionId, agentOptions: { provider: 'mock', model: 'mock' } })
+  const initial = (await ctx.mydot.snapshot()).jobs[0]!.verification!
+  const input = { requestSeq: initial.requests[0]!.seq, checkId: evidenceCheck.id, commit: evidenceCommit }
+  const target = await ctx.mydotEvidence.setTarget(started.childSessionId, input)
+  const barrier = Promise.withResolvers<boolean>()
+  const flush = vi.spyOn(ctx.sessions, 'flush').mockReturnValue(barrier.promise)
+  try {
+    const refresh = ctx.mydotEvidence.refresh(started.childSessionId, target.seq, evidenceRun.id, new AbortController().signal)
+    const rejected = expect(refresh).rejects.toThrow(failure === 'false' ? 'not-durable' : 'disk unavailable')
+    await vi.waitFor(() =>{  expect(flush).toHaveBeenCalled() })
+    let published = false
+    const snapshot = ctx.mydot.snapshot().then((value) => { published = true; return value })
+    await Promise.resolve()
+    expect(published).toBe(false)
+    if (failure === 'false') barrier.resolve(false)
+    else barrier.reject(new Error('disk unavailable'))
+    await rejected
+    expect((await snapshot).jobs[0]!.verification).toMatchObject({ status: 'unavailable', history: [] })
+    expect((await ctx.mydot.snapshot()).jobs[0]!.verification).toMatchObject({ status: 'unavailable', history: [] })
+    const entry = [...ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-experimental-mydot')!
+    const retiring = entry.fiber!
+    await entry.update({ disabled: true })
+    await retiring.dispose()
+    await entry.update({ disabled: false })
+    await entry.fiber!.await()
+    expect((await ctx.mydot.snapshot()).jobs[0]!.verification).toMatchObject({ status: 'unavailable', history: [] })
+    flush.mockRestore()
+    await ctx.mydotEvidence.setTarget(started.childSessionId, input)
+    expect((await ctx.mydot.snapshot()).jobs[0]!.verification).toMatchObject({ status: 'passed', history: [{ current: true }] })
+    expect(read).toHaveBeenCalledTimes(4)
+  } finally { flush.mockRestore() }
+})
 
 it('edits only the configured memory root and historical conversation workspace under the actual file sandbox', async ({ onTestFinished }) => {
   const root = await realpath(await mkdtemp(join(outsideTempWorkspaceParent(), '.dsh-mydot-policy-')))
@@ -195,9 +335,9 @@ it('runs two independent children, presents both current files to the parent inb
   await ctx.mydot.presentResults(parent.id)
   await parent.whenIdle()
   const snapshot = await ctx.mydot.snapshot()
-  expect(snapshot.artifacts).toEqual(expect.arrayContaining(['A.md', 'B.md'].map(file => expect.objectContaining({
+  for (const file of ['A.md', 'B.md']) expect(snapshot.artifacts).toContainEqual(expect.objectContaining({
     parentSessionId: parent.id, path: join(root, file), available: true,
-  }))))
+  }))
   using parentSource = await ctx.sessionQuery.observeSession(parent.id)
   const messages = parentSource.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'mydot'
     && event.data.source.sections.some(section => section.name.startsWith('mydot/artifacts/')))

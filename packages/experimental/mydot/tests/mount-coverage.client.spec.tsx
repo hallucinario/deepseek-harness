@@ -4,9 +4,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import type { Context } from '@deepseek-ai/cordis'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { FsVersion } from '@deepseek-ai/dsh-fs/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { SpaceId, MyDotSnapshot, TextSave } from '../src/types.ts'
 import type { Commands } from '../src/client/props.ts'
 import { mountMyDot, inject } from '../src/client/mount.ts'
@@ -61,16 +63,21 @@ async function bench() {
     startJob: call(), send: call(), stop: call(), readFile: call(), saveFile: call(),
     readMemory: call(), saveMemory: call(), continueFile: call(), handoffDesktop: call(), resumeDesktop: call() }
   const prompt = call()
-  rt.remote.provideNamespaces({ mydot: remote, session: { prompt } })
+  const evidence = { setTarget: call(), refresh: call() }
+  rt.remote.provideNamespaces({ mydot: remote, mydotEvidence: evidence, session: { prompt } })
   const unmount = vi.fn(async () => { expect(rt.slots.entries('main')).toHaveLength(0) })
   const mount = vi.spyOn(rt.remote, '$mount').mockResolvedValue(unmount)
   await rt.declare({ main: { kind: 'keyed', scope: 'root' }, 'sidebar.panellist': { kind: 'list', scope: 'root' }, 'conversation.input.dock': { kind: 'list', scope: 'session' } } as never)
   let dispose: (() => Promise<void>) | undefined
-  await rt.mount({ inject, apply: async (ctx) => { dispose = await mountMyDot(ctx, contribution)
-    return dispose } })
+  const plugin = { inject, apply: async (ctx: Context) => {
+    dispose = await mountMyDot(ctx, contribution)
+    return dispose
+  } }
+  await rt.mount(plugin)
   const commands = rt.slots.entries('main')[0]!.inject!() as { [K in keyof Commands]: Commands[K] }
   const snapshot: MyDotSnapshot = { spaces: [], conversations: [], jobs: [{ parentSessionId: parent, childSessionId: child, label: 'Child', mode: 'continuable', status: 'running' }], artifacts: [], desktop: { phase: 'free', inFlight: 0 } }
-  return { rt, remote, prompt, mount, unmount, streams, commands, snapshot, mounted, openSession, openResource, dispose: () => dispose!() }
+  return { rt, remote, evidence, prompt, mount, unmount, streams, commands, snapshot, mounted, openSession, openResource,
+    dispose: () => dispose!() }
 }
 
 it('mounts the Remote contribution, renders registered root slots and disposes their effects', async () => {
@@ -106,6 +113,11 @@ it('forwards every command, preserves parent/child addresses, and drains a defer
   const job = b.snapshot.jobs[0]!
   await c.stop(job)
   expect(b.remote.stop).toHaveBeenCalledWith({ parentSessionId: parent, childSessionId: child })
+  const target = { requestSeq: SessionSeq(2), checkId: 'lint' as import('../src/types.ts').VerificationCheckId, commit: 'a'.repeat(40) }
+  await c.setVerificationTarget(child, target)
+  await c.refreshVerification(child, SessionSeq(8), 123)
+  expect(b.evidence.setTarget).toHaveBeenCalledExactlyOnceWith(child, target)
+  expect(b.evidence.refresh).toHaveBeenCalledExactlyOnceWith(child, 8, 123)
   for (const mode of ['continuable', 'one-shot', 'external'] as const) c.open({ ...job, mode })
   c.openConversation(parent)
   c.openConversation(child)

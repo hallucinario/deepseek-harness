@@ -56,6 +56,15 @@
     },
     {
       "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../subprocess/subprocess"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../session/session-persistence"
     }
   ]
 }

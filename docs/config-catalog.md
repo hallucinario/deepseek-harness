@@ -1166,7 +1166,8 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:45`](../packages/experimental/mydot/src/index.ts)
+- `refs`: [`Branded`](../packages/util/brand/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:49`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
@@ -1181,7 +1182,35 @@ export interface Config {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+  /** Reviewed CI conditions; an empty list disables evidence reads and UI. */
+  verificationChecks?: (Omit<VerificationCheck, 'id'> & {
+    /** Deployment-owned stable condition identifier. */
+    id: string
+  })[]
+  /** Whole read deadline, including every GitHub page and subprocess. */
+  verificationTimeoutMs?: number
+  /** Maximum captured bytes per GitHub response; truncation is never parsed as evidence. */
+  verificationOutputBytes?: number
 }
+
+/** Reviewed workflow whose push and merge-group source checkout and job semantics are known. */
+export interface VerificationCheck {
+  /** Deployment-owned stable condition identifier. */
+  id: VerificationCheckId
+  /** GitHub repository in owner/name form. */
+  repository: string
+  /** Reviewed workflow path within .github/workflows. */
+  workflowPath: string
+  /** Git blob SHA of the reviewed workflow with an unmodified default source checkout. */
+  workflowFileSha: string
+  /** Exact job name whose conclusion constitutes this condition. */
+  jobName: string
+  /** User-visible explanation of what this condition establishes. */
+  description: string
+}
+
+/** Deployment-owned identity of one CI condition. */
+export type VerificationCheckId = Branded<'MyDotVerificationCheckId'>
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->
 

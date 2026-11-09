@@ -69,7 +69,8 @@ const PEER_REQUIRED_HOST_EXPORTS = {
   // `instanceof` checks need the translator's own class instance.
   '@deepseek-ai/dsh-experimental-translator': ['TranslationError'],
   '@deepseek-ai/dsh-scope': ['carrierKeyOf', 'createScope', 'scopeOf', 'scopeTarget'],
-  '@deepseek-ai/dsh-session': ['SESSION_FORMAT_VERSION', 'SessionId'],
+  // Plugin record writes use the owning Session module's private commit function.
+  '@deepseek-ai/dsh-session': ['SESSION_FORMAT_VERSION', 'SessionId', 'SessionSeq', 'appendPluginRecord', 'createPluginRecord', 'pluginRecordOf'],
   '@deepseek-ai/dsh-session-persistence': ['SessionPersistenceNotFoundError'],
 } as const satisfies HostDependencyExports
 

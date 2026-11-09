@@ -5,6 +5,8 @@ import type { Space, SpaceId, SpaceInput } from '../types.ts'
 import type { MyDotSnapshot, MyDotJobView, ArtifactView } from '../types.ts'
 import type { TextRead, TextSave, TextSaveResult } from '../types.ts'
 import type { MemoryScope, StartJob } from '../types.ts'
+import type { VerificationTargetInput } from '../types.ts'
+import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { PendingInput, createMyDotStore } from './store.ts'
 import type { NS } from './locales.ts'
 
@@ -22,6 +24,8 @@ export interface Commands {
   startJob: (input: StartJob) => Promise<void>
   send: (sessionId: SessionId, input: PendingInput) => Promise<void>
   stop: (job: MyDotJobView) => Promise<void>
+  setVerificationTarget: (sessionId: SessionId, input: VerificationTargetInput) => Promise<void>
+  refreshVerification: (sessionId: SessionId, targetSeq: SessionSeq, runId: number) => Promise<void>
   open: (job: MyDotJobView) => void
   openConversation: (sessionId: SessionId) => void
   preview: (artifact: ArtifactView) => void

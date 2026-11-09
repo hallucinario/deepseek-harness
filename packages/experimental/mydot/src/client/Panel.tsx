@@ -8,6 +8,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { Space, SpaceId, SpaceInput } from '../types.ts'
 import type { PanelProps } from './props.ts'
 import { MyDotEditor } from './Editor.tsx'
+import { MyDotVerification } from './Verification.tsx'
 import { createEditorStore } from './editor-store.ts'
 import type { NS } from './locales.ts'
 import css from './MyDot.module.css'
@@ -124,6 +125,10 @@ export function MyDotPanel(props: GlobalProps) {
     {data.jobs.filter(job => parentIds.has(job.parentSessionId)).map(job => <article className={css.card} key={job.childSessionId}>
       <strong>{job.label}</strong><span>{t(job.status === 'running' ? 'running' : 'inactive')}</span>
       <Button onClick={() =>{  props.open(job) }}>{t('open')}</Button>
+      <MyDotVerification sessionId={job.childSessionId} verification={job.verification} checks={data.verificationChecks ?? []}
+        disabled={view.disconnected === true} setVerificationTarget={props.setVerificationTarget}
+        refreshVerification={props.refreshVerification}
+        openConversation={props.openConversation} t={t} />
     </article>)}
     <h2 className={css.heading}>{t('artifacts')}</h2>
     {data.artifacts.filter(file => parentIds.has(file.sessionId)).map(file => <article className={css.card} key={`${file.sessionId}:${file.path}`}>

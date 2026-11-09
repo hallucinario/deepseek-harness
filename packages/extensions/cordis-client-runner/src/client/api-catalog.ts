@@ -529,7 +529,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'Commands',
-    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
+    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    setVerificationTarget: (sessionId: SessionId, input: VerificationTargetInput) => Promise<void>;\n    refreshVerification: (sessionId: SessionId, targetSeq: SessionSeq, runId: number) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
   },
   {
     name: 'CommonKeyOf',
@@ -757,11 +757,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MyDotJobView',
-    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
+    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n    verification?: VerificationView;\n}',
   },
   {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    verificationChecks?: VerificationCheck[];\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'ObservableSnapshot',
@@ -1138,6 +1138,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UseFactorySlot',
     declaration: 'export type UseFactorySlot<F extends keyof SlotFactoryMap & string> = <N extends FactoryLocalNameOf<F>>(name: N, fallback: FactoryLocalComponent<F, N>) => SlotComponent<FactoryLocalInputPropsOf<F, N>>;',
+  },
+  {
+    name: 'VerificationCheck',
+    declaration: 'export interface VerificationCheck {\n    id: VerificationCheckId;\n    repository: string;\n    workflowPath: string;\n    workflowFileSha: string;\n    jobName: string;\n    description: string;\n}',
+  },
+  {
+    name: 'VerificationCheckId',
+    declaration: 'export type VerificationCheckId = Branded<\'MyDotVerificationCheckId\'>;',
+  },
+  {
+    name: 'VerificationHistory',
+    declaration: 'export interface VerificationHistory {\n    target: VerificationTarget;\n    observation: VerificationObservation;\n    current: boolean;\n}',
+  },
+  {
+    name: 'VerificationJob',
+    declaration: 'export interface VerificationJob {\n    id: number;\n    url: string;\n    name: string;\n    conclusion: string | null;\n}',
+  },
+  {
+    name: 'VerificationObservation',
+    declaration: 'export interface VerificationObservation {\n    seq: SessionSeq;\n    targetSeq: SessionSeq;\n    observedAt: number;\n    outcome: \'passed\' | \'failed\' | \'unavailable\';\n    reason: VerificationReason;\n    run?: VerificationRun | undefined;\n    job?: VerificationJob | undefined;\n}',
+  },
+  {
+    name: 'VerificationReason',
+    declaration: 'export type VerificationReason = \'condition-passed\' | \'condition-failed\' | \'job-not-completed\' | \'job-not-passed\' | \'job-missing\' | \'job-ambiguous\' | \'run-mismatch\' | \'unsupported-event\' | \'workflow-changed\' | \'attempt-changed\' | \'provider-unavailable\' | \'invalid-response\' | \'cancelled\';',
+  },
+  {
+    name: 'VerificationRequest',
+    declaration: 'export interface VerificationRequest {\n    seq: SessionSeq;\n    text: string;\n}',
+  },
+  {
+    name: 'VerificationRun',
+    declaration: 'export interface VerificationRun {\n    id: number;\n    attempt: number;\n    url: string;\n    commit: string;\n    event: string;\n}',
+  },
+  {
+    name: 'VerificationTarget',
+    declaration: 'export interface VerificationTarget {\n    seq: SessionSeq;\n    request: VerificationRequest;\n    commit: string;\n    check: VerificationCheck;\n    checkRevision: string;\n}',
+  },
+  {
+    name: 'VerificationTargetInput',
+    declaration: 'export interface VerificationTargetInput {\n    requestSeq: SessionSeq;\n    checkId: VerificationCheckId;\n    commit: string;\n}',
+  },
+  {
+    name: 'VerificationView',
+    declaration: 'export interface VerificationView {\n    requests: VerificationRequest[];\n    target: VerificationTarget | null;\n    status: \'unobserved\' | \'passed\' | \'failed\' | \'unavailable\';\n    definitionCurrent: boolean;\n    history: VerificationHistory[];\n    invalidRecords: boolean;\n}',
   },
   {
     name: 'ViewState',

@@ -756,6 +756,8 @@ The hook bridges' `hook/invoked` / `hook/result` pairs (from `@deepseek-ai/dsh-h
 
 Experimental packages declare plugin-owned state in `PluginRecordMap`: `appendPluginRecord()` uses each declaration to type its name and payload, and appends an event marked `ignorable: true` in the `plugin:` namespace. `pluginRecordOf()` reads stored records with unknown payloads regardless of current declarations. The [experimental persistence catalog](../experimental-persistence-catalog.md) lists current declarations. The [package README](../../packages/core/session/README.md#write-experimental-plugin-records) owns the caller restriction, retention, and read path.
 
+`createPluginRecord()` constructs that same envelope for a cold write owner without creating a Session or Agent. The owner holds the canonical persistence write handle while checking the current prefix and appending, then awaits its durability checkpoint; the factory itself neither acquires ownership nor writes storage.
+
 ```ts type-equiv
 /**
  * Event type of an experimental plugin record: `plugin:` followed by

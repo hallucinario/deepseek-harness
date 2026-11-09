@@ -28,6 +28,7 @@ function bench() {
   const editor = createEditorStore().create('coverage')
   const read = { kind: 'text' as const, path: '/report', content: 'Original', version: FsVersion('v1') }
   const commands = { retry: vi.fn(), newRequestId: vi.fn(() => 'request'), presentResults: vi.fn(async () => {}), releaseDesktop: vi.fn(async () => {}), saveSpace: vi.fn(async (input: SpaceInput) => ({ ...snapshot.spaces[0]!, ...input })),
+    setVerificationTarget: vi.fn(async () => {}), refreshVerification: vi.fn(async () => {}),
     createConversation: vi.fn(async () => {}), attach: vi.fn(async () => {}), startJob: vi.fn(async () => {}), send: vi.fn(async () => {}), stop: vi.fn(async () => {}), open: vi.fn(), openConversation: vi.fn(), preview: vi.fn(), flushPreview: vi.fn(), readFile: vi.fn(async () => read), saveFile: vi.fn(async () => ({ ...read, kind: 'saved' as const, content: 'Saved' })), readMemory: vi.fn(async () => read), saveMemory: vi.fn(async () => ({ ...read, kind: 'saved' as const })), continueFile: vi.fn(async () => {}), handoff: vi.fn(async () => {}), resume: vi.fn(async () => {}) } satisfies Omit<Commands, 'hooks'>
   const common = { ...commands, useWorkspaces: bindSnapshotSelector(createSnapshotStore({ ...workspaceSnapshot(), items: [{ workspaceId: 'workspace' as WorkspaceId, title: 'Workspace', path: '/work', sessionIds: [], createdAt: '2026-11-07T00:00:00Z', updatedAt: '2026-11-07T00:00:00Z' }] })), useMydot: bindSnapshotSelector(source), t: makeTranslate(ja) }
   return { snapshot, source, dock, editor, commands, common,
@@ -160,7 +161,7 @@ it('keeps store guards valid after an editor closes and rejects replacing a dirt
   a.conflict(null, 'ignored')
   a.close()
   a.open({ sessionId: parent, scope: null, path: '/report', version: null, saved: '', draft: 'unsaved', conflict: null })
-  expect(() => a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })).toThrow('Save or discard')
+  expect(() => { a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null }) }).toThrow('Save or discard')
   a.discard()
   a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })
   a.close()

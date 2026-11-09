@@ -1730,6 +1730,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mydotEvidence',
+    summary: 'User-triggered CI reads; never starts a model turn, test, retry, or external write.',
+    description: 'User-triggered CI reads; never starts a model turn, test, retry, or external write.',
+    methods: [
+      {
+        signature: 'async view(source: SessionObservation): Promise<VerificationView>',
+        description: 'Publish only evidence that reached the existing Session durability checkpoint.',
+        parameters: [{ name: 'source', description: 'One exact live or persisted projection cut from SessionQuery.' }],
+        returns: 'Current evidence; failed checkpoints retain only the acknowledged prefix.',
+      },
+      {
+        signature: '@Remote({ resources: { session: sessionId => sessionId } }) async setTarget(sessionId: SessionId, input: VerificationTargetInput): Promise<VerificationTarget>',
+        description: 'Bind a local request and configured condition to an exact commit.',
+        parameters: [{ name: 'sessionId', description: 'Live or stored source Session whose own user message is selected.' }, { name: 'input', description: 'Request position, condition identity and full commit SHA.' }],
+        returns: 'The persisted immutable selection; selecting it again is idempotent.',
+      },
+      {
+        signature: '@Remote({ resources: { session: sessionId => sessionId } }) async refresh(sessionId: SessionId, targetSeq: SessionSeq, runId: number, signal: AbortSignal): Promise<void>',
+        description: 'Record an existing GitHub run for the caller\'s exact, still-selected target.',
+        parameters: [{ name: 'sessionId', description: 'Live or stored source Session; no Agent activation is required.' }, { name: 'targetSeq', description: 'Selection observed by the caller; stale selections reject before I/O.' }, { name: 'runId', description: 'Existing positive GitHub Actions run ID.' }, { name: 'signal', description: 'Caller cancellation, combined with plugin disposal and deployment deadline.' }],
+        returns: 'After the observation is durable; a newer target keeps this result as history.',
+      },
+    ],
+  },
+  {
     key: 'officeToPdf',
     summary: 'A provider lifetime owns all converters, queued calls, and temporary files.',
     description: 'A provider lifetime owns all converters, queued calls, and temporary files.',
@@ -6501,11 +6526,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MyDotJobView',
-    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
+    declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n    verification?: VerificationView;\n}',
   },
   {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    verificationChecks?: VerificationCheck[];\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'NativeFileApplication',
@@ -8810,6 +8835,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'UserMessage',
     declaration: 'export interface UserMessage extends MessageBase {\n    readonly role: \'user\';\n}',
+  },
+  {
+    name: 'VerificationCheck',
+    declaration: 'export interface VerificationCheck {\n    id: VerificationCheckId;\n    repository: string;\n    workflowPath: string;\n    workflowFileSha: string;\n    jobName: string;\n    description: string;\n}',
+  },
+  {
+    name: 'VerificationCheckId',
+    declaration: 'export type VerificationCheckId = Branded<\'MyDotVerificationCheckId\'>;',
+  },
+  {
+    name: 'VerificationHistory',
+    declaration: 'export interface VerificationHistory {\n    target: VerificationTarget;\n    observation: VerificationObservation;\n    current: boolean;\n}',
+  },
+  {
+    name: 'VerificationJob',
+    declaration: 'export interface VerificationJob {\n    id: number;\n    url: string;\n    name: string;\n    conclusion: string | null;\n}',
+  },
+  {
+    name: 'VerificationObservation',
+    declaration: 'export interface VerificationObservation {\n    seq: SessionSeq;\n    targetSeq: SessionSeq;\n    observedAt: number;\n    outcome: \'passed\' | \'failed\' | \'unavailable\';\n    reason: VerificationReason;\n    run?: VerificationRun | undefined;\n    job?: VerificationJob | undefined;\n}',
+  },
+  {
+    name: 'VerificationReason',
+    declaration: 'export type VerificationReason = \'condition-passed\' | \'condition-failed\' | \'job-not-completed\' | \'job-not-passed\' | \'job-missing\' | \'job-ambiguous\' | \'run-mismatch\' | \'unsupported-event\' | \'workflow-changed\' | \'attempt-changed\' | \'provider-unavailable\' | \'invalid-response\' | \'cancelled\';',
+  },
+  {
+    name: 'VerificationRequest',
+    declaration: 'export interface VerificationRequest {\n    seq: SessionSeq;\n    text: string;\n}',
+  },
+  {
+    name: 'VerificationRun',
+    declaration: 'export interface VerificationRun {\n    id: number;\n    attempt: number;\n    url: string;\n    commit: string;\n    event: string;\n}',
+  },
+  {
+    name: 'VerificationTarget',
+    declaration: 'export interface VerificationTarget {\n    seq: SessionSeq;\n    request: VerificationRequest;\n    commit: string;\n    check: VerificationCheck;\n    checkRevision: string;\n}',
+  },
+  {
+    name: 'VerificationTargetInput',
+    declaration: 'export interface VerificationTargetInput {\n    requestSeq: SessionSeq;\n    checkId: VerificationCheckId;\n    commit: string;\n}',
+  },
+  {
+    name: 'VerificationView',
+    declaration: 'export interface VerificationView {\n    requests: VerificationRequest[];\n    target: VerificationTarget | null;\n    status: \'unobserved\' | \'passed\' | \'failed\' | \'unavailable\';\n    definitionCurrent: boolean;\n    history: VerificationHistory[];\n    invalidRecords: boolean;\n}',
   },
   {
     name: 'VerifiedWebhookDelivery',

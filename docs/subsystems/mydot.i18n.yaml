@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/mydot.md
 /mydot-spaces-and-local-work:
-  en: 8a97b457596c491a
-  zh: 1cda701bf6788067
+  en: bf5e982559c22438
+  zh: 3fcd4a801bce6728
 /mydot-spaces-and-local-work/spaceid:
   en: 24f01f60887d2188
   zh: 24f01f60887d2188
@@ -32,6 +32,39 @@
 /mydot-spaces-and-local-work/mydotsnapshot:
   en: a02b66d79130d792
   zh: a02b66d79130d792
+/mydot-spaces-and-local-work/verificationcheckid:
+  en: b001408b1d4ff7c2
+  zh: b001408b1d4ff7c2
+/mydot-spaces-and-local-work/verificationcheck:
+  en: fa1c7713ed28c342
+  zh: fa1c7713ed28c342
+/mydot-spaces-and-local-work/verificationrequest:
+  en: 861ed897b7b96824
+  zh: 861ed897b7b96824
+/mydot-spaces-and-local-work/verificationtargetinput:
+  en: bd80e984bb2e2dcc
+  zh: bd80e984bb2e2dcc
+/mydot-spaces-and-local-work/verificationtarget:
+  en: 717335b32206d8ec
+  zh: 717335b32206d8ec
+/mydot-spaces-and-local-work/verificationrun:
+  en: 7f791f78198f68f0
+  zh: 7f791f78198f68f0
+/mydot-spaces-and-local-work/verificationjob:
+  en: 6de5427a65d6d4e0
+  zh: 6de5427a65d6d4e0
+/mydot-spaces-and-local-work/verificationreason:
+  en: dd1255d65186e56e
+  zh: dd1255d65186e56e
+/mydot-spaces-and-local-work/verificationobservation:
+  en: 9eee1e14e5b5a39b
+  zh: 9eee1e14e5b5a39b
+/mydot-spaces-and-local-work/verificationhistory:
+  en: 373063550744c079
+  zh: 373063550744c079
+/mydot-spaces-and-local-work/verificationview:
+  en: a7dafc22784c21ff
+  zh: a7dafc22784c21ff
 /mydot-spaces-and-local-work/textread:
   en: 8b6e0544876e9ae0
   zh: 8b6e0544876e9ae0

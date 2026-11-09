@@ -87,6 +87,10 @@ export function registerUi(ctx: Context): void {
     stop: async (job) => {
       value(await ctx.remote.mydot.stop({ parentSessionId: job.parentSessionId, childSessionId: job.childSessionId }))
     },
+    setVerificationTarget: async (sessionId, input) => { value(await ctx.remote.mydotEvidence.setTarget(sessionId, input)) },
+    refreshVerification: async (sessionId, targetSeq, runId) => {
+      value(await ctx.remote.mydotEvidence.refresh(sessionId, targetSeq, runId))
+    },
     open: (job) => { ctx.uiWorkspace.openSession({ parentSessionId: job.parentSessionId, childSessionId: job.childSessionId,
       mode: job.mode === 'continuable' ? 'continuable' : job.mode === 'one-shot' ? 'one-shot' : 'unknown' }) },
     openConversation: (sessionId) => {
@@ -135,7 +139,7 @@ export function registerUi(ctx: Context): void {
  */
 export async function mountMyDot(ctx: Context, contribution: TypertRemoteContribution): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(contribution)
-  const fiber = ctx.inject(['remote.mydot', ...inject], registerUi)
+  const fiber = ctx.inject(['remote.mydot', 'remote.mydotEvidence', ...inject], registerUi)
   try { await fiber } catch (error: unknown) { await fiber.dispose(); await disposeRemote(); throw error }
   return async () => { await fiber.dispose(); await disposeRemote() }
 }

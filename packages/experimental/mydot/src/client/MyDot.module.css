@@ -9,4 +9,9 @@
 .jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
 .heading { font-size: 16px; font-weight: 500; margin: 0; }
 .muted { color: var(--dsw-alias-text-secondary); }
+.evidence { display: grid; gap: 8px; min-width: 0; }
+.evidenceFacts { display: grid; gap: 4px; margin: 0; min-width: 0; }
+.evidenceFacts dt { color: var(--dsw-alias-text-secondary); }
+.evidenceFacts dd { margin: 0 0 8px; min-width: 0; }
+.evidenceFacts p { margin: 4px 0 0; }
 @media (max-width: 600px) { .panel { padding: 12px; } .root { padding: 8px; } }
