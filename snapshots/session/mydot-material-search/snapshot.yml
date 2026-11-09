@@ -1,0 +1,10 @@
+version: 1
+scenario: mydot-material-search
+profile: headless
+composition: mydot-material-search
+recording: authored
+header:
+  class: mydot-material-search
+  pin: true
+replay:
+  override: true

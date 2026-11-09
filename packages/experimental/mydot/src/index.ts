@@ -26,6 +26,7 @@ import { Spaces } from './spaces.ts'
 import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './files.ts'
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
+import { searchMaterials, minimumMaterialContextBytes, type MaterialSearchConfig } from './material-search.ts'
 import type { ArtifactView, MyDotSnapshot, StartJob, MemoryScope } from './types.ts'
 
 export type * from './types.ts'
@@ -53,6 +54,8 @@ export interface Config {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+  /** Explicit material-file search limits; omit to retain memory-only context. */
+  materialSearch?: MaterialSearchConfig | undefined
 }
 
 /** MyDot metadata, projected work and current-file access. */
@@ -64,6 +67,10 @@ export class MyDotService extends TypertRemoteService {
     desktopTools: z.array(z.string()).default([]),
     captureTools: z.array(z.string()).default([]),
     summaryCharacters: z.number().step(1).min(1).default(240),
+    materialSearch: z.union([z.object({
+      maxFiles: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).required(),
+      maxContextBytes: z.number().step(1).min(minimumMaterialContextBytes).max(Number.MAX_SAFE_INTEGER).required(),
+    }), z.const(undefined)]),
   })
 
   private domain!: Domain<typeof mydotDomain>
@@ -119,9 +126,18 @@ export class MyDotService extends TypertRemoteService {
       const text = JSON.stringify({ space: { id: space.id, name: space.name, purpose: space.purpose,
         instructions: space.instructions, materials: space.materials },
       memory: [personal, scoped].filter(item => item.kind === 'text') })
-      return { ...decision, messages: [...decision.messages, createUserMessage({
+      const messages = [...decision.messages, createUserMessage({
         content: [{ type: 'text', text }], source: { kind: 'mydot', form: 'snapshot', sections: [{ name: 'mydot', text }] },
-      })] }
+      })]
+      const requests = decision.messages.filter(message => message.source.kind === 'user')
+      if (this.config.materialSearch !== undefined && requests.length > 0) {
+        const query = requests.flatMap(message => message.content.flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n')
+        const materials = await searchMaterials(this.ctx.fs, space.materials, this.ctx.workingDirectory.get(agent.session), query,
+          { ...this.config.materialSearch, maxFileBytes: this.config.maxTextBytes }, signal)
+        messages.push(createUserMessage({ content: [{ type: 'text', text: materials }],
+          source: { kind: 'mydot', form: 'snapshot', sections: [{ name: 'mydot-material-search', text: materials }] } }))
+      }
+      return { ...decision, messages }
     }, { prepend: true })
     ctx.on('tools/execute', async (exec, next) => {
       if (!config.desktopTools.includes(exec.name) || exec.agent === undefined) return next()
