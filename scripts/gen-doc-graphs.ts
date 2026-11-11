@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'mydotHandoff',
+    pkg: 'experimental-mydot',
+    title: 'Versioned owner requests and original-Session continuation',
+    mode: 'service',
+    consumers: ['experimental-mydot'],
+    note: 'Keeps request, answer, actual input admission and outcome in Session events; the optional protected callback verifies drawing result references.',
+  },
+  {
     key: 'mydot',
     pkg: 'experimental-mydot',
     title: 'Space-linked local work and current files',

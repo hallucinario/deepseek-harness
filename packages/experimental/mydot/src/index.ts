@@ -17,7 +17,7 @@ import type { SessionPromptValue } from '@deepseek-ai/dsh-api-session-controller
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Remote, TypertRemoteService, principalOf } from '@deepseek-ai/dsh-typert-protocol'
 import { mydotDomain } from './storage.ts'
 import type { SpaceId, SpaceInput, Space, JobInput, JobAddress } from './types.ts'
 import { readJobRequest } from './job-request.ts'
@@ -27,6 +27,9 @@ import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
 import type { ArtifactView, MyDotSnapshot, StartJob, MemoryScope } from './types.ts'
+import { HumanHandoffService, type HumanHandoffConfig } from './human-handoff.ts'
+export { HumanHandoffService } from './human-handoff.ts'
+export type { HumanHandoffConfig, PrepareHumanInput } from './human-handoff.ts'
 
 export type * from './types.ts'
 export type { SpaceId, SpaceInput, Space } from './storage.ts'
@@ -42,7 +45,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
-export interface Config {
+export interface Config extends HumanHandoffConfig {
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -64,6 +67,10 @@ export class MyDotService extends TypertRemoteService {
     desktopTools: z.array(z.string()).default([]),
     captureTools: z.array(z.string()).default([]),
     summaryCharacters: z.number().step(1).min(1).default(240),
+    humanHandoffEnabled: z.boolean().default(false),
+    humanHandoffSocketPath: z.string().default(''),
+    humanHandoffSurveyOrigin: z.string().default(''),
+    humanHandoffTimeoutMs: z.number().step(1).min(1),
   })
 
   private domain!: Domain<typeof mydotDomain>
@@ -86,6 +93,8 @@ export class MyDotService extends TypertRemoteService {
     if (config.captureTools.some(tool => !config.desktopTools.includes(tool))) throw new Error('captureTools must be a subset of desktopTools')
     this.files = new TextFiles(ctx.fs, config.maxTextBytes)
     this.controls = new JobControls(ctx)
+    ctx.plugin(HumanHandoffService, config)
+    ctx.on('mydot/handoff-changed', () => { this.notify() })
     this.initialized = ctx.effect(async () => {
       this.domain = await ctx.storageDomain.open(mydotDomain)
       this.spaces = new Spaces(this.domain)
@@ -302,7 +311,8 @@ export class MyDotService extends TypertRemoteService {
         this.ctx.logger.warn(`MyDot retains the Space association but could not read its Session or files: ${String(error)}`)
       }
     }
-    return { spaces, conversations, jobs, artifacts: [...artifacts.values()], desktop: this.desktop.snapshot(),
+    const humanRequests = principalOf(this.ctx.invocation) === undefined ? await this.ctx.get('mydotHandoff')?.snapshot() : []
+    return { spaces, conversations, jobs, artifacts: [...artifacts.values()], desktop: this.desktop.snapshot(), humanRequests,
       desktopEnabled: this.config.desktopTools.length > 0, issues }
   }
 

@@ -2,6 +2,12 @@
 export const NS = 'mydot'
 /** English MyDot product copy. */
 export const en = {
+  humanCancel: 'Cancel this request', humanRetired: 'Request retired; its old answer will not be replayed',
+  humanRequests: 'Needs your input', humanOwner: 'Host owner', humanVersion: 'Request revision', humanEvidence: 'Open the original source', humanNext: 'After your answer',
+  humanPending: 'Waiting for your response', humanReceived: 'Answer saved; continuation has not been confirmed', humanQueued: 'Continuation accepted; checking actual input admission',
+  humanResumed: 'The original Session consumed the answer', humanStopped: 'Saved response; continuation is stopped', humanOutcome: 'Result recorded with evidence',
+  humanResponse: 'Your response', humanChoose: 'Choose a response', humanDetails: 'Details or correction', humanSubmit: 'Save response', humanRefresh: 'Check saved result and continuation',
+  humanConfirmed: 'Confirmed', humanUnknown: 'Unknown', humanNeedsMaterial: 'Additional material needed', humanDeferred: 'Defer', humanRejected: 'Reject',
   workspaceNone: 'No workspace selected (default execution directory)', workspaceDefault: 'Default workspace',
   workspaceUnavailable: 'Workspace unavailable (association retained)', workspaceLoading: 'Loading workspaces…',
   workspaceFailed: 'Could not load workspaces. The association is retained.', workspaceEmpty: 'No registered workspaces.',
@@ -27,6 +33,12 @@ export const en = {
 export type MyDotKey = keyof typeof en
 /** Japanese MyDot product copy. */
 export const ja = {
+  humanCancel: 'この依頼を終了', humanRetired: '依頼を終了しました。以前の回答を再適用しません',
+  humanRequests: 'あなたへの依頼', humanOwner: 'ホストの本人', humanVersion: '依頼版', humanEvidence: '原資料の該当箇所を開く', humanNext: '回答後に進むこと',
+  humanPending: '回答を待っています', humanReceived: '回答を保存しました。再開は未確認です', humanQueued: '再開を受け付けました。実際の入力反映を確認しています',
+  humanResumed: '元の Session が回答を読み込みました', humanStopped: '回答は保存済みです。続行は停止しています', humanOutcome: '結果と根拠を記録しました',
+  humanResponse: '回答', humanChoose: '回答を選択', humanDetails: '補足・訂正', humanSubmit: '回答を保存', humanRefresh: '保存結果と再開を確認',
+  humanConfirmed: '確認済み', humanUnknown: '不明', humanNeedsMaterial: '追加資料が必要', humanDeferred: '保留', humanRejected: '却下',
   workspaceNone: 'Workspace 未選択（既定の実行先）', workspaceDefault: '既定の Workspace',
   workspaceUnavailable: '利用できない Workspace（関連付けは保持されています）', workspaceLoading: 'Workspace を読み込み中…',
   workspaceFailed: 'Workspace を読み込めません。関連付けは保持されています。', workspaceEmpty: '登録済みの Workspace はありません。',
@@ -50,6 +62,12 @@ export const ja = {
 } satisfies Record<MyDotKey, string>
 /** Chinese MyDot product copy. */
 export const zh = {
+  humanCancel: '结束此请求', humanRetired: '请求已结束，不会重新应用旧回复',
+  humanRequests: '需要你的回复', humanOwner: '主机所有者', humanVersion: '请求版本', humanEvidence: '打开原始资料', humanNext: '回复后的操作',
+  humanPending: '等待回复', humanReceived: '回复已保存，尚未确认继续执行', humanQueued: '已接收继续执行请求，正在确认实际输入',
+  humanResumed: '原 Session 已读取回复', humanStopped: '回复已保存，继续执行已停止', humanOutcome: '已记录结果及依据',
+  humanResponse: '回复', humanChoose: '选择回复', humanDetails: '补充或修正', humanSubmit: '保存回复', humanRefresh: '检查保存结果及继续执行状态',
+  humanConfirmed: '已确认', humanUnknown: '不明确', humanNeedsMaterial: '需要补充资料', humanDeferred: '暂缓', humanRejected: '拒绝',
   workspaceNone: '未选择工作区（默认执行目录）', workspaceDefault: '默认工作区',
   workspaceUnavailable: '工作区不可用（关联已保留）', workspaceLoading: '正在加载工作区…',
   workspaceFailed: '无法加载工作区，关联已保留。', workspaceEmpty: '没有已注册的工作区。',

@@ -30,6 +30,27 @@ import {
 const CORDIS = '@deepseek-ai/cordis'
 const roots: string[] = []
 
+it('keeps the tool-definition execution closure on the shared Host peer', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-shared-tool-factory-'))
+  roots.push(root)
+  const name = '@deepseek-ai/dsh-tools'
+  const subject = pkg('@fixture/tool-consumer', 'packages/client/probe/package.json', {
+    dependencies: { [name]: 'workspace:*' }, devDependencies: { [CORDIS]: 'workspace:~', [name]: 'workspace:*' },
+    peerDependencies: { [CORDIS]: 'workspace:~' },
+  })
+  const path = join(root, subject.dir, 'src/index.ts')
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, `import { defineTool } from '${name}'\nexport const factory = defineTool\n`)
+  const collected = await readPackageDependencyFacts(root, subject, 'client-host', new Set([CORDIS, name]), PACKAGE_DEPENDENCY_POLICY)
+  expect(expectedPackageDependencies(collected).get(name)?.section).toBe('peer-dev')
+  repairPackageDependencyManifest(collected)
+  const repaired = collected.manifest
+  expect(repaired.dependencies?.[name]).toBeUndefined()
+  expect(repaired.peerDependencies?.[name]).toBe('workspace:*')
+  expect(repaired.devDependencies?.[name]).toBe('workspace:*')
+  expect(PACKAGE_DEPENDENCY_POLICY.safeHostDependencyExports[name] ?? []).not.toContain('defineTool')
+})
+
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })

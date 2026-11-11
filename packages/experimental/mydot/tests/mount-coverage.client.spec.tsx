@@ -12,7 +12,7 @@ import type { Commands } from '../src/client/props.ts'
 import { mountMyDot, inject } from '../src/client/mount.ts'
 
 const runtimes: SlotTestRuntime[] = []
-afterEach(async () => { for (const rt of runtimes.splice(0)) await rt.dispose() })
+afterEach(async () => { for (const rt of runtimes.splice(0)) await rt.dispose(); window.history.replaceState({}, '', '/') })
 const parent = 'parent' as SessionId
 const child = 'child' as SessionId
 const spaceId = 'space' as SpaceId
@@ -48,7 +48,8 @@ async function bench() {
   const mounted = createSnapshotStore<SessionId | null>(null)
   rt.ctx.provide('uiWorkspace', { openSession } as never)
   rt.ctx.provide('sidebarRight', { mounted, openResource } as never)
-  rt.ctx.provide('layout', {} as never)
+  const selectPanel = vi.fn()
+  rt.ctx.provide('layout', { selectPanel } as never)
   const streams: ReturnType<typeof stream>[] = []
   const watch = vi.fn(() => { const s = stream()
     streams.push(s)
@@ -61,17 +62,40 @@ async function bench() {
     startJob: call(), send: call(), stop: call(), readFile: call(), saveFile: call(),
     readMemory: call(), saveMemory: call(), continueFile: call(), handoffDesktop: call(), resumeDesktop: call() }
   const prompt = call()
-  rt.remote.provideNamespaces({ mydot: remote, session: { prompt } })
+  const handoff = { answer: call(), reconcile: call(), cancel: call() }
+  rt.remote.provideNamespaces({ mydot: remote, mydotHandoff: handoff, session: { prompt } })
   const unmount = vi.fn(async () => { expect(rt.slots.entries('main')).toHaveLength(0) })
   const mount = vi.spyOn(rt.remote, '$mount').mockResolvedValue(unmount)
   await rt.declare({ main: { kind: 'keyed', scope: 'root' }, 'sidebar.panellist': { kind: 'list', scope: 'root' }, 'conversation.input.dock': { kind: 'list', scope: 'session' } } as never)
   let dispose: (() => Promise<void>) | undefined
-  await rt.mount({ inject, apply: async (ctx) => { dispose = await mountMyDot(ctx, contribution)
-    return dispose } })
+  await rt.mount({ inject, apply: (ctx) => { ctx.effect(async () => { dispose = await mountMyDot(ctx, contribution)
+    return dispose }) } })
   const commands = rt.slots.entries('main')[0]!.inject!() as { [K in keyof Commands]: Commands[K] }
   const snapshot: MyDotSnapshot = { spaces: [], conversations: [], jobs: [{ parentSessionId: parent, childSessionId: child, label: 'Child', mode: 'continuable', status: 'running' }], artifacts: [], desktop: { phase: 'free', inFlight: 0 } }
-  return { rt, remote, prompt, mount, unmount, streams, commands, snapshot, mounted, openSession, openResource, dispose: () => dispose!() }
+  return { rt, remote, handoff, selectPanel, prompt, mount, unmount, streams, commands, snapshot,
+    mounted, openSession, openResource, dispose: () => dispose!() }
 }
+
+it('selects only one valid opaque human request from a return link and forwards explicit response operations', async () => {
+  window.history.replaceState({}, '', '/?humanRequest=public-review')
+  const b = await bench()
+  expect(b.selectPanel).toHaveBeenCalledWith('mydot')
+  expect(b.commands.selectedHumanRequestId).toBe('public-review')
+  expect(b.handoff.answer).not.toHaveBeenCalled()
+  const answer = { requestId: 'public-review' as never, requestRevision: 1, submissionId: 'submission' as never, choice: 'unknown', text: '資料待ち', result: null }
+  await b.commands.answerHumanRequest!(answer)
+  await b.commands.reconcileHumanRequest!('public-review' as never)
+  await b.commands.cancelHumanRequest!('public-review' as never)
+  expect(b.handoff.answer).toHaveBeenCalledWith(answer)
+  expect(b.handoff.reconcile).toHaveBeenCalledWith('public-review')
+  expect(b.handoff.cancel).toHaveBeenCalledWith('public-review')
+  for (const search of ['/?humanRequest=bad.id', '/?humanRequest=first&humanRequest=second']) {
+    window.history.replaceState({}, '', search)
+    const invalid = await bench()
+    expect(invalid.selectPanel).not.toHaveBeenCalled()
+    expect(invalid.commands.selectedHumanRequestId).toBeUndefined()
+  }
+})
 
 it('mounts the Remote contribution, renders registered root slots and disposes their effects', async () => {
   const b = await bench()

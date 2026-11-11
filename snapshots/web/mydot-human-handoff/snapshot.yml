@@ -1,0 +1,8 @@
+version: 1
+scenario: mydot-human-handoff
+profile: web
+composition: web-mydot-human-handoff
+recording: authored
+header:
+  class: web-mydot-human-handoff
+  pin: true

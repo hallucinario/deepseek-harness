@@ -8,7 +8,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { FsVersion } from '@deepseek-ai/dsh-fs/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SpaceId, MyDotSnapshot, SpaceInput } from '../src/types.ts'
+import type { SpaceId, MyDotSnapshot, SpaceInput, HumanRequestView, HumanRequestId } from '../src/types.ts'
 import { MyDotDock } from '../src/client/Dock.tsx'
 import { MyDotPanel } from '../src/client/Panel.tsx'
 import { createMyDotStore } from '../src/client/store.ts'
@@ -38,6 +38,28 @@ function bench() {
   }
 }
 async function click(name: string) { await act(async () => { fireEvent.click(screen.getByRole('button', { name })) }) }
+
+it('opens the selected pending request first and retains an explicit Japanese response in the editor store', async () => {
+  localStorage.setItem('dsh.mydot.editor.v1.coverage', JSON.stringify({ spaceId: null, editor: null }))
+  const b = bench()
+  const request = (id: string): HumanRequestView => ({ phase: 'pending', request: { requestId: id as HumanRequestId, requestRevision: 1,
+    sessionId: parent, parentSessionId: null, question: `Question ${id}`, reason: 'Owner decision', role: 'owner', evidenceUrl: '',
+    resumeInstruction: 'Continue the original Session', options: [], target: null, goal: null } })
+  const answer = vi.fn(async () => {})
+  b.source.set({ phase: 'ready', value: { ...b.snapshot, humanRequests: [request('first'), request('selected'), request('last')] } })
+  render(<MyDotPanel {...b.panelProps} selectedHumanRequestId="selected" answerHumanRequest={answer}
+    reconcileHumanRequest={vi.fn(async () => {})} cancelHumanRequest={vi.fn(async () => {})} />)
+  const cards = screen.getAllByRole('article')
+  expect(within(cards[0]!).getByRole('heading').textContent).toBe('Question selected')
+  const selected = within(cards[0]!)
+  fireEvent.change(selected.getByRole('combobox', { name: ja.humanResponse }), { target: { value: 'unknown' } })
+  fireEvent.change(selected.getByRole('textbox', { name: ja.humanDetails }), { target: { value: '原図を再確認してください' } })
+  await act(async () => { fireEvent.click(selected.getByRole('button', { name: ja.humanSubmit })) })
+  expect(answer).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'selected', choice: 'unknown', text: '原図を再確認してください' }))
+  expect(b.editor.getSnapshot().humanDrafts?.['selected:1']).toMatchObject({ choice: 'unknown', text: '原図を再確認してください', submissionId: 'request' })
+  fireEvent.click(selected.getByRole('button', { name: ja.open }))
+  expect(b.commands.openConversation).toHaveBeenCalledWith(parent)
+})
 
 it('names the targeted composer in the active locale and clears an accepted parent draft', async () => {
   const b = bench()
@@ -160,7 +182,7 @@ it('keeps store guards valid after an editor closes and rejects replacing a dirt
   a.conflict(null, 'ignored')
   a.close()
   a.open({ sessionId: parent, scope: null, path: '/report', version: null, saved: '', draft: 'unsaved', conflict: null })
-  expect(() => a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })).toThrow('Save or discard')
+  expect(() =>{  a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null }) }).toThrow('Save or discard')
   a.discard()
   a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })
   a.close()

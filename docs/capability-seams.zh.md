@@ -10,6 +10,7 @@
 ```mermaid
 flowchart LR
   pkg_experimental_mydot["experimental-mydot"]
+  svc_mydotHandoff["ctx.mydotHandoff<br/>Versioned owner requests and original-Session continuation"]
   svc_mydot["ctx.mydot<br/>Space-linked local work and current files"]
   pkg_experimental_memory_experience["experimental-memory-experience"]
   svc_experienceMemory["ctx.experienceMemory<br/>Scoped execution experience recall"]
@@ -356,6 +357,7 @@ flowchart LR
   pkg_experimental_computer_use_cua_driver_native --> svc_computerUse
   pkg_experimental_memory_experience --> svc_experienceMemory
   pkg_experimental_mydot --> svc_mydot
+  pkg_experimental_mydot --> svc_mydotHandoff
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
   pkg_experimental_speech_to_text_sensevoice --> svc_speechToText
@@ -511,6 +513,7 @@ flowchart LR
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
   svc_mcpResources --> pkg_mcp_resources
+  svc_mydotHandoff --> pkg_experimental_mydot
   svc_officeToPdf --> pkg_client_ui_sidebar_documentpreview
   svc_otel --> pkg_host_product_telemetry_otel
   svc_otel --> pkg_session_telemetry_otel
@@ -622,6 +625,7 @@ flowchart LR
 
 | ctx 键 | 角色 | 所属包 | 实现 | 直接消费方 | 配套插件 | 说明 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.mydotHandoff` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | [`experimental-mydot`](../packages/experimental/mydot) | - | 将请求、回答、实际输入接收及结果保存在 Session 事件中；可选的受保护回调验证图纸结果引用。 |
 | `ctx.mydot` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | - | - | 保存 Space 关联并投影现有 Session、子工作、文件和限定作用域的 Markdown；执行仍由相应的服务负责。 |
 | `ctx.experienceMemory` | `service` | [`experimental-memory-experience`](../packages/experimental/memory-experience) | - | - | - | 保存带源引用的观察和固定的当前上下文选择；人工命令在宿主目录作用域中检查和停用记录。 |
 | `ctx.cotTranslation` | `service` | [`experimental-client-ui-cot-translation`](../packages/experimental/client-ui-cot-translation) | - | - | - | 为展开的思考内容提供有界的 Session 翻译请求，不改变模型可见历史。 |

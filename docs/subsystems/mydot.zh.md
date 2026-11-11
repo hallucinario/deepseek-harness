@@ -94,6 +94,7 @@ interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  humanRequests?: readonly HumanRequestView[] | undefined
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }
 ```
@@ -135,6 +136,128 @@ interface JobInput { parentSessionId: SessionId; childSessionId: SessionId; requ
 ```ts type-equiv
 /** Exact direct-parent ownership address. */
 interface JobAddress { parentSessionId: SessionId; childSessionId: SessionId }
+```
+
+## `HumanRequestId`
+
+```ts type-equiv
+/** Opaque identity of one durable request, independent of its label or Session. */
+type HumanRequestId = Branded<'MyDotHumanRequestId'>
+```
+
+## `HumanSubmissionId`
+
+```ts type-equiv
+/** Stable identity retained when an answer response is lost. */
+type HumanSubmissionId = Branded<'MyDotHumanSubmissionId'>
+```
+
+## `HumanSurveyTarget`
+
+```ts type-equiv
+/** Immutable survey source and exact starting edit revision. */
+interface HumanSurveyTarget {
+  caseId: string
+  sourceId: string
+  sourceRevision: string
+  baseRevisionId: string
+  baseVersion: number
+  workflow: 'independent-reference' | 'assisted-correction'
+}
+```
+
+## `SurveyHandoffResult`
+
+```ts type-equiv
+/** Reference returned by the survey server; drawing contents stay in that application. */
+interface SurveyHandoffResult {
+  schemaVersion: 1
+  requestId: HumanRequestId
+  status: 'saved' | 'applied' | 'deferred' | 'needs-material'
+  source: { caseId: string; sourceId: string; sourceRevision: string; manifestId: string }
+  baseSurvey: { revisionId: string; version: number }
+  survey: { revisionId: string; version: number }
+  planning: null | { caseId: string; revisionId: string; headVersion: number }
+  goldId: string | null
+}
+```
+
+## `PreparedHumanRequest`
+
+```ts type-equiv
+/** Prepared request bound to one original branch and observed source version. */
+interface PreparedHumanRequest {
+  requestId: HumanRequestId
+  requestRevision: number
+  sessionId: SessionId
+  parentSessionId: SessionId | null
+  question: string
+  reason: string
+  role: 'owner'
+  evidenceUrl: string
+  resumeInstruction: string
+  options: string[]
+  target: HumanSurveyTarget | null
+  goal: { id: string; revision: number; roundsStarted: number; armed: boolean } | null
+}
+```
+
+## `HumanAnswer`
+
+```ts type-equiv
+/** Explicit response; its meaning never expands external-action permission. */
+interface HumanAnswer {
+  requestId: HumanRequestId
+  requestRevision: number
+  submissionId: HumanSubmissionId
+  choice: string
+  text: string
+  result: SurveyHandoffResult | null
+}
+```
+
+## `HumanRequestView`
+
+```ts type-equiv
+/** Receipt, model admission and actual outcome are distinct durable facts. */
+interface HumanRequestView {
+  request: PreparedHumanRequest
+  phase: 'pending' | 'received' | 'dispatching' | 'queued' | 'claimed' | 'resumed' | 'stopped' | 'retired' | 'outcome'
+  answer?: HumanAnswer | undefined
+  rpcId?: string | undefined
+  reason?: string | undefined
+  outcome?: 'succeeded' | 'failed' | 'unknown' | undefined
+  evidence?: string | undefined
+}
+```
+
+## `HumanRequestChange`
+
+```ts type-equiv
+/** Changes belong to the original Session's single append-only writer. */
+type HumanRequestChange =
+  | { kind: 'prepared'; request: PreparedHumanRequest }
+  | { kind: 'received'; requestId: HumanRequestId; answer: HumanAnswer; responder: string }
+  | { kind: 'dispatching'; requestId: HumanRequestId; rpcId: string }
+  | { kind: 'queued' | 'claimed' | 'resumed'; requestId: HumanRequestId }
+  | { kind: 'stopped'; requestId: HumanRequestId; reason: string }
+  | { kind: 'retired'; requestId: HumanRequestId; reason: string }
+  | { kind: 'outcome'; requestId: HumanRequestId; outcome: 'succeeded' | 'failed' | 'unknown'; evidence: string }
+```
+
+## `PrepareHumanInput`
+
+```ts type-equiv
+/** Model preparation fields; Session ownership and goal state come from the Host. */
+interface PrepareHumanInput {
+  requestId: string
+  question: string
+  reason: string
+  evidenceUrl: string
+  resumeInstruction: string
+  options: string[]
+  target: HumanSurveyTarget | null
+}
 ```
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
@@ -266,4 +389,63 @@ MyDot metadata, projected work and current-file access.
 Types: [FsVersion](filesystem.zh.md) · [SessionId](core.zh.md) · [SessionPromptValue](session.zh.md) · [SessionRequestId](session.zh.md) · [SubagentInterruptReceipt](subagent.zh.md) · [SubagentPromptReceipt](subagent.zh.md)
 
 Source: [`packages/experimental/mydot/src/index.ts`](../../packages/experimental/mydot/src/index.ts)
+
+<a id="ctxmydothandoff--humanhandoffservice"></a>
+
+### `ctx.mydotHandoff` — `HumanHandoffService`
+
+Concrete answer/recovery methods backed by the existing parent Session writer.
+
+```ts cordis-catalog
+/** Prepare one human dependency and disarm only its original branch.
+ * @param agent - Actual initiating branch, never a model-selected Session.
+ * @param input - Versioned question and evidence prepared for the owner.
+ * @returns Persisted pending request.
+ */
+async prepare(agent: Agent, input: PrepareHumanInput): Promise<HumanRequestView>
+
+/** Accept an owner response; a receipt does not certify subsequent work.
+ * @param input - Stable submission and exact observed request revision.
+ * @returns Current durable receipt or correlated execution state.
+ */
+@Remote async answer(input: HumanAnswer): Promise<HumanRequestView>
+
+/** Reconcile a saved external result or an accepted but undelivered answer.
+ * @param requestId - Exact durable request identity.
+ * @returns Saved state, including explicit refusal or uncertainty.
+ */
+@Remote async reconcile(requestId: HumanRequestId): Promise<HumanRequestView>
+
+/** Retire a dependency without replaying or changing its saved answer.
+ * @param requestId - Exact request the owner is cancelling.
+ * @returns Durable retired state; no external action or model turn is started.
+ */
+@Remote async cancel(requestId: HumanRequestId): Promise<HumanRequestView>
+
+/** Read the canonical projected request list without holding a model or a browser.
+ * @returns Current request states reconstructed from Session projections.
+ */
+async snapshot(): Promise<readonly HumanRequestView[]>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/experimental/mydot/src/human-handoff.ts`](../../packages/experimental/mydot/src/human-handoff.ts)
+
+<a id="mydot-events"></a>
+
+### `mydot/*` events
+
+<a id="mydothandoff-changed--emit"></a>
+
+#### `mydot/handoff-changed` — emit
+
+Committed request state changed. @mode emit
+
+```ts cordis-catalog
+/** Committed request state changed. @mode emit */
+'mydot/handoff-changed'(): void
+```
+
+Source: [`packages/experimental/mydot/src/human-handoff.ts`](../../packages/experimental/mydot/src/human-handoff.ts)
 <!-- END GENERATED cordis-surface -->

@@ -2571,6 +2571,51 @@
       "doc": "docs/subsystems/schedule.md",
       "symbol": "SchedulePauseResult",
       "source": "packages/schedule/schedule/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanRequestId",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanSubmissionId",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanSurveyTarget",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "SurveyHandoffResult",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "PreparedHumanRequest",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanAnswer",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanRequestView",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "HumanRequestChange",
+      "source": "packages/experimental/mydot/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "PrepareHumanInput",
+      "source": "packages/experimental/mydot/src/human-handoff.ts"
     }
   ]
 }

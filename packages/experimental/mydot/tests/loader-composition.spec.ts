@@ -195,9 +195,8 @@ it('runs two independent children, presents both current files to the parent inb
   await ctx.mydot.presentResults(parent.id)
   await parent.whenIdle()
   const snapshot = await ctx.mydot.snapshot()
-  expect(snapshot.artifacts).toEqual(expect.arrayContaining(['A.md', 'B.md'].map(file => expect.objectContaining({
-    parentSessionId: parent.id, path: join(root, file), available: true,
-  }))))
+  for (const file of ['A.md', 'B.md']) expect(snapshot.artifacts.some(item =>
+    item.parentSessionId === parent.id && item.path === join(root, file) && item.available)).toBe(true)
   using parentSource = await ctx.sessionQuery.observeSession(parent.id)
   const messages = parentSource.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'mydot'
     && event.data.source.sections.some(section => section.name.startsWith('mydot/artifacts/')))
