@@ -27,6 +27,8 @@ Create a Space, choose reference files and an execution Workspace, and continue 
 
 Add this row to a Web Host composition whose resolver can load this package; keep the existing Session Controller, Subagent Spawn/Fork, filesystem and configured storage-domain services. The browser module is `@deepseek-ai/dsh-experimental-mydot/client`; it mounts its generated Remote contribution and effect-owned sidebar and conversation slots. No standard profile is changed.
 
+The `/types` entry provides declarations through `import type`; runtime consumers use the Host or `/client` entry.
+
 ```yaml
 - name: '@deepseek-ai/dsh-experimental-mydot'
 ```

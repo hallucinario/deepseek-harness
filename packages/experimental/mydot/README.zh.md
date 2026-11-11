@@ -27,6 +27,8 @@ kind: "package-reference"
 
 将此配置行添加到可解析此包的 Web Host 组合中，保留现有 Session Controller、Subagent Spawn/Fork、文件系统和已配置的 storage-domain 服务。浏览器模块为 `@deepseek-ai/dsh-experimental-mydot/client`，负责挂载其生成的 Remote 贡献及受生命周期管理的侧栏和对话 Slot。标准配置档不变。
 
+`/types` 入口通过 `import type` 提供声明；运行时使用方使用 Host 或 `/client` 入口。
+
 ```yaml
 - name: '@deepseek-ai/dsh-experimental-mydot'
 ```
