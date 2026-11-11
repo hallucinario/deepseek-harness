@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-11-mydot-human-handoff.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-11-11-mydot-human-handoff.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-11-11-mydot-human-handoff:
+  en: c73bf2072ffc4df0
+  zh: 3dcedfecc6728806
+/2026-11-11-mydot-human-handoff/summary:
+  en: 36fe4ea359dbf6c8
+  zh: e5227c0f2d2f6a86
+/2026-11-11-mydot-human-handoff/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-11-11-mydot-human-handoff/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-11-11-mydot-human-handoff/compatibility:
+  en: 5c7c51c9bcc65d70
+  zh: fecc0325fd712d47
+/2026-11-11-mydot-human-handoff/verification:
+  en: 5098c6cc56b36b4a
+  zh: 63a1187fe2682e55
+/2026-11-11-mydot-human-handoff/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Create a Space, choose reference files and an execution Workspace, and continue talking while two local child Sessions work independently. Send steering or queued text to an exact child, stop one child, and open current deliverables through their source conversation. Edit bounded UTF-8 files and personal or Space Markdown memory with version checks. This opt-in experimental composition adds no task database and enables no desktop automation or recurring schedule by default.
+Create a Space, choose reference files and an execution Workspace, and continue talking while two local child Sessions work independently. Send text to an exact child, stop one child, and open deliverables through their source conversation. Edit bounded UTF-8 files and Markdown memory with version checks. Enable human requests to park one branch, answer from the pending list, and return to its original Session. This opt-in experimental composition adds no task database and enables no desktop automation or recurring schedule by default.
 
 ## Table of Contents
 
@@ -45,6 +45,12 @@ Desktop coordination only applies to tool names explicitly listed in `desktopToo
 
 The existing Schedule page pauses or resumes future deliveries under the same ID. Already delivered requests and active turns remain unchanged; delivery receipts do not certify successful output. See the [Schedule reference](../../../docs/subsystems/schedule.md).
 
+Human requests require `humanHandoffEnabled: true` and durable Session persistence. The model prepares a reason, evidence link, exact source/base version, owner response choices and a next action; the tool ends that branch without keeping a model request open. Other branches continue. The MyDot pending list retains drafts and distinguishes a saved answer, delivery, consumption by the original Session, and an explicitly recorded outcome. Opening `/?humanRequest=<requestId>` selects a card without submitting an answer. Unknown, deferred, rejected and needs-material responses stop the branch. Cancel retires its request; a new explicit owner message can supersede a stopped request without replaying its answer. An answer grants no external-action authority.
+
+For drawing review, configure `humanHandoffSocketPath` in an existing canonical owner-private directory and `humanHandoffSurveyOrigin` as a fixed loopback HTTP origin. Set a measured positive `humanHandoffTimeoutMs`; the optional listener has no default deadline. The drawing server posts a persisted result reference to `POST /human-requests/<requestId>/answers`; MyDot independently reads the fixed server's authoritative handoff record and requires exact source/base association and current survey/planning heads. Startup recovers a saved result whose callback was lost. A temporary verification failure retains the pending request; use its recovery button after the server is available. The request stores references, while drawing edits remain in the drawing application. Independent-reference review does not display model answer options.
+
+MyDot flushes the answer before acknowledging it and flushes a delivery marker before waking the original Session. A direct child uses its durable root parent's request ledger and the existing child continuation API. Changed, paused, completed or exhausted goals refuse continuation; consumed rounds remain consumed. After uncertain delivery, MyDot checks the original Session's actual input before reporting consumption. An unconfirmed external outcome stays stopped and is never automatically replayed. Successful outcome recording requires an existing result artifact; it does not establish the artifact's quality or human acceptance.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -62,6 +68,7 @@ The `mydot` storage domain owns small Space records and the authoritative Sessio
 | [`src/control.ts`](src/control.ts) | Per-child admission and durable request deduplication |
 | [`src/files.ts`](src/files.ts) | Consistent reads and version-guarded edits |
 | [`src/desktop.ts`](src/desktop.ts) | Software ownership and handoff admission |
+| [`src/human-handoff.ts`](src/human-handoff.ts) | Durable owner requests, answer admission and recovery |
 | [`src/client/mount.ts`](src/client/mount.ts) | Shared subscription, navigation and Slot registration |
 
 </details>
@@ -92,6 +99,20 @@ Space and selected memory text add input tokens on each step. Their byte bounds 
 
 Snapshots append after existing conversation input. Editing Space instructions or memory changes the next snapshot and can reduce prefix reuse from that point; unchanged earlier conversation entries remain reusable.
 
+### Human requests
+
+#### What the model sees
+
+`prepare_human_request` returns the persisted request ID and pending state, then ends only its branch. The continuation contains the saved question, exact answer/result references and prepared next action, with an explicit statement that the response grants no broader external-action permission. `record_human_request_outcome` records artifact evidence or a concrete failed/unknown stopping reason only after that Session consumes the answer.
+
+#### Token effect
+
+Waiting starts no model or long-lived tool call. Preparation, the accepted answer and any explicit outcome occupy ordinary logged tool/input tokens; all existing model and goal limits still apply.
+
+#### KV Cache effect
+
+The answer appends to its original Session. It does not rebuild a fresh child or rewrite earlier conversation text.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
@@ -102,6 +123,9 @@ The package operates on current local Session and file capabilities:
 - Memory is explicit editable Markdown; external embeddings and cross-Space history injection are not required.
 - Desktop ownership is per Host instance and only gates configured tools. Real human handoff and phone keyboard, photo and navigation acceptance require device testing.
 - External one-shot executions have no continuation controls. Runtime completion and assistant summaries never certify correct deliverables.
+- Human handoff supports a root or its direct local child; nested children and children with an explicit per-activation token cap refuse preparation because the current cold-child API cannot preserve that cap. The owner can prepare on the root instead.
+- The first drawing workflow binds survey and planning to the same case. Notifications, global Codex app-server integration, PC takeover and additional business widgets remain unconfigured; revisit them only for a concrete supported consumer.
+- Unix callbacks require POSIX ownership and a measured deployment deadline. Arbitrary external effects cannot be delivered exactly once; uncertain delivery requires inspection or new explicit owner work. No iPhone or independent-human acceptance follows from automated fixtures.
 
 <a id="dev-note"></a>
 ### Dev Note

@@ -529,7 +529,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'Commands',
-    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n}',
+    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n    answerHumanRequest?: (answer: HumanAnswer) => Promise<void>;\n    reconcileHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    cancelHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    selectedHumanRequestId?: string;\n}',
   },
   {
     name: 'CommonKeyOf',
@@ -660,6 +660,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type HostObservable<T> = ObservableSnapshot<T>;',
   },
   {
+    name: 'HumanAnswer',
+    declaration: 'export interface HumanAnswer {\n    requestId: HumanRequestId;\n    requestRevision: number;\n    submissionId: HumanSubmissionId;\n    choice: string;\n    text: string;\n    result: SurveyHandoffResult | null;\n}',
+  },
+  {
+    name: 'HumanRequestId',
+    declaration: 'export type HumanRequestId = Branded<\'MyDotHumanRequestId\'>;',
+  },
+  {
+    name: 'HumanRequestView',
+    declaration: 'export interface HumanRequestView {\n    request: PreparedHumanRequest;\n    phase: \'pending\' | \'received\' | \'dispatching\' | \'queued\' | \'claimed\' | \'resumed\' | \'stopped\' | \'retired\' | \'outcome\';\n    answer?: HumanAnswer | undefined;\n    rpcId?: string | undefined;\n    reason?: string | undefined;\n    outcome?: \'succeeded\' | \'failed\' | \'unknown\' | undefined;\n    evidence?: string | undefined;\n}',
+  },
+  {
+    name: 'HumanSubmissionId',
+    declaration: 'export type HumanSubmissionId = Branded<\'MyDotHumanSubmissionId\'>;',
+  },
+  {
+    name: 'HumanSurveyTarget',
+    declaration: 'export interface HumanSurveyTarget {\n    caseId: string;\n    sourceId: string;\n    sourceRevision: string;\n    baseRevisionId: string;\n    baseVersion: number;\n    workflow: \'independent-reference\' | \'assisted-correction\';\n}',
+  },
+  {
     name: 'Injected',
     declaration: 'export type Injected = InjectFace<Commands>;',
   },
@@ -761,7 +781,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    humanRequests?: readonly HumanRequestView[] | undefined;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'ObservableSnapshot',
@@ -806,6 +826,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PendingSubmissionRetirement',
     declaration: 'export type PendingSubmissionRetirement = {\n    readonly reason: \'observed\';\n    readonly attachments: readonly (ImageAttachmentRef | FileAttachmentRef)[];\n} | {\n    readonly reason: \'failed\';\n};',
+  },
+  {
+    name: 'PreparedHumanRequest',
+    declaration: 'export interface PreparedHumanRequest {\n    requestId: HumanRequestId;\n    requestRevision: number;\n    sessionId: SessionId;\n    parentSessionId: SessionId | null;\n    question: string;\n    reason: string;\n    role: \'owner\';\n    evidenceUrl: string;\n    resumeInstruction: string;\n    options: string[];\n    target: HumanSurveyTarget | null;\n    goal: {\n        id: string;\n        revision: number;\n        roundsStarted: number;\n        armed: boolean;\n    } | null;\n}',
   },
   {
     name: 'ProjectionsFace',
@@ -1094,6 +1118,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SubmissionHandle',
     declaration: 'export interface SubmissionHandle {\n    readonly requestId: SessionRequestId;\n    abandon(): void;\n}',
+  },
+  {
+    name: 'SurveyHandoffResult',
+    declaration: 'export interface SurveyHandoffResult {\n    schemaVersion: 1;\n    requestId: HumanRequestId;\n    status: \'saved\' | \'applied\' | \'deferred\' | \'needs-material\';\n    source: {\n        caseId: string;\n        sourceId: string;\n        sourceRevision: string;\n        manifestId: string;\n    };\n    baseSurvey: {\n        revisionId: string;\n        version: number;\n    };\n    survey: {\n        revisionId: string;\n        version: number;\n    };\n    planning: null | {\n        caseId: string;\n        revisionId: string;\n        headVersion: number;\n    };\n    goldId: string | null;\n}',
   },
   {
     name: 'TextRead',

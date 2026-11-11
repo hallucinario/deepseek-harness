@@ -19,7 +19,7 @@ it('loads the generated Remote and withdraws all registered UI before its contri
     const mount = vi.spyOn(rt.remote, '$mount').mockResolvedValue(withdraw)
     await rt.declare({ main: { kind: 'keyed', scope: 'root' }, 'sidebar.panellist': { kind: 'list', scope: 'root' }, 'conversation.input.dock': { kind: 'list', scope: 'session' } } as never)
     let dispose: (() => Promise<void>) | undefined
-    await rt.mount({ inject, apply: async (ctx) => { dispose = await apply(ctx); return dispose } })
+    await rt.mount({ inject, apply: (ctx) => { ctx.effect(async () => { dispose = await apply(ctx); return dispose }) } })
     expect(mount).toHaveBeenCalledOnce()
     expect(mount).toHaveBeenCalledWith(expect.objectContaining({ package: '@deepseek-ai/dsh-experimental-mydot' }))
     expect(rt.slots.entries('main')).toHaveLength(1)

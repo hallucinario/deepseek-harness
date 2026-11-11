@@ -1166,11 +1166,11 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:45`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:48`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
-export interface Config {
+export interface Config extends HumanHandoffConfig {
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -1181,6 +1181,20 @@ export interface Config {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+}
+
+/** Optional local integration; no timeout is invented for a disabled feature. */
+export interface HumanHandoffConfig {
+  /** Enable preparation and the owner pending list; durable decoding remains registered when off. */
+  humanHandoffEnabled: boolean
+  /** Absolute owner-only Unix socket in an existing canonical private directory; empty disables ingress. */
+  humanHandoffSocketPath: string
+  /** Fixed loopback HTTP origin used to read authoritative drawing results; no model-selected destination. */
+  humanHandoffSurveyOrigin: string
+  /** Measured positive callback/verification deadline in milliseconds; required only for the optional socket. */
+  humanHandoffTimeoutMs?: number
+  /** Existing complete UTF-8 request/result byte allowance. */
+  maxTextBytes: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->

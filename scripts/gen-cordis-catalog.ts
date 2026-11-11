@@ -51,6 +51,7 @@ export { REGION_BEGIN, REGION_END }
  */
 export const SERVICE_PAGE: Record<string, string> = {
   mydot: 'mydot.md',
+  mydotHandoff: 'mydot.md',
   experienceMemory: 'experience-memory.md',
   translator: 'translation.md',
   cotTranslation: 'translation.md',
@@ -225,6 +226,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
  * {@link EVENT_WALK_EXEMPTIONS} names each one with its documentation owner.
  */
 export const EVENT_SCOPE_PAGE: Record<string, string> = {
+  mydot: 'mydot.md',
   'llm-pi-ai': 'llm-streaming.md',
   'app-boot': 'boot.md',
   hmr: 'boot.md',
@@ -300,6 +302,14 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   MyDotJobView: 'mydot.md',
   ArtifactView: 'mydot.md',
   MyDotSnapshot: 'mydot.md',
+  HumanRequestId: 'mydot.md',
+  HumanSubmissionId: 'mydot.md',
+  HumanSurveyTarget: 'mydot.md',
+  SurveyHandoffResult: 'mydot.md',
+  PreparedHumanRequest: 'mydot.md',
+  PrepareHumanInput: 'mydot.md',
+  HumanAnswer: 'mydot.md',
+  HumanRequestView: 'mydot.md',
   TextRead: 'mydot.md',
   TextSave: 'mydot.md',
   TextSaveResult: 'mydot.md',

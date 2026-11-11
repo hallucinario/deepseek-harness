@@ -5,6 +5,7 @@ import type { Space, SpaceId, SpaceInput } from '../types.ts'
 import type { MyDotSnapshot, MyDotJobView, ArtifactView } from '../types.ts'
 import type { TextRead, TextSave, TextSaveResult } from '../types.ts'
 import type { MemoryScope, StartJob } from '../types.ts'
+import type { HumanAnswer, HumanRequestId } from '../types.ts'
 import type { PendingInput, createMyDotStore } from './store.ts'
 import type { NS } from './locales.ts'
 
@@ -34,6 +35,10 @@ export interface Commands {
   handoff: () => Promise<void>
   resume: (owner: SessionId, capturedAt: number) => Promise<void>
   newRequestId: () => string
+  answerHumanRequest?: (answer: HumanAnswer) => Promise<void>
+  reconcileHumanRequest?: (requestId: HumanRequestId) => Promise<void>
+  cancelHumanRequest?: (requestId: HumanRequestId) => Promise<void>
+  selectedHumanRequestId?: string
 }
 /** Renderer turns the declared observable into its subscribed selector hook. */
 export type Injected = InjectFace<Commands>

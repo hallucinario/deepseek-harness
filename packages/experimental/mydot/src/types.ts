@@ -52,6 +52,7 @@ export interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  humanRequests?: readonly HumanRequestView[] | undefined
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }
 
@@ -73,3 +74,82 @@ import type { SubagentPromptRequestId } from '@deepseek-ai/dsh-subagent/client'
 export interface JobInput { parentSessionId: SessionId; childSessionId: SessionId; requestId: SubagentPromptRequestId; delivery: 'steer' | 'queue'; text: string }
 /** Exact direct-parent ownership address. */
 export interface JobAddress { parentSessionId: SessionId; childSessionId: SessionId }
+
+/** Opaque identity of one durable request, independent of its label or Session. */
+export type HumanRequestId = Branded<'MyDotHumanRequestId'>
+/** Stable identity retained when an answer response is lost. */
+export type HumanSubmissionId = Branded<'MyDotHumanSubmissionId'>
+/** Immutable survey source and exact starting edit revision. */
+export interface HumanSurveyTarget {
+  caseId: string
+  sourceId: string
+  sourceRevision: string
+  baseRevisionId: string
+  baseVersion: number
+  workflow: 'independent-reference' | 'assisted-correction'
+}
+/** Reference returned by the survey server; drawing contents stay in that application. */
+export interface SurveyHandoffResult {
+  schemaVersion: 1
+  requestId: HumanRequestId
+  status: 'saved' | 'applied' | 'deferred' | 'needs-material'
+  source: { caseId: string; sourceId: string; sourceRevision: string; manifestId: string }
+  baseSurvey: { revisionId: string; version: number }
+  survey: { revisionId: string; version: number }
+  planning: null | { caseId: string; revisionId: string; headVersion: number }
+  goldId: string | null
+}
+/** Prepared request bound to one original branch and observed source version. */
+export interface PreparedHumanRequest {
+  requestId: HumanRequestId
+  requestRevision: number
+  sessionId: SessionId
+  parentSessionId: SessionId | null
+  question: string
+  reason: string
+  role: 'owner'
+  evidenceUrl: string
+  resumeInstruction: string
+  options: string[]
+  target: HumanSurveyTarget | null
+  goal: { id: string; revision: number; roundsStarted: number; armed: boolean } | null
+}
+/** Explicit response; its meaning never expands external-action permission. */
+export interface HumanAnswer {
+  requestId: HumanRequestId
+  requestRevision: number
+  submissionId: HumanSubmissionId
+  choice: string
+  text: string
+  result: SurveyHandoffResult | null
+}
+/** Receipt, model admission and actual outcome are distinct durable facts. */
+export interface HumanRequestView {
+  request: PreparedHumanRequest
+  phase: 'pending' | 'received' | 'dispatching' | 'queued' | 'claimed' | 'resumed' | 'stopped' | 'retired' | 'outcome'
+  answer?: HumanAnswer | undefined
+  rpcId?: string | undefined
+  reason?: string | undefined
+  outcome?: 'succeeded' | 'failed' | 'unknown' | undefined
+  evidence?: string | undefined
+}
+/** Changes belong to the original Session's single append-only writer. */
+export type HumanRequestChange =
+  | { kind: 'prepared'; request: PreparedHumanRequest }
+  | { kind: 'received'; requestId: HumanRequestId; answer: HumanAnswer; responder: string }
+  | { kind: 'dispatching'; requestId: HumanRequestId; rpcId: string }
+  | { kind: 'queued' | 'claimed' | 'resumed'; requestId: HumanRequestId }
+  | { kind: 'stopped'; requestId: HumanRequestId; reason: string }
+  | { kind: 'retired'; requestId: HumanRequestId; reason: string }
+  | { kind: 'outcome'; requestId: HumanRequestId; outcome: 'succeeded' | 'failed' | 'unknown'; evidence: string }
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /** Durable human dependency, response and execution state; absence must never authorize continuation. */
+    'mydot/human-handoff': HumanRequestChange
+  }
+}
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionMap { mydotHumanRequests: readonly HumanRequestView[] }
+  interface SessionProjectionStateMap { mydotHumanRequests: readonly HumanRequestView[] }
+}
