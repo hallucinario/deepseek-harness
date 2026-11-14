@@ -68,6 +68,11 @@ export function registerUi(ctx: Context): void {
   const commands: Commands = {
     hooks: { mydot: source }, retry: watch,
     newRequestId: randomUUID,
+    filingCommand: async (command, filing, externalControlsClosed) => {
+      if (command === 'reconcile') value(await ctx.remote.mydotFiling.reconcile(filing.plan.caseId))
+      else if (command === 'begin') value(await ctx.remote.mydotFiling.begin(filing.plan.caseId, filing.revision, filing.planDigest, externalControlsClosed === true))
+      else value(await ctx.remote.mydotFiling[command](filing.plan.caseId, filing.revision, filing.planDigest))
+    },
     answerHumanRequest: async (answer) => { value(await ctx.remote.mydotHandoff.answer(answer)) },
     reconcileHumanRequest: async (requestId) => { value(await ctx.remote.mydotHandoff.reconcile(requestId)) },
     cancelHumanRequest: async (requestId) => { value(await ctx.remote.mydotHandoff.cancel(requestId)) },

@@ -214,3 +214,73 @@ it('ignores late frames and failures from an aborted watch generation', async ()
   await act(async () => { reject!(new Error('aborted stream')); b.commands.retry() })
   expect(b.commands.hooks.mydot.getSnapshot()).toEqual({ phase: 'loading' })
 })
+import type { FilingView } from '../src/filing-types.ts'
+
+const remoteFiling: FilingView = {
+  sessionId: parent, revision: 7, planDigest: 'd'.repeat(64), actor: 'host-owner', control: 'human', phase: 'approved',
+  plan: { caseId: 'remote-review' as FilingView['plan']['caseId'], legalEntity: 'Remote Entity', account: 'mock-account',
+    site: 'local-synthetic-recipient', destination: 'mock-local', period: { from: '2025-01-01', to: '2025-12-31' },
+    tax: 'mock-tax', amount: '1000', currency: 'JPY', forms: ['return'], files: [], expiresAt: 2000000000000,
+    inputDestinations: [], modelDestinations: [], stopRef: 'cancel', queryRef: 'query',
+    effects: { submit: true, payment: 'none', standingSettings: 'none' } },
+}
+
+async function filingBench() {
+  const b = await bench()
+  const reply = () => vi.fn<(...args: unknown[]) => Promise<{ ok: true; value: undefined } | { ok: false; error: Error }>>()
+    .mockResolvedValue({ ok: true, value: undefined })
+  const filingRemote = { approve: reply(), begin: reply(), confirmMock: reply(),
+    reconcile: reply(), cancel: reply(), returnControl: reply() }
+  b.rt.remote.provideNamespaces({ mydotFiling: filingRemote })
+  return { ...b, filingRemote }
+}
+
+it('forwards filing decisions and normalizes begin owner confirmation to an explicit boolean', async () => {
+  const b = await filingBench()
+  try {
+    const command = b.commands.filingCommand!
+    expect(typeof command).toBe('function')
+    for (const rpc of Object.values(b.filingRemote)) expect(rpc).not.toHaveBeenCalled()
+    for (const action of ['approve', 'confirmMock', 'cancel', 'returnControl'] as const) {
+      await command(action, remoteFiling, true)
+      expect(b.filingRemote[action]).toHaveBeenCalledExactlyOnceWith(
+        remoteFiling.plan.caseId, remoteFiling.revision, remoteFiling.planDigest)
+    }
+    await command('reconcile', remoteFiling, true)
+    expect(b.filingRemote.reconcile).toHaveBeenCalledExactlyOnceWith(remoteFiling.plan.caseId)
+    await command('begin', remoteFiling)
+    await command('begin', remoteFiling, false)
+    await command('begin', remoteFiling, true)
+    expect(b.filingRemote.begin.mock.calls).toEqual([
+      [remoteFiling.plan.caseId, remoteFiling.revision, remoteFiling.planDigest, false],
+      [remoteFiling.plan.caseId, remoteFiling.revision, remoteFiling.planDigest, false],
+      [remoteFiling.plan.caseId, remoteFiling.revision, remoteFiling.planDigest, true],
+    ])
+    expect(b.remote.send).not.toHaveBeenCalled()
+    expect(b.prompt).not.toHaveBeenCalled()
+  } finally {
+    await b.dispose()
+  }
+})
+
+it('propagates rejected filing results and transport failures without retrying any decision', async () => {
+  const b = await filingBench()
+  try {
+    const command = b.commands.filingCommand!
+    for (const action of ['approve', 'begin', 'confirmMock', 'reconcile', 'cancel', 'returnControl'] as const) {
+      const rpc = b.filingRemote[action]
+      const rejected = new Error(`${action} denied`)
+      rpc.mockResolvedValueOnce({ ok: false, error: rejected })
+      await expect(command(action, remoteFiling, true)).rejects.toBe(rejected)
+      expect(rpc).toHaveBeenCalledOnce()
+      const disconnected = new Error(`${action} disconnected`)
+      rpc.mockRejectedValueOnce(disconnected)
+      await expect(command(action, remoteFiling, true)).rejects.toBe(disconnected)
+      expect(rpc).toHaveBeenCalledTimes(2)
+    }
+    expect(b.remote.send).not.toHaveBeenCalled()
+    expect(b.prompt).not.toHaveBeenCalled()
+  } finally {
+    await b.dispose()
+  }
+})

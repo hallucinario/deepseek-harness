@@ -529,7 +529,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'Commands',
-    declaration: 'export interface Commands {\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n    answerHumanRequest?: (answer: HumanAnswer) => Promise<void>;\n    reconcileHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    cancelHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    selectedHumanRequestId?: string;\n}',
+    declaration: 'export interface Commands {\n    filingCommand?: (command: import(\'./Filing.tsx\').FilingCommand, filing: import(\'../filing-types.ts\').FilingView, externalControlsClosed?: boolean) => Promise<void>;\n    hooks: {\n        mydot: HostObservable<ViewState>;\n    };\n    retry: () => void;\n    presentResults: (sessionId: SessionId) => Promise<void>;\n    releaseDesktop: (sessionId: SessionId) => Promise<void>;\n    saveSpace: (input: SpaceInput) => Promise<Space>;\n    createConversation: (spaceId: SpaceId) => Promise<void>;\n    attach: (sessionId: SessionId, spaceId: SpaceId) => Promise<void>;\n    startJob: (input: StartJob) => Promise<void>;\n    send: (sessionId: SessionId, input: PendingInput) => Promise<void>;\n    stop: (job: MyDotJobView) => Promise<void>;\n    open: (job: MyDotJobView) => void;\n    openConversation: (sessionId: SessionId) => void;\n    preview: (artifact: ArtifactView) => void;\n    flushPreview: (sessionId: SessionId) => void;\n    readFile: (sessionId: SessionId, path: string) => Promise<TextRead>;\n    saveFile: (sessionId: SessionId, edit: TextSave) => Promise<TextSaveResult>;\n    readMemory: (scope: MemoryScope) => Promise<TextRead>;\n    saveMemory: (scope: MemoryScope, edit: Omit<TextSave, \'path\'>) => Promise<TextSaveResult>;\n    continueFile: (sessionId: SessionId, path: string, version: import(\'@deepseek-ai/dsh-fs/types\').FsVersion) => Promise<void>;\n    handoff: () => Promise<void>;\n    resume: (owner: SessionId, capturedAt: number) => Promise<void>;\n    newRequestId: () => string;\n    answerHumanRequest?: (answer: HumanAnswer) => Promise<void>;\n    reconcileHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    cancelHumanRequest?: (requestId: HumanRequestId) => Promise<void>;\n    selectedHumanRequestId?: string;\n}',
   },
   {
     name: 'CommonKeyOf',
@@ -630,6 +630,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FactoryRegistrationPropsOf',
     declaration: 'export type FactoryRegistrationPropsOf<F extends keyof SlotFactoryMap & string> = FactoryRenderPropsOf<F> & PropsStore<FactoryStoreOf<F>> & InjectFace<FactoryInjectOf<F>> & PropsLocale<FactoryLocaleOf<F>> & PropsRenderFactories;',
+  },
+  {
+    name: 'FilingCardView',
+    declaration: 'export interface FilingCardView {\n    filing: FilingView;\n    confirmationReady: boolean;\n}',
+  },
+  {
+    name: 'FilingCaseId',
+    declaration: 'export type FilingCaseId = Branded<\'MyDotFilingCaseId\'>;',
+  },
+  {
+    name: 'FilingFile',
+    declaration: 'export interface FilingFile {\n    role: \'source\' | \'preview\' | \'attachment\';\n    path: string;\n    digest: string;\n}',
+  },
+  {
+    name: 'FilingPlan',
+    declaration: 'export interface FilingPlan {\n    caseId: FilingCaseId;\n    legalEntity: string;\n    account: string;\n    site: \'local-synthetic-recipient\';\n    period: {\n        from: string;\n        to: string;\n    };\n    tax: string;\n    destination: \'mock-local\';\n    amount: string;\n    currency: \'JPY\';\n    forms: string[];\n    files: FilingFile[];\n    inputDestinations: string[];\n    modelDestinations: string[];\n    expiresAt: number;\n    stopRef: string;\n    queryRef: string;\n    effects: {\n        submit: boolean;\n        payment: \'none\' | \'one-time\';\n        standingSettings: \'none\' | \'auto-debit\';\n    };\n}',
+  },
+  {
+    name: 'FilingView',
+    declaration: 'export interface FilingView {\n    sessionId: SessionId;\n    plan: FilingPlan;\n    previousPlan?: FilingPlan | undefined;\n    revision: number;\n    planDigest: string;\n    phase: \'prepared\' | \'approved\' | \'intent\' | \'unknown\' | \'accepted\' | \'cancelled\' | \'invalidated\';\n    actor: \'model-preparer\' | \'host-owner\';\n    control: \'agent\' | \'stopping\' | \'human\' | \'return-authorized\';\n    ownerControlConfirmation?: {\n        revision: number;\n        planDigest: string;\n        confirmedAt: number;\n        source: \'host-owner\';\n    } | undefined;\n    intentId?: string | undefined;\n    recorder?: RecorderStatus | undefined;\n    receipt?: MockReceipt | undefined;\n    reason?: \'files-changed\' | \'confirmation-unknown\' | \'owner-cancelled\' | \'persistence-unconfirmed\' | undefined;\n}',
   },
   {
     name: 'FontFamilies',
@@ -776,12 +796,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type MemoryScope = {\n    kind: \'personal\';\n} | {\n    kind: \'space\';\n    spaceId: SpaceId;\n};',
   },
   {
+    name: 'MockReceipt',
+    declaration: 'export interface MockReceipt {\n    receiptId: string;\n    intentId: string;\n    caseId: FilingCaseId;\n    planDigest: string;\n    forms: string[];\n}',
+  },
+  {
     name: 'MyDotJobView',
     declaration: 'export interface MyDotJobView {\n    parentSessionId: SessionId;\n    childSessionId: SessionId;\n    label: string;\n    mode: \'continuable\' | \'one-shot\' | \'external\' | \'unknown\';\n    request?: string | undefined;\n    summary?: string | undefined;\n    status: \'running\' | \'inactive\';\n}',
   },
   {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    humanRequests?: readonly HumanRequestView[] | undefined;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    filings?: readonly FilingCardView[] | undefined;\n    humanRequests?: readonly HumanRequestView[] | undefined;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'ObservableSnapshot',
@@ -878,6 +902,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'QueueAction',
     declaration: 'export type QueueAction = {\n    readonly kind: \'edit\';\n    readonly content: readonly TextBlock[];\n} | {\n    readonly kind: \'remove\';\n} | {\n    readonly kind: \'steer\';\n};',
+  },
+  {
+    name: 'RecorderStatus',
+    declaration: 'export interface RecorderStatus {\n    version: \'high-impact-recorder/v1\';\n    caseId: string;\n    planDigest: string;\n    state: \'starting\' | \'recording\' | \'protected\' | \'failed\' | \'stopped\';\n    evidence: \'complete\' | \'partial\' | \'unavailable\';\n    readyForConfirmation: boolean;\n    sequence: number;\n    observedAt: number;\n    archiveRef: string;\n    segments: string[];\n    protectedIntervals: string[];\n    gaps: string[];\n}',
   },
   {
     name: 'RegisterFactory',

@@ -1618,6 +1618,20 @@ def smoke_sdk_snapshot_mode(
         dsh_home = root / "home"
         sessions = dsh_home / "sessions"
         patch = write_advanced_profile_patch(root, "snapshot.patch.yml", sessions, mode)
+        filing_entries = []
+        if mode == "native":
+            repository = Path(__file__).resolve().parent.parent
+            producer = root / "sdk-filing-events.mjs"
+            subprocess.run([
+                "node", "-e",
+                "const fs = require('node:fs'); const ts = require('typescript'); "
+                "fs.writeFileSync(process.argv[2], ts.transpileModule("
+                "fs.readFileSync(process.argv[1], 'utf8'), { compilerOptions: { "
+                "module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 "
+                "} }).outputText);",
+                str(repository / "scripts/fixtures/sdk-filing-events.ts"), str(producer),
+            ], cwd=repository, check=True)
+            filing_entries.append({"id": "snapshot-filing-events", "name": producer.as_uri()})
         feedback_patch = write_profile_patch(root, "feedback.patch.yml", sessions, [{"insert": [
             {"id": "snapshot-tool", "name": (
                 Path(__file__).resolve().parent / "fixtures/python-snapshot-tool.mjs"
@@ -1636,6 +1650,7 @@ def smoke_sdk_snapshot_mode(
             {"id": "snapshot-feedback-producer", "name": (
                 Path(__file__).resolve().parent.parent / "snapshots/sdk/text-turn/feedback-producer.mjs"
             ).as_uri()},
+            *filing_entries,
         ]}])
         creation_patch = write_profile_patch(root, "creation.patch.yml", sessions, [
             {"insert": [{
@@ -1728,6 +1743,19 @@ def smoke_sdk_snapshot_mode(
                 raise AssertionError("second advanced child log has no workflow-subagent result")
 
         assert [event for event in logs[SNAPSHOT_SESSION_ID] if event.get("type") in ("job/registered", "job/settled")] == jobs
+        if mode == "native":
+            filing_events = [event for event in result.events
+                             if str(event.get("type")).startswith("mydot/")]
+            assert [event["type"] for event in filing_events] == [
+                "mydot/filing-case", "mydot/filing", "mydot/mock-receipt",
+            ], filing_events
+            subscribed_filings = [notification.payload["event"]
+                                  for notification in result.notifications
+                                  if notification.method == "session.event"
+                                  and str(notification.payload.get("event", {}).get("type")).startswith("mydot/")]
+            assert subscribed_filings == filing_events
+            assert [event for event in logs[SNAPSHOT_SESSION_ID]
+                    if str(event.get("type")).startswith("mydot/")] == filing_events
 
         files = build_snapshot_files(result, logs, child_ids, root)
         compare_snapshot_files(
@@ -2756,6 +2784,24 @@ def normalize_snapshot_value(
                 and not any(actual == job_id for actual, _ in replacements)):
             index = 1 + sum(token.startswith("{{id:") for _, token in replacements)
             replacements.append((job_id, "{{id:" + str(index) + "}}"))
+
+    if value.get("type") in ("mydot/filing-case", "mydot/filing", "mydot/mock-receipt"):
+        data = value.get("data")
+        owners = [data]
+        view = data.get("view") if isinstance(data, dict) else None
+        if isinstance(view, dict):
+            owners.extend([view, view.get("plan"), view.get("previousPlan"),
+                           view.get("receipt"), view.get("recorder")])
+        for owner in owners:
+            if not isinstance(owner, dict):
+                continue
+            for field in ("caseId", "planDigest", "intentId", "receiptId"):
+                identity = owner.get(field)
+                if (isinstance(identity, str)
+                        and not re.fullmatch(r"\{\{id:[1-9]\d*\}\}", identity)
+                        and not any(actual == identity for actual, _ in replacements)):
+                    index = 1 + sum(token.startswith("{{id:") for _, token in replacements)
+                    replacements.append((identity, "{{id:" + str(index) + "}}"))
 
     normalized = {
         key: normalize_snapshot_value(item, replacements)

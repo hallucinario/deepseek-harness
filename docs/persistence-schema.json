@@ -11145,6 +11145,723 @@
       }
     },
     {
+      "key": "event:mydot/filing",
+      "kind": "event",
+      "event": "mydot/filing",
+      "surface": false,
+      "digest": "20b727602a2f823af7ff5421dc2de6b9dd966c325ff92ecf5af6d02219c1bc6d",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 59,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 60,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "view",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "actor",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "control",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "ownerControlConfirmation",
+                "type": 12,
+                "optional": true
+              },
+              {
+                "name": "phase",
+                "type": 14,
+                "optional": false
+              },
+              {
+                "name": "plan",
+                "type": 22,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "previousPlan",
+                "type": 22,
+                "optional": true
+              },
+              {
+                "name": "reason",
+                "type": 41,
+                "optional": true
+              },
+              {
+                "name": "receipt",
+                "type": 46,
+                "optional": true
+              },
+              {
+                "name": "recorder",
+                "type": 47,
+                "optional": true
+              },
+              {
+                "name": "revision",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "model-preparer"
+          },
+          {
+            "kind": "literal",
+            "value": "host-owner"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8,
+              9,
+              10
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "agent"
+          },
+          {
+            "kind": "literal",
+            "value": "return-authorized"
+          },
+          {
+            "kind": "literal",
+            "value": "stopping"
+          },
+          {
+            "kind": "literal",
+            "value": "human"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "confirmedAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "revision",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "source",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "accepted"
+          },
+          {
+            "kind": "literal",
+            "value": "prepared"
+          },
+          {
+            "kind": "literal",
+            "value": "unknown"
+          },
+          {
+            "kind": "literal",
+            "value": "approved"
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "intent"
+          },
+          {
+            "kind": "literal",
+            "value": "invalidated"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "account",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "amount",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "currency",
+                "type": 23,
+                "optional": false
+              },
+              {
+                "name": "destination",
+                "type": 24,
+                "optional": false
+              },
+              {
+                "name": "effects",
+                "type": 25,
+                "optional": false
+              },
+              {
+                "name": "expiresAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "files",
+                "type": 32,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "inputDestinations",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "legalEntity",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "modelDestinations",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "period",
+                "type": 39,
+                "optional": false
+              },
+              {
+                "name": "queryRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "site",
+                "type": 40,
+                "optional": false
+              },
+              {
+                "name": "stopRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "tax",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "JPY"
+          },
+          {
+            "kind": "literal",
+            "value": "mock-local"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "payment",
+                "type": 26,
+                "optional": false
+              },
+              {
+                "name": "standingSettings",
+                "type": 29,
+                "optional": false
+              },
+              {
+                "name": "submit",
+                "type": 31,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              27,
+              28
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "none"
+          },
+          {
+            "kind": "literal",
+            "value": "one-time"
+          },
+          {
+            "kind": "union",
+            "types": [
+              27,
+              30
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "auto-debit"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "array",
+            "element": 33
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "digest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "path",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 34,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              35,
+              36,
+              37
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "preview"
+          },
+          {
+            "kind": "literal",
+            "value": "source"
+          },
+          {
+            "kind": "literal",
+            "value": "attachment"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "from",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "to",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "local-synthetic-recipient"
+          },
+          {
+            "kind": "union",
+            "types": [
+              42,
+              43,
+              44,
+              45
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "owner-cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "persistence-unconfirmed"
+          },
+          {
+            "kind": "literal",
+            "value": "files-changed"
+          },
+          {
+            "kind": "literal",
+            "value": "confirmation-unknown"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "receiptId",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "archiveRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "evidence",
+                "type": 48,
+                "optional": false
+              },
+              {
+                "name": "gaps",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "observedAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "protectedIntervals",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "readyForConfirmation",
+                "type": 31,
+                "optional": false
+              },
+              {
+                "name": "segments",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "sequence",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 52,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 58,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              49,
+              50,
+              51
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "partial"
+          },
+          {
+            "kind": "literal",
+            "value": "unavailable"
+          },
+          {
+            "kind": "literal",
+            "value": "complete"
+          },
+          {
+            "kind": "union",
+            "types": [
+              53,
+              54,
+              55,
+              56,
+              57
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "protected"
+          },
+          {
+            "kind": "literal",
+            "value": "recording"
+          },
+          {
+            "kind": "literal",
+            "value": "starting"
+          },
+          {
+            "kind": "literal",
+            "value": "stopped"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "high-impact-recorder/v1"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/filing"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:mydot/filing-case",
+      "kind": "event",
+      "event": "mydot/filing-case",
+      "surface": false,
+      "digest": "d17b88e306880844053389ba3b679561fd0e0c5d04b2cc5da3de52e7d68df765",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/filing-case"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:mydot/human-handoff",
       "kind": "event",
       "event": "mydot/human-handoff",
@@ -11790,6 +12507,100 @@
           {
             "kind": "literal",
             "value": "mydot/human-handoff"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:mydot/mock-receipt",
+      "kind": "event",
+      "event": "mydot/mock-receipt",
+      "surface": false,
+      "digest": "d3a0ec99d05af3002b52439b6a5a1ce811f7296f141efebac5bcb1056be3b7b4",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "receiptId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 2
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/mock-receipt"
           }
         ]
       }
@@ -23365,6 +24176,16 @@
       ]
     },
     {
+      "digest": "06c5520ef5d26d0d411235ca5814b8feef6b878f16d77a7dc837f28a3bd30e05",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "06f1b0492635011b41b7a80b7b6a45f1778837e5a2c0dbebfb515e34a762c1f0",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "07e1a58c58b593f507b8e7f25723bb0aa42baae6e00f5ecfddf28cb1e64d3235",
       "names": [
         "packages/session/session-title/src/types.ts#SessionTitleModelIdentity",
@@ -23438,6 +24259,11 @@
       "sources": []
     },
     {
+      "digest": "0b5b32a1ba7bbca319fc5d46f1c897d88d68cfa2d7ad75276d17dd44b51f0efa",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "0b6d718c693fdf7f06dcccb0bcbbabe78cc63514eafc62d6b2a3899735279d6f",
       "names": [
         "packages/goal/goal/src/types.ts#GoalRef"
@@ -23496,6 +24322,11 @@
     },
     {
       "digest": "0dd29eef1e9ab5ec294d732595cb30dd355e3d1d6542f9e6b652631d1b8a5ba9",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "0dec9105823cd812d46a58c00aedee89584e2a771b875f3651495008d94cd43c",
       "names": [],
       "sources": []
     },
@@ -23588,7 +24419,7 @@
       "digest": "1373b653c5d00117655637630acaaca4a2c3b07c2787cf30aa9b2e4040fc8d3d",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:139"
+        "packages/experimental/mydot/src/types.ts:142"
       ]
     },
     {
@@ -23610,6 +24441,13 @@
       "digest": "142c37d302aa22a0a57915b5255939d3ca91c1811ca13fddcf84cf76ea00758a",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "14f39dd349951e53eb5425fdc52b7e01db46fa3662ee9f973ec8ef2a56631127",
+      "names": [],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:67"
+      ]
     },
     {
       "digest": "15196447222782e773eb943c92b18316ce96b9af0f0cfddb6e57ba8274ecc5ff",
@@ -23649,7 +24487,7 @@
         "packages/experimental/mydot/src/types.ts#PreparedHumanRequest"
       ],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:103"
+        "packages/experimental/mydot/src/types.ts:106"
       ]
     },
     {
@@ -23766,6 +24604,11 @@
       ]
     },
     {
+      "digest": "1cd980b41efad86959905c9e347ba3b7d23683feebe606e6d430ff55beec5985",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "1cde1bedde79c5e8a56aee9c05c8e0a579cf5bc611deb85b93fa331a16ca978f",
       "names": [
         "packages/compaction/compaction-image-offload/src/projection.ts#ImageOffloadTarget"
@@ -23862,6 +24705,11 @@
       ]
     },
     {
+      "digest": "20b727602a2f823af7ff5421dc2de6b9dd966c325ff92ecf5af6d02219c1bc6d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "2142e391b9ccb60d487afcf373ce74db98d952f69e8289eddb352a7e16e996c5",
       "names": [],
       "sources": []
@@ -23956,7 +24804,7 @@
       "digest": "2701e8974f47204e60a29eca1b72d9f556233d819b4a8d38f61a58ed0dad21f7",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:140"
+        "packages/experimental/mydot/src/types.ts:143"
       ]
     },
     {
@@ -23973,7 +24821,7 @@
       "digest": "28475fcdbef524c0c1457cca6ac01cb72e71822adf20417d75c021b3b6cc5a0a",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:138"
+        "packages/experimental/mydot/src/types.ts:141"
       ]
     },
     {
@@ -24007,6 +24855,11 @@
     },
     {
       "digest": "2aed07493b1c65b6d00de5586da1e743cf501684b9ad43a1765fb4007d4ea456",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "2bbd3d3671781d440105a2a306de21a8c9aab9ea4c9dfdd5f6439b503f2a910d",
       "names": [],
       "sources": []
     },
@@ -24098,12 +24951,30 @@
       "sources": []
     },
     {
+      "digest": "3160f731ac8904dc413a12c8f5fca29f64cd7da3be10059068279f54f6be2b71",
+      "names": [
+        "packages/experimental/mydot/src/filing-types.ts#FilingFile"
+      ],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:7"
+      ]
+    },
+    {
       "digest": "31907de9563751822af6d9be02bafaf26faa098bbd1cb412524134d577cc1648",
       "names": [
         "packages/compaction/compaction/src/checkpoint.ts#CompactionCheckpointSource"
       ],
       "sources": [
         "packages/compaction/compaction/src/checkpoint.ts:22"
+      ]
+    },
+    {
+      "digest": "3216974e5dec86896cb32f4beec4eaf55a683bb29e50a9b903c5eb82f4e83cbb",
+      "names": [
+        "packages/experimental/mydot/src/filing-types.ts#FilingPlan"
+      ],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:9"
       ]
     },
     {
@@ -24139,7 +25010,17 @@
       ]
     },
     {
+      "digest": "33d73b60d1d1bfc788176037ad7685b4de38b09495592088f1356d2273c7a3a3",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "33e60d6c123b1dc19ed654d5fa73b6dbfc027a7bae6512476e823c9207ea040f",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "34698bc7e88fd2e35cc25e60f8ef8e3df3a22c015f1741c5c23c6fad6e017628",
       "names": [],
       "sources": []
     },
@@ -24181,6 +25062,15 @@
       "sources": []
     },
     {
+      "digest": "37bf3e307b1fafad6eb0b54653004184f48608b0fa506afc945a086ea6c4a747",
+      "names": [
+        "packages/experimental/mydot/src/filing-types.ts#MockReceipt"
+      ],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:44"
+      ]
+    },
+    {
       "digest": "37cbc9cf06d494cfe5c67f078af1605eacb8e4c2c853e9e26455b73de0ee7ccf",
       "names": [],
       "sources": []
@@ -24208,7 +25098,7 @@
       "digest": "38e09a8f99db4061a1ccd63a4f945b66a725255a6ae9775f1744a1255900761d",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:96"
+        "packages/experimental/mydot/src/types.ts:99"
       ]
     },
     {
@@ -24304,7 +25194,21 @@
       "sources": []
     },
     {
+      "digest": "3e1f7fdeab2f56ee70c15f4beb6391a840389def3247f08e84fc763a2903dfcd",
+      "names": [
+        "packages/experimental/mydot/src/filing-types.ts#FilingView"
+      ],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:46"
+      ]
+    },
+    {
       "digest": "3e2ece4967cfebe95f450a93f45523dff99d6749f6269f2f60f84dfecfcf3693",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "3e3aec9fb7ad8bebaa8726f4ac3eeac043fa5c7e581b7ef8a279c22075bd82a1",
       "names": [],
       "sources": []
     },
@@ -24355,6 +25259,11 @@
       "sources": []
     },
     {
+      "digest": "42cd2918cb962efad26294ebc2edae59899bb73e6f911ffe762d70db4fe80a5f",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "42e0916e0dda5f6d1e7bb05d8514717147c036a79c9f36085683469516c1fd3f",
       "names": [],
       "sources": []
@@ -24394,6 +25303,11 @@
       "sources": []
     },
     {
+      "digest": "454fd5a687516cd61059c8258959ae192da4ba0dfe49334850b267ec833a8c38",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "45f2a07ea94573123b6ae14db787a40062dec3834f36d8be92c523d40ba28448",
       "names": [],
       "sources": [
@@ -24420,6 +25334,11 @@
       "sources": [
         "packages/llm/llm/src/types.ts:501"
       ]
+    },
+    {
+      "digest": "485b02d708a7b9921298a72da87e42f3eba065e2aa01ab3a2ba14e5b75c0c74f",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "487b65c37bfedb8b72088c4107a0a90a6249701f6b26745f6d98f9b8a22b07c7",
@@ -24507,6 +25426,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamId",
         "packages/experimental/agent-team/src/types.ts#TeamMessageId",
         "packages/experimental/agent-team/src/types.ts#TeamTaskId",
+        "packages/experimental/mydot/src/filing-types.ts#FilingCaseId",
         "packages/experimental/mydot/src/types.ts#HumanRequestId",
         "packages/experimental/mydot/src/types.ts#HumanSubmissionId",
         "packages/experimental/webhook/src/brand.ts#WebhookDeliveryId",
@@ -24535,8 +25455,9 @@
         "packages/experimental/agent-team/src/types.ts:21",
         "packages/experimental/agent-team/src/types.ts:33",
         "packages/experimental/agent-team/src/types.ts:9",
-        "packages/experimental/mydot/src/types.ts:79",
-        "packages/experimental/mydot/src/types.ts:81",
+        "packages/experimental/mydot/src/filing-types.ts:5",
+        "packages/experimental/mydot/src/types.ts:82",
+        "packages/experimental/mydot/src/types.ts:84",
         "packages/experimental/webhook/src/brand.ts:12",
         "packages/experimental/webhook/src/brand.ts:6",
         "packages/experimental/webhook/src/brand.ts:9",
@@ -24688,6 +25609,11 @@
     },
     {
       "digest": "557e148d30b79ee48645850832b30c717d7c3b64641deb5d6133b8b4e91ee0b8",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "55e108f6242cc38e33cc0bd5b0a7afabe5602e936a5f400201535141c243b9e2",
       "names": [],
       "sources": []
     },
@@ -24861,6 +25787,11 @@
       "sources": []
     },
     {
+      "digest": "5f4384bdc1d836570e73919e3d101679c10d49ef2cba77b1a4578c18b1890b1a",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "5f758f3de5f00c18968a7c6d347083aac5c9ae13f6a79c78f6611b23c4973564",
       "names": [
         "packages/subagent/subagent/src/descriptor.ts#OneShotSubagentDescriptorData"
@@ -24873,7 +25804,7 @@
       "digest": "6026129bf1da0c7048527414c9f17aa1017df066556f9829656ba288d664d98a",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:144"
+        "packages/experimental/mydot/src/types.ts:147"
       ]
     },
     {
@@ -24914,6 +25845,13 @@
       "digest": "62ecb62dc0fe1b5e70217f8a80c39256a40ee3a1917be14e5ca899d20c35f7fd",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "63f27d2d816ea6591cb62124d14521906ddcaaefa7ff48a24eb199f3b915a1eb",
+      "names": [],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:14"
+      ]
     },
     {
       "digest": "646219c7db7054ef4c976a2c155653c5e6d811f04e2fd318580a7e9f6445abf5",
@@ -24985,6 +25923,11 @@
       "sources": []
     },
     {
+      "digest": "682e730345fb15723ab498355daaa9938fc0c07ff3c5d323485e9bca3f8e1355",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "683bca120e4f518ab6f46722c45e8312a7d9caac80df60d3ff1692f4cc9098ba",
       "names": [],
       "sources": [
@@ -25020,6 +25963,11 @@
     },
     {
       "digest": "6ab45ac76839722df912f3ba50f1c6b41f2d614bde11f1aabfae04117ccdc80d",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "6afeb3c04afff3b5190691d085e1f47a63ab312b551ab1ac833e3d3dcdfc796a",
       "names": [],
       "sources": []
     },
@@ -25079,6 +26027,11 @@
       "sources": []
     },
     {
+      "digest": "6cffaa93dd780bc846d40a8df849d77d4f14966d1df1945dc97ab18c2ea8cd0c",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "6dacb1584f2bfbe209dc6b6f578d51da6d55595f64d0e63c727c98f359278def",
       "names": [],
       "sources": [
@@ -25089,7 +26042,7 @@
       "digest": "6dad2df3947fda9d65cc8ad1fe0c2e56d41c97af6b0ff83ee3c9e68ea296cad0",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:99"
+        "packages/experimental/mydot/src/types.ts:102"
       ]
     },
     {
@@ -25156,7 +26109,7 @@
       "digest": "6fc835b690604ae39420cd4b7a4ac4be8725d7fe56816218c90ad342af5ed3af",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:141"
+        "packages/experimental/mydot/src/types.ts:144"
       ]
     },
     {
@@ -25243,8 +26196,8 @@
       "digest": "76a45de6f575372a75ab4fecd43070381cd82c4838501d44fa23c265c1747c37",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:97",
-        "packages/experimental/mydot/src/types.ts:98"
+        "packages/experimental/mydot/src/types.ts:100",
+        "packages/experimental/mydot/src/types.ts:101"
       ]
     },
     {
@@ -25265,6 +26218,11 @@
       "sources": []
     },
     {
+      "digest": "79da7c6b3c996f86b627b3b632afb90f5d7a4718c03ebaf98c644b6fb45d4f41",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "79ddc907312f97cf9553d4841e8b3fc937097bd8d97900a790efad3c05255e99",
       "names": [],
       "sources": [
@@ -25273,6 +26231,11 @@
     },
     {
       "digest": "7a651f3b672c52fb615f22c0ce9cb3cc5b22aad92e6bbeefb0808fd7b9233a50",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "7a9fc6627236f167a02e23d36fd56a928b2eb67f7f4c465ad3c2cf0a02a88c20",
       "names": [],
       "sources": []
     },
@@ -25302,6 +26265,11 @@
     },
     {
       "digest": "7c9f44e90a0058f4cc532ae20dad0c10afa6eba22e70a6c79fc79490bad64397",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "7ceb98e582ea4619d89baefdc5fef42a46a21f627daadb4f1ef3c5a9bbfce95f",
       "names": [],
       "sources": []
     },
@@ -25407,6 +26375,11 @@
       "sources": [
         "packages/llm/llm/src/types.ts:68"
       ]
+    },
+    {
+      "digest": "81820817993d4bcc600accdef7d1c44f7b13cf9b3c220bb674dc0fecf6f3b21c",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "82470020b5bfcb1a843e2aa05602af7d37df99e82d01f015c7c589ba054fd89d",
@@ -25575,6 +26548,11 @@
       "sources": []
     },
     {
+      "digest": "8d2e0ec869518332c05f55a8b5ee43c9b2777512f0fbcb9aabe9f4ab0a5bd7a3",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "8e132928e21d983ac78e587f263958d441fe14fdf1aa3336f1e6a4aa26354422",
       "names": [
         "packages/session/session-title-llm/src/index.ts#SessionTitleLlmRequestEventData"
@@ -25619,6 +26597,11 @@
       "sources": []
     },
     {
+      "digest": "8f492ee8b873edc806d758c3ef2ee21a38849fbfb0689dfc1d448a8114c529cf",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "8f6d609794bf5afc01d7ccf3e03811d32f4b8047f58a2c9a98db0154c2ad7cb9",
       "names": [],
       "sources": []
@@ -25641,7 +26624,7 @@
         "packages/experimental/mydot/src/types.ts#HumanSurveyTarget"
       ],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:83"
+        "packages/experimental/mydot/src/types.ts:86"
       ]
     },
     {
@@ -25686,6 +26669,11 @@
       "sources": []
     },
     {
+      "digest": "94d7c677b5f3016c50f06dc5c8334d9e38548c4748b0802d0967858e635e0f91",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "95080295115fbd83544520ba247b68a03790131f6a2eac323d388758cb542f65",
       "names": [],
       "sources": [
@@ -25704,6 +26692,11 @@
     },
     {
       "digest": "9645cf93769a6dfb227bd400bd6cb9fa7bab9140f4a851e4ae92514ade6e3114",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "965007e129433fd9721fd3e8064430c1c4e48d3a4ecb66169f01b338f0b4faa2",
       "names": [],
       "sources": []
     },
@@ -25877,6 +26870,11 @@
       "sources": []
     },
     {
+      "digest": "a030aec1be14d3f9a13f6d51383bb6b6c5728a7a9b38c50c672183b89b751a93",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "a0a2e5c42e1c929445ecd1cd70f49be6b66441894ec72c08e8ae332821d4a3cb",
       "names": [],
       "sources": []
@@ -25920,6 +26918,13 @@
       "digest": "a2066bd52f61218ba15b758def2641cc6a8bd3d4a594a488ee4c65be356d7e39",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "a23af0e8eb243141efa96862a87c25f6d483c43940cca87192d128aa04b692ee",
+      "names": [],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:69"
+      ]
     },
     {
       "digest": "a2b49331716ba0a7078b026d145306a70eae64b7313c3e6204bd931e75ec3bb1",
@@ -25971,9 +26976,21 @@
       ]
     },
     {
+      "digest": "a540fb182fd679a697ff36b7b6a12e55fe1fcdeef360069cdc8e2c5785bfc260",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "a6567ccb2e530606b775371eb4fa31468d72084339968e8b0440a516a23b39dc",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "a67920bda9b48799539b8ca76050ef763ca72556906be4f1c6214ccc5eb1d686",
+      "names": [],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:55"
+      ]
     },
     {
       "digest": "a6b41f5bede8094d7bf635be5d69b1bd7a25e006ca9cf9415bceb9322f1a7feb",
@@ -26027,7 +27044,7 @@
       "digest": "a8ad8db20434b56253c5bea5413cacc2f9ea4b61e7e2114600488e7d05acc92b",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:115"
+        "packages/experimental/mydot/src/types.ts:118"
       ]
     },
     {
@@ -26200,7 +27217,7 @@
         "packages/experimental/mydot/src/types.ts#HumanAnswer"
       ],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:118"
+        "packages/experimental/mydot/src/types.ts:121"
       ]
     },
     {
@@ -26402,6 +27419,11 @@
       "sources": []
     },
     {
+      "digest": "b95e384c26532c0f0984bf33c83fde9b42ba61b3226e1d72af6dbd8365af8bc6",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "b978cff734e62143eb56c9125423ec275405eda969802d42aaf73ecb987d3b26",
       "names": [],
       "sources": []
@@ -26450,7 +27472,7 @@
       "digest": "bc23dc26465768ec7bb8841aa46fe10f7ef81929753eec2d293920198d0d8ca0",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:142"
+        "packages/experimental/mydot/src/types.ts:145"
       ]
     },
     {
@@ -26582,6 +27604,16 @@
       "sources": []
     },
     {
+      "digest": "c8a1dc630d822e53619d3e3ae10400e74868481793824b42ff718a9aa46aa6d1",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "c8d415753010f33303884fd33add672e3c01c70587ae553342cfae4305f66b8d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "c8e6f48878cc2a2f0dc59682280d81f407943fb503f32c64bf9ff3d9393c3eff",
       "names": [],
       "sources": []
@@ -26605,6 +27637,11 @@
     },
     {
       "digest": "cb1c8959e1726f82f9a3d2ef2bc90bf8c451a98fd56175e956022124c770c818",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "cb5746d6732118d8e3cd84d30df54554b8f40ae82cf0add000b66e4c8d456581",
       "names": [],
       "sources": []
     },
@@ -26674,12 +27711,32 @@
       "sources": []
     },
     {
+      "digest": "d17b88e306880844053389ba3b679561fd0e0c5d04b2cc5da3de52e7d68df765",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "d1a8fd80253ae084d2ecb3e0a691c393a3ecfdef5ad0496bc36dff3a08c4bcef",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "d244dabd98505ae5d49c87016cdb0b5254a8ca39b1e744308793a85ddf598b9b",
       "names": [],
       "sources": []
     },
     {
       "digest": "d28765f87d6b6ab408e0b2f3e7e297791b004b806d8e302c49903ebae815feb2",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "d3a0ec99d05af3002b52439b6a5a1ce811f7296f141efebac5bcb1056be3b7b4",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "d3a2e34fcfd4682e19d37cbf72da4788dba6817dc6169022919e7419c3c7bdd0",
       "names": [],
       "sources": []
     },
@@ -26726,6 +27783,11 @@
       "sources": []
     },
     {
+      "digest": "d6e96b28b55bd0a70289d0fe6c67497fccaf5ca9218b853f9089935828f72c45",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "d85590a5675c6e2fd8164e5792a6cceac714605b8ac228adae5ee668facb1490",
       "names": [],
       "sources": []
@@ -26755,11 +27817,21 @@
       "sources": []
     },
     {
+      "digest": "da2d19e1ee4eb30c3f92cef1f96cb9e6cb4a227ad80ad0e8ee7795c4ada3de92",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "da60ed58a8fa23d7aa4920ab5c1f4e3d28109cb0797ef9e5c8b125721b847582",
       "names": [],
       "sources": [
         "packages/session/working-directory/src/index.ts:39"
       ]
+    },
+    {
+      "digest": "da6845dffc8ab6c7303b61059d31a76345873a540bebdb6a4553cb1942387dbf",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "dacf3d5f3e4ff619c1320e64a48dec5e7ecd7870bece65fbd449a0e63adfa521",
@@ -26770,7 +27842,7 @@
       "digest": "db1ac6105f47006b60a45ed54824d8cf9030497916a466265ad7b3db06252d91",
       "names": [],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:143"
+        "packages/experimental/mydot/src/types.ts:146"
       ]
     },
     {
@@ -26792,6 +27864,23 @@
     },
     {
       "digest": "dbdafceb9a900183cccc80596498d386f3bf7bddead2b8cfde68453aa4739edc",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "dbdd382b12cd440d61467416fb2a9ad287f3b6d78b3213f32686eff75a60ef10",
+      "names": [],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:26"
+      ]
+    },
+    {
+      "digest": "dc22fcfd464c4182a391df8e7abcdcb4fc908d23559eaa846fb2ba3f8f4eef44",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "dc7e92806ca7e8d20e63801282ef74df4bed95fed37e38954b53ba6b13a5588e",
       "names": [],
       "sources": []
     },
@@ -26938,6 +28027,11 @@
       "sources": []
     },
     {
+      "digest": "e479de5bf00c4f95dbe18327f509d054e41906f3f208c460d7687d2472c52e11",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "e481c46af3813e0010558e93f578b2986acd658404cec2d1679e3ac2a6c48654",
       "names": [],
       "sources": [
@@ -27008,7 +28102,7 @@
         "packages/experimental/mydot/src/types.ts#HumanRequestChange"
       ],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:137"
+        "packages/experimental/mydot/src/types.ts:140"
       ]
     },
     {
@@ -27017,7 +28111,7 @@
         "packages/experimental/mydot/src/types.ts#SurveyHandoffResult"
       ],
       "sources": [
-        "packages/experimental/mydot/src/types.ts:92"
+        "packages/experimental/mydot/src/types.ts:95"
       ]
     },
     {
@@ -27309,6 +28403,11 @@
       "sources": []
     },
     {
+      "digest": "fb0b0c612322a406a13c2025923b42bc31ab4dfddd78eeb4b6865adaec54e774",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "fb5e0517050d2c6d40e5b8145db1f7c5ca7044d5d50fada6ff80e0b22c6ca973",
       "names": [],
       "sources": []
@@ -27317,6 +28416,15 @@
       "digest": "fb8b6a2e53cb9cf44c551176de0fb77d1ddc60037b99a891ff8a860b6d5c29a0",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "fbace1f1ec9fab31dc7be7b56a5cf408e6ef47d509ea731909ca4a08e913ae70",
+      "names": [
+        "packages/experimental/mydot/src/filing-types.ts#RecorderStatus"
+      ],
+      "sources": [
+        "packages/experimental/mydot/src/filing-types.ts:29"
+      ]
     },
     {
       "digest": "fbd2c74b346a1595b376139c587fadd23e4a21acc9c0abce342975b6cfc60986",
@@ -27349,6 +28457,11 @@
     },
     {
       "digest": "fd0d91a1f9dd2efb8959bdf5e07f8f0a98b1cdfa38ce8d4732ebde0b44c3abd4",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "fd428a96d8835f68d27233902584d919766f1ad6c385d1343479dd854fb6f249",
       "names": [],
       "sources": []
     },

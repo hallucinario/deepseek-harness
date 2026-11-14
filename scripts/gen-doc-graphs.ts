@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'mydotFiling',
+    pkg: 'experimental-mydot',
+    title: 'Owner-reviewed synthetic filing and independent recording evidence',
+    mode: 'service',
+    consumers: ['experimental-mydot'],
+    note: 'Persists plans, owner decisions and query-only uncertain intents in the original Session; only the owner can confirm the local synthetic recipient.',
+  },
+  {
     key: 'mydotHandoff',
     pkg: 'experimental-mydot',
     title: 'Versioned owner requests and original-Session continuation',

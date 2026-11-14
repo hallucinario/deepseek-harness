@@ -13,6 +13,7 @@ import type { NS } from './locales.ts'
 export type ViewState = { phase: 'loading' } | { phase: 'ready'; value: MyDotSnapshot; disconnected?: boolean } | { phase: 'failed'; message: string }
 /** Apply-time command values; no service objects or React values cross this face. */
 export interface Commands {
+  filingCommand?: (command: import('./Filing.tsx').FilingCommand, filing: import('../filing-types.ts').FilingView, externalControlsClosed?: boolean) => Promise<void>
   hooks: { mydot: HostObservable<ViewState> }
   retry: () => void
   presentResults: (sessionId: SessionId) => Promise<void>

@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
 import { createUserMessage, type ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { FsVersion } from '@deepseek-ai/dsh-fs/types'
@@ -27,6 +28,9 @@ import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
 import type { ArtifactView, MyDotSnapshot, StartJob, MemoryScope } from './types.ts'
+import { FilingService, type FilingConfig } from './filing-service.ts'
+export { FilingService } from './filing-service.ts'
+export type * from './filing-types.ts'
 import { HumanHandoffService, type HumanHandoffConfig } from './human-handoff.ts'
 export { HumanHandoffService } from './human-handoff.ts'
 export type { HumanHandoffConfig, PrepareHumanInput } from './human-handoff.ts'
@@ -45,7 +49,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
-export interface Config extends HumanHandoffConfig {
+export interface Config extends HumanHandoffConfig, FilingConfig {
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -67,6 +71,10 @@ export class MyDotService extends TypertRemoteService {
     desktopTools: z.array(z.string()).default([]),
     captureTools: z.array(z.string()).default([]),
     summaryCharacters: z.number().step(1).min(1).default(240),
+    filingEnabled: z.boolean().default(false),
+    filingRecorderSocketPath: z.string(),
+    filingRecorderTimeoutMs: z.number().step(1).min(1),
+    filingRecorderMaxAgeMs: z.number().step(1).min(1),
     humanHandoffEnabled: z.boolean().default(false),
     humanHandoffSocketPath: z.string().default(''),
     humanHandoffSurveyOrigin: z.string().default(''),
@@ -83,6 +91,12 @@ export class MyDotService extends TypertRemoteService {
   private readonly lifecycle = new AbortController()
   private readonly pendingSpaces = new Map<SessionId, Space>()
   private readonly starts = new Map<SessionId, { request: string; result: Promise<{ childSessionId: SessionId }> }>()
+  private filingTakeover = false
+  private filingRecovering = false
+  private filingAdmissions = new AbortController()
+  private filingReturning = false
+  private filingInFlight = 0
+  private readonly filingDrained = new Set<() => void>()
   private revision = 0
   private readonly presentations = new Map<SessionId, Promise<void>>()
   private readonly deliveries = new Set<Promise<void>>()
@@ -93,7 +107,37 @@ export class MyDotService extends TypertRemoteService {
     if (config.captureTools.some(tool => !config.desktopTools.includes(tool))) throw new Error('captureTools must be a subset of desktopTools')
     this.files = new TextFiles(ctx.fs, config.maxTextBytes)
     this.controls = new JobControls(ctx)
+    this.filingRecovering = config.filingEnabled === true
     ctx.plugin(HumanHandoffService, config)
+    const filing = ctx.plugin(FilingService, { ...config, takeover: async (sessionId) => {
+      this.filingTakeover = true
+      this.filingReturning = false
+      this.filingAdmissions.abort(new Error('Filing takeover closes queued desktop admission'))
+      if (config.desktopTools.length > 0) {
+        if (this.desktop.snapshot().phase === 'free') this.desktop.claim(sessionId)
+        this.desktop.requestHandoff()
+      }
+      this.notify()
+      if (this.filingInFlight !== 0) await new Promise<void>((resolve) => { this.filingDrained.add(resolve) })
+      const jobs = ctx.get('jobs')
+      if (jobs !== undefined) {
+        const active = (owner?: SessionId) => jobs.list(owner).some(job => job.status === 'running' || job.status === 'stopping')
+        if (active() || ctx.sessions.list().some(session => active(session.id))) {
+          throw new Error('Background jobs must finish or stop before filing takeover')
+        }
+      }
+    }, returnControl: () => {
+      if (config.desktopTools.length > 0 && config.captureTools.length === 0) throw new Error('Configure a fresh capture before returning desktop control')
+      this.filingAdmissions = new AbortController()
+      this.filingReturning = config.desktopTools.length > 0
+      if (config.desktopTools.length === 0) this.filingTakeover = false
+      this.notify()
+      return Promise.resolve()
+    }, read: async (sessionId, path) => {
+      const file = await this.readFile(sessionId, path)
+      if (file.kind !== 'text') throw new Error('Filing source or preview is missing')
+      return file.content
+    }, recovered: () => { this.filingRecovering = false; this.notify() } })
     ctx.on('mydot/handoff-changed', () => { this.notify() })
     this.initialized = ctx.effect(async () => {
       this.domain = await ctx.storageDomain.open(mydotDomain)
@@ -132,18 +176,33 @@ export class MyDotService extends TypertRemoteService {
         content: [{ type: 'text', text }], source: { kind: 'mydot', form: 'snapshot', sections: [{ name: 'mydot', text }] },
       })] }
     }, { prepend: true })
-    ctx.on('tools/execute', async (exec, next) => {
-      if (!config.desktopTools.includes(exec.name) || exec.agent === undefined) return next()
-      const finished = await this.desktop.acquire(
-        exec.agent.id, AbortSignal.any([exec.signal, this.lifecycle.signal]), config.captureTools.includes(exec.name),
-      )
-      this.notify()
+    const filingFence = ctx.on('tools/execute', async (exec, next) => {
+      if (this.lifecycle.signal.aborted) throw new Error('MyDot is closing')
+      if (this.filingRecovering) throw new Error('Filing ownership recovery is pending')
+      if (this.filingTakeover && !(this.filingReturning && config.captureTools.includes(exec.name) && exec.agent?.id === this.desktop.snapshot().owner)) throw new Error('Owner filing takeover blocks all app tool control and capture; query the existing intent')
+      this.filingInFlight += 1
       try {
-        const result = await next()
-        if (config.captureTools.includes(exec.name) && !result.isError && result.content.some(block => block.type === 'image')) this.desktop.observed(Date.now())
-        return result
-      } finally { finished(); this.notify() }
+        if (!config.desktopTools.includes(exec.name) || exec.agent === undefined) return await next()
+        const finished = await this.desktop.acquire(
+          exec.agent.id, AbortSignal.any([exec.signal, this.lifecycle.signal, this.filingAdmissions.signal]),
+          config.captureTools.includes(exec.name),
+        )
+        this.notify()
+        try {
+          const result = await next()
+          if (config.captureTools.includes(exec.name) && !result.isError && result.content.some(block => block.type === 'image')) this.desktop.observed(Date.now())
+          return result
+        } finally { finished(); this.notify() }
+      } finally {
+        this.filingInFlight -= 1
+        if (this.filingInFlight === 0) { for (const resolve of this.filingDrained) resolve(); this.filingDrained.clear() }
+      }
     })
+    ctx.effect(function* (this: MyDotService) {
+      yield filingFence
+      yield filing.dispose
+      yield () => { this.lifecycle.abort() }
+    }.bind(this))
   }
 
   async [Service.init](): Promise<void> { await this.initialized }
@@ -312,7 +371,8 @@ export class MyDotService extends TypertRemoteService {
       }
     }
     const humanRequests = principalOf(this.ctx.invocation) === undefined ? await this.ctx.get('mydotHandoff')?.snapshot() : []
-    return { spaces, conversations, jobs, artifacts: [...artifacts.values()], desktop: this.desktop.snapshot(), humanRequests,
+    const filings = principalOf(this.ctx.invocation) === undefined ? await this.ctx.get('mydotFiling')?.snapshot() : []
+    return { filings, spaces, conversations, jobs, artifacts: [...artifacts.values()], desktop: this.desktop.snapshot(), humanRequests,
       desktopEnabled: this.config.desktopTools.length > 0, issues }
   }
 
@@ -436,7 +496,9 @@ export class MyDotService extends TypertRemoteService {
    */
   @Remote
   resumeDesktop(owner: SessionId, capturedAt: number): DesktopState {
+    if (this.filingTakeover && !this.filingReturning) throw new Error('Filing takeover requires explicit return authority')
     const result = this.desktop.resume(owner, capturedAt)
+    if (this.filingReturning) { this.filingTakeover = false; this.filingReturning = false }
     this.notify()
     return result
   }

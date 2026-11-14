@@ -2616,6 +2616,41 @@
       "doc": "docs/subsystems/mydot.md",
       "symbol": "PrepareHumanInput",
       "source": "packages/experimental/mydot/src/human-handoff.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "FilingCaseId",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "FilingFile",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "FilingPlan",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "RecorderStatus",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "MockReceipt",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "FilingView",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
+    },
+    {
+      "doc": "docs/subsystems/mydot.md",
+      "symbol": "FilingCardView",
+      "source": "packages/experimental/mydot/src/filing-types.ts"
     }
   ]
 }

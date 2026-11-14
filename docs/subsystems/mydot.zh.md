@@ -94,6 +94,7 @@ interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  filings?: readonly FilingCardView[] | undefined
   humanRequests?: readonly HumanRequestView[] | undefined
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }
@@ -260,6 +261,100 @@ interface PrepareHumanInput {
 }
 ```
 
+## `FilingCaseId`
+
+```ts type-equiv
+/** Identity minted before preparing any filing work. */
+type FilingCaseId = Branded<'MyDotFilingCaseId'>
+```
+
+## `FilingFile`
+
+```ts type-equiv
+/** Immutable document observation, rechecked before an owner decision. */
+interface FilingFile { role: 'source' | 'preview' | 'attachment'; path: string; digest: string }
+```
+
+## `FilingPlan`
+
+```ts type-equiv
+/** Exact effects and destinations reviewed by the owner. */
+interface FilingPlan {
+  caseId: FilingCaseId
+  legalEntity: string
+  account: string
+  site: 'local-synthetic-recipient'
+  period: { from: string; to: string }
+  tax: string
+  destination: 'mock-local'
+  amount: string
+  currency: 'JPY'
+  forms: string[]
+  files: FilingFile[]
+  inputDestinations: string[]
+  modelDestinations: string[]
+  expiresAt: number
+  stopRef: string
+  queryRef: string
+  effects: { submit: boolean; payment: 'none' | 'one-time'; standingSettings: 'none' | 'auto-debit' }
+}
+```
+
+## `RecorderStatus`
+
+```ts type-equiv
+/** Independent host observation; all recording details are opaque references. */
+interface RecorderStatus {
+  version: 'high-impact-recorder/v1'
+  caseId: string
+  planDigest: string
+  state: 'starting' | 'recording' | 'protected' | 'failed' | 'stopped'
+  evidence: 'complete' | 'partial' | 'unavailable'
+  readyForConfirmation: boolean
+  sequence: number
+  observedAt: number
+  archiveRef: string
+  segments: string[]
+  protectedIntervals: string[]
+  gaps: string[]
+}
+```
+
+## `MockReceipt`
+
+```ts type-equiv
+/** Synthetic recipient identity, checked independently of the owner button result. */
+interface MockReceipt { receiptId: string; intentId: string; caseId: FilingCaseId; planDigest: string; forms: string[] }
+```
+
+## `FilingView`
+
+```ts type-equiv
+/** Durable state reconstructed from the original Session; authority never comes from a model answer. */
+interface FilingView {
+  sessionId: SessionId
+  plan: FilingPlan
+  previousPlan?: FilingPlan | undefined
+  revision: number
+  planDigest: string
+  phase: 'prepared' | 'approved' | 'intent' | 'unknown' | 'accepted' | 'cancelled' | 'invalidated'
+  actor: 'model-preparer' | 'host-owner'
+  control: 'agent' | 'stopping' | 'human' | 'return-authorized'
+  ownerControlConfirmation?: { revision: number; planDigest: string; confirmedAt: number; source: 'host-owner' } | undefined
+  intentId?: string | undefined
+  recorder?: RecorderStatus | undefined
+  receipt?: MockReceipt | undefined
+  reason?: 'files-changed' | 'confirmation-unknown' | 'owner-cancelled' | 'persistence-unconfirmed' | undefined
+}
+```
+
+## `FilingCardView`
+
+```ts type-equiv
+/** Runtime readiness is never inferred from a persisted intent after restart. */
+interface FilingCardView { filing: FilingView; confirmationReady: boolean }
+```
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -389,6 +484,83 @@ MyDot metadata, projected work and current-file access.
 Types: [FsVersion](filesystem.zh.md) · [SessionId](core.zh.md) · [SessionPromptValue](session.zh.md) · [SessionRequestId](session.zh.md) · [SubagentInterruptReceipt](subagent.zh.md) · [SubagentPromptReceipt](subagent.zh.md)
 
 Source: [`packages/experimental/mydot/src/index.ts`](../../packages/experimental/mydot/src/index.ts)
+
+<a id="ctxmydotfiling--filingservice"></a>
+
+### `ctx.mydotFiling` — `FilingService`
+
+Owner authority stays in Remote methods; model tools can only prepare plans.
+
+```ts cordis-catalog
+/** Reserve the stable case before preparing or reading filing documents.
+ * @param agent - Actual initiating Session.
+ * @returns Durably reserved identity; no filing authority is granted.
+ */
+async startCase(agent: Agent): Promise<FilingCaseId>
+
+/** Prepare from the actual initiating Session; never accepts a model-selected writer.
+ * @param agent - Actual tool caller.
+ * @param input - Exact synthetic plan with current document digests.
+ * @returns Flushed candidate carrying no owner authority.
+ */
+async prepare(agent: Agent, input: FilingPlan): Promise<FilingView>
+
+/** Read owner filing cards; persisted intents alone never enable confirmation.
+ * @returns Projected owner decisions and live readiness.
+ */
+async snapshot(): Promise<readonly FilingCardView[]>
+
+/** Approve precisely the displayed revision and digest.
+ * @param id - Stable case identity.
+ * @param revision - Displayed revision.
+ * @param digest - Server-computed digest.
+ * @returns Durable owner approval without any effect.
+ */
+@Remote async approve(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Persist owner intent after closing controls and verifying independent recorder readiness.
+ * @param id - Stable case identity.
+ * @param revision - Owner-approved revision.
+ * @param digest - Owner-approved digest.
+ * @param externalControlsClosed - Explicit owner assertion about other clients and scheduled controls.
+ * @returns Durable confirmation intent; no recipient invocation yet.
+ */
+@Remote async begin(id: FilingCaseId, revision: number, digest: string, externalControlsClosed: boolean): Promise<FilingView>
+
+/** Owner-only final synthetic confirmation; never sends to a real portal.
+ * @param id - Stable case identity.
+ * @param revision - Exact reviewed revision.
+ * @param digest - Exact reviewed digest.
+ * @returns Verified local receipt or explicit uncertainty.
+ */
+@Remote async confirmMock(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Return app control after independent recorder stop; configured desktops still need a fresh capture.
+ * @param id - Stable terminal case identity.
+ * @param revision - Exact terminal revision.
+ * @param digest - Exact reviewed digest.
+ * @returns Durable owner return authority, separate from desktop resume.
+ */
+@Remote async returnControl(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Query by existing stable intent without resending, including after restart.
+ * @param id - Stable case identity.
+ * @returns Receipt or unresolved state.
+ */
+@Remote async reconcile(id: FilingCaseId): Promise<FilingView>
+
+/** Revoke an unconsumed owner decision.
+ * @param id - Stable case identity.
+ * @param revision - Exact displayed revision.
+ * @param digest - Exact displayed digest.
+ * @returns Cancellation; existing acceptance is never undone.
+ */
+@Remote async cancel(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/experimental/mydot/src/filing-service.ts`](../../packages/experimental/mydot/src/filing-service.ts)
 
 <a id="ctxmydothandoff--humanhandoffservice"></a>
 
