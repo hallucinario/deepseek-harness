@@ -108,6 +108,7 @@ export class MyDotService extends TypertRemoteService {
     ctx.plugin(HumanHandoffService, config)
     ctx.plugin(FilingService, { ...config, takeover: async (sessionId) => {
       this.filingTakeover = true
+      this.filingReturning = false
       this.filingAdmissions.abort(new Error('Filing takeover closes queued desktop admission'))
       if (config.desktopTools.length > 0) {
         if (this.desktop.snapshot().phase === 'free') this.desktop.claim(sessionId)
@@ -478,6 +479,7 @@ export class MyDotService extends TypertRemoteService {
    */
   @Remote
   resumeDesktop(owner: SessionId, capturedAt: number): DesktopState {
+    if (this.filingTakeover && !this.filingReturning) throw new Error('Filing takeover requires explicit return authority')
     const result = this.desktop.resume(owner, capturedAt)
     if (this.filingReturning) { this.filingTakeover = false; this.filingReturning = false }
     this.notify()

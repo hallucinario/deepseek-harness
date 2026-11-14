@@ -182,7 +182,8 @@ export class FilingWorkflow {
       const receipt = await this.ports.recipient.query(view.intentId)
       if (receipt !== null) return this.accept(view, receipt)
       this.readyIntent = undefined
-      const next: FilingView = view.phase === 'intent' ? view : { ...view, phase: 'unknown', reason: 'confirmation-unknown' }
+      const next: FilingView = view.phase === 'intent' || view.phase === 'invalidated'
+        ? view : { ...view, phase: 'unknown', reason: 'confirmation-unknown' }
       await this.ports.persist(next); return next
     })
   }

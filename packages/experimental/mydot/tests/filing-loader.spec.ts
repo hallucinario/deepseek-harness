@@ -743,6 +743,55 @@ it.each(['free', 'agent'] as const)('returns an initially %s desktop only after 
   expect(ctx.mydot.releaseDesktop(agent.id)).toEqual({ phase: 'free', inFlight: 0 })
 })
 
+it('revokes the previous return authority when another filing takes over during its in-flight capture', async () => {
+  const runtime = await setup()
+  await reloadFiling(runtime, { desktopTools: ['filing-late-capture'], captureTools: ['filing-late-capture'] })
+  const { ctx } = runtime
+  const first = await prepared(runtime)
+  const second = await anotherFiling(runtime, first)
+  const entered = Promise.withResolvers<undefined>()
+  const finish = Promise.withResolvers<undefined>()
+  const body = vi.fn()
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-late-capture', description: '', parameters: {}, execute: async () => {
+    entered.resolve(undefined); await finish.promise
+    return [{ type: 'image', attachment: { attachmentId: AttachmentId('d'.repeat(32)), mediaType: 'image/png', bytes: 1, width: 1, height: 1 } }]
+  } }))
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-late-probe', description: '', parameters: {}, execute: async () => {
+    body(); return [{ type: 'text', text: 'ordinary app control' }]
+  } }))
+  const { view, agent } = first
+  await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+  const intent = await ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)
+  await ctx.mydotFiling.cancel(view.plan.caseId, view.revision, view.planDigest)
+  stoppedFilingRecorder()
+  await ctx.mydotFiling.returnControl(view.plan.caseId, view.revision, view.planDigest)
+  vi.mocked(recorder.readRecorderStatus).mockImplementation(async (_config, caseId, planDigest) => ({
+    ...intent.recorder!, caseId, planDigest, state: 'recording', readyForConfirmation: true, observedAt: Date.now(),
+  }))
+  const observation = new AbortController()
+  let capture: ReturnType<typeof filingTool> | undefined
+  let beginning: Promise<PreparedFiling['view']> | undefined
+  try {
+    capture = filingTool(ctx, 'filing-late-capture', agent)
+    await entered.promise
+    await ctx.mydotFiling.approve(second.view.plan.caseId, second.view.revision, second.view.planDigest)
+    const stopping = filingDesktopStopping(ctx, observation.signal)
+    beginning = ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)
+    expect(await stopping).toMatchObject({ phase: 'stopping', inFlight: 1 })
+    finish.resolve(undefined)
+    expect((await capture).isError).toBe(false)
+    expect(await beginning).toMatchObject({ phase: 'intent', control: 'human' })
+    const capturedAt = (await ctx.mydot.snapshot()).desktop.capturedAt!
+    expect(() => ctx.mydot.resumeDesktop(agent.id, capturedAt)).toThrow('Filing takeover requires explicit return authority')
+    expect((await filingTool(ctx, 'filing-late-probe', agent)).isError).toBe(true)
+    expect(body).not.toHaveBeenCalled()
+    expect((await ctx.mydot.snapshot()).desktop.phase).toBe('human')
+  } finally {
+    observation.abort(); finish.resolve(undefined)
+    await Promise.allSettled([capture, beginning])
+  }
+})
+
 it('keeps app control fenced when desktop return has no configured capture and restores return authority after reconfiguration', async () => {
   const runtime = await setup()
   await reloadFiling(runtime, { desktopTools: ['filing-reconfigured-action'] })

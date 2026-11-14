@@ -213,3 +213,53 @@ it('rejects future, unavailable, empty and regressing recorder observations', as
     expect(h.accepted()).toBe(0)
   }
 })
+
+it.each(['return', 'cancel'] as const)('preserves invalidation after restart and an empty receipt query before owner %s', async (action) => {
+  const h = setup(); const pending = await h.intent()
+  const confirm = vi.spyOn(h.port.recipient, 'confirm')
+  h.files.set('source.txt', 'changed after intent')
+  await expect(h.workflow.confirm(pending.revision, pending.planDigest)).rejects.toThrow(/files changed/)
+  expect(confirm).not.toHaveBeenCalled()
+  const invalidated = structuredClone(h.saved())
+  expect(invalidated).toMatchObject({ phase: 'invalidated', control: 'human', reason: 'files-changed', intentId: pending.intentId })
+  const cold = new FilingWorkflow(h.port)
+  const query = vi.spyOn(h.port.recipient, 'query')
+  expect(await cold.reconcile()).toEqual(invalidated)
+  expect(query).toHaveBeenCalledExactlyOnceWith(pending.intentId)
+  expect(cold.ready()).toBe(false)
+  if (action === 'cancel') expect((await cold.cancel(pending.revision, pending.planDigest)).phase).toBe('cancelled')
+  h.recording({ state: 'stopped', readyForConfirmation: false, sequence: 2 })
+  expect(await cold.returnControl(pending.revision, pending.planDigest)).toMatchObject({
+    phase: action === 'cancel' ? 'cancelled' : 'invalidated', control: 'return-authorized', intentId: pending.intentId,
+  })
+  expect(confirm).not.toHaveBeenCalled()
+})
+
+it('honors an independent receipt when querying an invalidated intent after restart', async () => {
+  const h = setup(); const pending = await h.intent()
+  h.files.set('preview.txt', 'changed after intent')
+  await expect(h.workflow.confirm(pending.revision, pending.planDigest)).rejects.toThrow(/files changed/)
+  const receipt: MockReceipt = { receiptId: 'independent-receipt', intentId: pending.intentId!, caseId: pending.plan.caseId,
+    planDigest: pending.planDigest, forms: pending.plan.forms }
+  h.receipts.set(receipt.intentId, receipt)
+  const query = vi.spyOn(h.port.recipient, 'query')
+  expect(await new FilingWorkflow(h.port).reconcile()).toMatchObject({ phase: 'accepted', receipt, control: 'human' })
+  expect(query).toHaveBeenCalledExactlyOnceWith(pending.intentId)
+  expect(h.accepted()).toBe(0)
+})
+
+it('keeps a genuinely unknown confirmation query-only after restart and an empty receipt query', async () => {
+  const h = setup(); const pending = await h.intent()
+  const confirm = vi.spyOn(h.port.recipient, 'confirm').mockRejectedValue(new Error('recipient outcome unknown'))
+  expect((await h.workflow.confirm(pending.revision, pending.planDigest)).phase).toBe('unknown')
+  const cold = new FilingWorkflow(h.port)
+  const query = vi.spyOn(h.port.recipient, 'query')
+  expect((await cold.reconcile()).phase).toBe('unknown')
+  expect(query).toHaveBeenCalledExactlyOnceWith(pending.intentId)
+  h.recording({ state: 'stopped', readyForConfirmation: false, sequence: 2 })
+  await expect(cold.cancel(pending.revision, pending.planDigest)).rejects.toThrow(/cannot undo/)
+  await expect(cold.returnControl(pending.revision, pending.planDigest)).rejects.toThrow(/Finish or cancel/)
+  await expect(cold.begin(pending.revision, pending.planDigest, true)).rejects.toThrow(/query/)
+  await expect(cold.confirm(pending.revision, pending.planDigest)).rejects.toThrow(/never resend/)
+  expect(confirm).toHaveBeenCalledOnce()
+})
