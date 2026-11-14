@@ -1,0 +1,13 @@
+- id: agent-default-model
+  config:
+    provider: filing-fixture
+    model: fixture
+- insert:
+    - name: '@deepseek-ai/dsh-experimental-mydot'
+      config:
+        memoryDirectory: !!js dshHomePath('mydot-memory')
+        filingEnabled: true
+        # Public preparation-only fixture: no recorder connection or owner operation.
+        filingRecorderSocketPath: /private/unused-public-filing-recorder.sock
+        filingRecorderTimeoutMs: 1000
+        filingRecorderMaxAgeMs: 1000

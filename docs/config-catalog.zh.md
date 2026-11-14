@@ -1168,11 +1168,11 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:48`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:51`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
-export interface Config extends HumanHandoffConfig {
+export interface Config extends HumanHandoffConfig, FilingConfig {
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -1196,6 +1196,20 @@ export interface HumanHandoffConfig {
   /** Measured positive callback/verification deadline in milliseconds; required only for the optional socket. */
   humanHandoffTimeoutMs?: number
   /** Existing complete UTF-8 request/result byte allowance. */
+  maxTextBytes: number
+}
+
+/** Optional synthetic filing and independently operated recorder; no operational default deadlines. */
+export interface FilingConfig {
+  /** Enable synthetic plans and owner commands; no real recipient is supported. */
+  filingEnabled?: boolean
+  /** Fixed owner-private recorder socket; no model-selected endpoint. */
+  filingRecorderSocketPath?: string
+  /** Positive status request deadline, supplied from deployment evidence. */
+  filingRecorderTimeoutMs?: number
+  /** Maximum acceptable observation age, supplied from deployment evidence. */
+  filingRecorderMaxAgeMs?: number
+  /** Existing complete UTF-8 input/output allowance. */
   maxTextBytes: number
 }
 ```

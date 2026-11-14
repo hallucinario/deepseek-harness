@@ -53,6 +53,12 @@ For drawing review, configure `humanHandoffSocketPath` in an existing canonical 
 
 MyDot flushes the answer before acknowledging it and flushes a delivery marker before waking the original Session. A direct child uses its durable root parent's request ledger and the existing child continuation API. Changed, paused, completed or exhausted goals refuse continuation; consumed rounds remain consumed. After uncertain delivery, MyDot checks the original Session's actual input before reporting consumption. An unconfirmed external outcome stays stopped and is never automatically replayed. Successful outcome recording requires an existing result artifact; it does not establish the artifact's quality or human acceptance.
 
+Synthetic filing is disabled by default. Enable `filingEnabled` only with an owner-private fixed Unix recorder socket (`filingRecorderSocketPath`), an explicit positive `filingRecorderTimeoutMs` and an evidence-based `filingRecorderMaxAgeMs`. Both deadlines are milliseconds and have no defaults. Existing desktop/capture arrays remain empty. The model first reserves a stable case with `start_mock_filing_case`, then uses `prepare_mock_filing` to prepare its exact legal entity, account, period, tax, amount, forms, source/preview/attachment digests, permitted destinations and separate submission/payment/standing-setting effects. The Host recomputes the plan digest and rereads bounded UTF-8 documents; a changed document invalidates approval.
+
+The existing MyDot panel displays the plan, changes from its prior revision, actor, expiry and decision, and opens reviewed documents in its existing editor. Owner-only approval binds the exact revision and digest. Before taking control, the owner confirms that other clients and scheduled operations are stopped; this assertion is recorded separately from observed app inactivity. MyDot persists `stopping`, closes all app tool admission across every Session and child, drains admitted operations, verifies recorder readiness and flushes the confirmation intent before publishing `human` ownership. Only then can the explicit local mock confirmation button become enabled. Recording, receipt acceptance and unknown results are separate states. Cancellation cannot undo an accepted or uncertain effect. A restart, disconnect or uncertain callback requires querying the persisted intent; it never automatically resends. The local synthetic recipient persists one receipt per intent in the same Session and checks case, digest and exact forms on retrieval. No real tax portal, payment or standing-setting operation is implemented.
+
+The trusted recorder adapter sends one JSON line `{command: "status", caseId, planDigest}` to its configured socket and strictly decodes `{ok: true, result: status}`. The versioned host status carries identity/digest, state, completeness, readiness, monotonic sequence, observation time and archive metadata. MyDot retains only opaque archive, segment, protected-interval and gap references. The recorder observes capture and storage; it does not attest that external controllers have stopped. Protected authentication stops video and input producers before acknowledging protection. Confirmation refuses protected, stale, failed, empty or unready capture. Accepted receipts with partial or unavailable recording remain visibly distinct. Returning app controls requires a terminal decision and a fresh matching stopped recorder; configured desktops additionally require a new capture through the existing resume operation.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -70,6 +76,7 @@ The `mydot` storage domain owns small Space records and the authoritative Sessio
 | [`src/control.ts`](src/control.ts) | Per-child admission and durable request deduplication |
 | [`src/files.ts`](src/files.ts) | Consistent reads and version-guarded edits |
 | [`src/desktop.ts`](src/desktop.ts) | Software ownership and handoff admission |
+| [`src/filing-service.ts`](src/filing-service.ts) | Session-owned synthetic filing decisions and recorder verification |
 | [`src/human-handoff.ts`](src/human-handoff.ts) | Durable owner requests, answer admission and recovery |
 | [`src/client/mount.ts`](src/client/mount.ts) | Shared subscription, navigation and Slot registration |
 
@@ -115,12 +122,27 @@ Waiting starts no model or long-lived tool call. Preparation, the accepted answe
 
 The answer appends to its original Session. It does not rebuild a fresh child or rewrite earlier conversation text.
 
+### Synthetic filing
+
+#### What the model sees
+
+`start_mock_filing_case` returns a durably reserved identity. `prepare_mock_filing` returns only case identity, server digest and revision, then ends that branch. Owner approval and confirmation are separate Remote operations; no model tool grants these effects.
+
+#### Token effect
+
+Preparation fields and results occupy ordinary logged tool tokens. Owner review and recording checks start no model request and send no document contents to another model destination.
+
+#### KV Cache effect
+
+The preparation result appends to its original Session. Owner decisions do not rewrite model history or start a fresh child.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 The package operates on current local Session and file capabilities:
 
+- Synthetic filing supports bounded UTF-8 documents and a local mock recipient. External client exclusion requires the owner's explicit confirmation; native protected-input behavior, privileged archive custody and iPhone use require separate deployment and device acceptance.
 - Text editing supports bounded UTF-8 Markdown/text, not full Office editing or immutable file versions.
 - Memory is explicit editable Markdown; external embeddings and cross-Space history injection are not required.
 - Desktop ownership is per Host instance and only gates configured tools. Real human handoff and phone keyboard, photo and navigation acceptance require device testing.

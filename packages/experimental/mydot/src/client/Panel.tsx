@@ -9,6 +9,7 @@ import type { Space, SpaceId, SpaceInput } from '../types.ts'
 import type { PanelProps } from './props.ts'
 import { MyDotEditor } from './Editor.tsx'
 import { createEditorStore } from './editor-store.ts'
+import { FilingCard } from './Filing.tsx'
 import { HumanRequestCard } from './HumanRequest.tsx'
 import type { NS } from './locales.ts'
 import css from './MyDot.module.css'
@@ -110,6 +111,13 @@ export function MyDotPanel(props: GlobalProps) {
   }
   return <main className={`${css.root} ${css.panel}`} data-mydot-panel>
     <h1 className={css.heading}>{t('title')}</h1>
+    {(data.filings ?? []).map(card => <FilingCard key={`${card.filing.plan.caseId}:${card.filing.revision}`} card={card}
+      command={props.filingCommand} t={t} open={() => { props.openConversation(card.filing.sessionId) }}
+      openFile={(path) => { void props.readFile(card.filing.sessionId, path).then((file) => {
+        if (file.kind !== 'text') throw new Error(t('missing'))
+        actions.open({ sessionId: card.filing.sessionId, scope: null, path: file.path, version: file.version,
+          saved: file.content, draft: file.content, conflict: null })
+      }).catch(report) }} />)}
     {humanRequests.length > 0 && <section className={css.humanRequests}>
       <h2 className={css.heading}>{t('humanRequests')}</h2>
       {[...humanRequests].sort((left, right) => Number(right.request.requestId === props.selectedHumanRequestId)

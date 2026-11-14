@@ -1,4 +1,6 @@
 /** Browser-safe MyDot view data projected from existing Session records. */
+import type { FilingCardView } from './filing-types.ts'
+export type * from './filing-types.ts'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Branded } from '@deepseek-ai/dsh-brand'
@@ -52,6 +54,7 @@ export interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  filings?: readonly FilingCardView[] | undefined
   humanRequests?: readonly HumanRequestView[] | undefined
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }

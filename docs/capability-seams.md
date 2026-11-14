@@ -8,6 +8,7 @@ A service can be a core spine service, a swappable capability seam, a bundle/com
 ```mermaid
 flowchart LR
   pkg_experimental_mydot["experimental-mydot"]
+  svc_mydotFiling["ctx.mydotFiling<br/>Owner-reviewed synthetic filing and independent recording evidence"]
   svc_mydotHandoff["ctx.mydotHandoff<br/>Versioned owner requests and original-Session continuation"]
   svc_mydot["ctx.mydot<br/>Space-linked local work and current files"]
   pkg_experimental_memory_experience["experimental-memory-experience"]
@@ -355,6 +356,7 @@ flowchart LR
   pkg_experimental_computer_use_cua_driver_native --> svc_computerUse
   pkg_experimental_memory_experience --> svc_experienceMemory
   pkg_experimental_mydot --> svc_mydot
+  pkg_experimental_mydot --> svc_mydotFiling
   pkg_experimental_mydot --> svc_mydotHandoff
   pkg_experimental_ptc_runtime_python --> svc_ptcRuntime
   pkg_experimental_speech_to_text --> svc_speechToText
@@ -511,6 +513,7 @@ flowchart LR
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
   svc_mcpResources --> pkg_mcp_resources
+  svc_mydotFiling --> pkg_experimental_mydot
   svc_mydotHandoff --> pkg_experimental_mydot
   svc_officeToPdf --> pkg_client_ui_sidebar_documentpreview
   svc_otel --> pkg_host_product_telemetry_otel
@@ -623,6 +626,7 @@ flowchart LR
 
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| `ctx.mydotFiling` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | [`experimental-mydot`](../packages/experimental/mydot) | - | Persists plans, owner decisions and query-only uncertain intents in the original Session; only the owner can confirm the local synthetic recipient. |
 | `ctx.mydotHandoff` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | [`experimental-mydot`](../packages/experimental/mydot) | - | Keeps request, answer, actual input admission and outcome in Session events; the optional protected callback verifies drawing result references. |
 | `ctx.mydot` | `service` | [`experimental-mydot`](../packages/experimental/mydot) | - | - | - | Stores Space associations and projects existing Sessions, child jobs, files and scoped Markdown; execution remains in the owning services. |
 | `ctx.experienceMemory` | `service` | [`experimental-memory-experience`](../packages/experimental/memory-experience) | - | - | - | Stores source-referenced observations and fixed current-context selections; human commands inspect and retire records within the host directory scope. |

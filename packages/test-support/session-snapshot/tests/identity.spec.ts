@@ -10,6 +10,34 @@ const otherId = '66666666-6666-4666-8666-666666666666'
 const proseUuid = '77777777-7777-4777-8777-777777777777'
 
 describe('session snapshot identity redaction', () => {
+  it('preserves filing identities across events and serialized tool text while retaining document hashes', () => {
+    const fixture = (caseId: string, planDigest: string) => [
+      { type: 'session', id: parentId },
+      { type: 'mydot/filing-case', data: { caseId, sessionId: parentId } },
+      { type: 'tool/result', data: { text: JSON.stringify({ caseId, planDigest }) } },
+      { type: 'tool/call', data: { arguments: JSON.stringify({ plan: { caseId } }) } },
+      { type: 'mydot/filing', data: { view: { plan: { caseId, files: [{ digest: '3'.repeat(64) }] }, planDigest,
+        intentId: `mock-${planDigest}`, ownerControlConfirmation: { planDigest } } } },
+      { type: 'mydot/mock-receipt', data: { caseId, planDigest, intentId: `mock-${planDigest}`, receiptId: `receipt-${planDigest}` } },
+      { type: 'mydot/filing-case', data: { caseId: '4'.repeat(32), sessionId: parentId } },
+      { type: 'example', data: { caseId: '6'.repeat(32), planDigest: '7'.repeat(64), prose: '8'.repeat(64) } },
+    ].map(record => JSON.stringify(record)).join('\n') + '\n'
+    const [output] = redactSessionSnapshotIds([fixture('1'.repeat(32), '2'.repeat(64))])
+    expect(output).not.toContain('1'.repeat(32))
+    expect(output).not.toContain('2'.repeat(64))
+    expect(output).not.toContain('4'.repeat(32))
+    expect(output).toContain('3'.repeat(64))
+    expect(output).toContain('6'.repeat(32))
+    expect(output).toContain('7'.repeat(64))
+    expect(output).toContain('8'.repeat(64))
+    expect(output?.match(/"caseId":"\{\{id:1\}\}"/g)).toHaveLength(3)
+    expect(output).toContain('"caseId":"{{id:5}}"')
+    expect(output).toContain(JSON.stringify({ caseId: '{{id:1}}', planDigest: '{{id:2}}' }).replaceAll('"', '\\"'))
+    expect(output?.match(/"planDigest":"\{\{id:2\}\}"/g)).toHaveLength(3)
+    expect(output?.match(/"intentId":"\{\{id:3\}\}"/g)).toHaveLength(2)
+    expect(redactSessionSnapshotIds([output!])).toEqual([output])
+    expect(redactSessionSnapshotIds([fixture('a'.repeat(32), 'b'.repeat(64))])).toEqual([output])
+  })
   it('preserves feedback versions and target relationships without redacting unrelated prose', () => {
     const source = [
       { type: 'session', id: parentId },
