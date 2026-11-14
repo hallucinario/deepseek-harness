@@ -135,6 +135,8 @@ import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import Goals from '@deepseek-ai/dsh-goal'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { FilingService } from '../src/filing-service.ts'
+import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
+import type { JobId, JobOutcome } from '@deepseek-ai/dsh-jobs'
 import type { Config } from '../src/index.ts'
 
 type FilingRuntime = Awaited<ReturnType<typeof setup>>
@@ -716,6 +718,46 @@ it.each(['agent', 'human', 'return-authorized'] as const)('retains only acquired
       expect(await ctx.mydotFiling.prepare(first.agent, first.view.plan)).toMatchObject({ phase: 'prepared', revision: 2 })
     }
     expect(await ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)).toMatchObject({ phase: 'intent', control: 'human' })
+  }
+})
+
+it.each(['same', 'other', 'unowned'] as const)('refuses takeover until an admitted %s background job has released its resources', async (ownership) => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  await ctx.plugin(LocalJobRegistry)
+  ctx.effect(() => ctx.jobs.attachController('filing-lifetime-test'))
+  const { agent, view } = await prepared(runtime)
+  const other = await ctx.agentLoop.create(SessionId('9'.repeat(32)), {}, { cwd: runtime.root })
+  const caller = ownership === 'unowned' ? undefined : ownership === 'other' ? other : agent
+  const finish = Promise.withResolvers<JobOutcome>()
+  const effect = vi.fn()
+  const cancel = vi.fn()
+  let jobId: JobId | undefined
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-background-start', description: '', parameters: {}, execute: async () => {
+    jobId = ctx.jobs.start({ kind: 'bash', label: 'controlled background producer',
+      ...(caller === undefined ? {} : { owner: caller.id }),
+      run: () => ({ cancel, done: finish.promise.then((outcome) => { effect(); return outcome }) }) })
+    return [{ type: 'text', text: 'producer admitted; tool returned' }]
+  } }))
+  try {
+    expect((await filingTool(ctx, 'filing-background-start', caller)).isError).toBe(false)
+    if (jobId === undefined) throw new Error('The tool must have registered its producer')
+    await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+    await expect(ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)).rejects.toThrow('Background jobs must finish')
+    expect((await ctx.mydotFiling.snapshot())[0]).toMatchObject({ filing: { phase: 'approved', control: 'stopping' }, confirmationReady: false })
+    expect(effect).not.toHaveBeenCalled()
+    expect(ctx.jobs.get(jobId, caller?.id).status).toBe('running')
+    ctx.jobs.kill(jobId, caller?.id, 'controlled stop')
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(ctx.jobs.get(jobId, caller?.id).status).toBe('stopping')
+    await expect(ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)).rejects.toThrow('Background jobs must finish')
+    finish.resolve({ status: 'completed' })
+    await ctx.jobs.wait(jobId, 1000, caller?.id)
+    expect(effect).toHaveBeenCalledOnce()
+    expect(await ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)).toMatchObject({ phase: 'intent', control: 'human' })
+  } finally {
+    finish.resolve({ status: 'completed' })
+    if (jobId !== undefined) await ctx.jobs.wait(jobId, 1000, caller?.id)
   }
 })
 

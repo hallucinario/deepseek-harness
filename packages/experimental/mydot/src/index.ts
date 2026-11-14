@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-working-directory'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
 import { createUserMessage, type ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { FsVersion } from '@deepseek-ai/dsh-fs/types'
@@ -118,6 +119,13 @@ export class MyDotService extends TypertRemoteService {
       }
       this.notify()
       if (this.filingInFlight !== 0) await new Promise<void>((resolve) => { this.filingDrained.add(resolve) })
+      const jobs = ctx.get('jobs')
+      if (jobs !== undefined) {
+        const active = (owner?: SessionId) => jobs.list(owner).some(job => job.status === 'running' || job.status === 'stopping')
+        if (active() || ctx.sessions.list().some(session => active(session.id))) {
+          throw new Error('Background jobs must finish or stop before filing takeover')
+        }
+      }
     }, returnControl: () => {
       if (config.desktopTools.length > 0 && config.captureTools.length === 0) throw new Error('Configure a fresh capture before returning desktop control')
       this.filingAdmissions = new AbortController()
