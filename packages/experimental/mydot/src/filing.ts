@@ -30,6 +30,10 @@ export class FilingWorkflow {
    * @returns False after restart, failure, cancellation or consumption.
    */
   ready(): boolean { return this.readyIntent !== undefined && this.ports.load()?.phase === 'intent' }
+  /** Read persisted control after a transition, including a rejected takeover.
+   * @returns Current validated control; missing case state fails closed.
+   */
+  get control(): FilingView['control'] { return this.current().control }
   private run<T>(work: () => Promise<T>): Promise<T> {
     const next = this.ordered.catch(() => undefined).then(work)
     this.ordered = next

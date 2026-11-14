@@ -91,6 +91,7 @@ export class MyDotService extends TypertRemoteService {
   private readonly pendingSpaces = new Map<SessionId, Space>()
   private readonly starts = new Map<SessionId, { request: string; result: Promise<{ childSessionId: SessionId }> }>()
   private filingTakeover = false
+  private filingRecovering = false
   private filingAdmissions = new AbortController()
   private filingReturning = false
   private filingInFlight = 0
@@ -105,6 +106,7 @@ export class MyDotService extends TypertRemoteService {
     if (config.captureTools.some(tool => !config.desktopTools.includes(tool))) throw new Error('captureTools must be a subset of desktopTools')
     this.files = new TextFiles(ctx.fs, config.maxTextBytes)
     this.controls = new JobControls(ctx)
+    this.filingRecovering = config.filingEnabled === true
     ctx.plugin(HumanHandoffService, config)
     ctx.plugin(FilingService, { ...config, takeover: async (sessionId) => {
       this.filingTakeover = true
@@ -127,7 +129,7 @@ export class MyDotService extends TypertRemoteService {
       const file = await this.readFile(sessionId, path)
       if (file.kind !== 'text') throw new Error('Filing source or preview is missing')
       return file.content
-    } })
+    }, recovered: () => { this.filingRecovering = false; this.notify() } })
     ctx.on('mydot/handoff-changed', () => { this.notify() })
     this.initialized = ctx.effect(async () => {
       this.domain = await ctx.storageDomain.open(mydotDomain)
@@ -167,6 +169,7 @@ export class MyDotService extends TypertRemoteService {
       })] }
     }, { prepend: true })
     ctx.on('tools/execute', async (exec, next) => {
+      if (this.filingRecovering) throw new Error('Filing ownership recovery is pending')
       if (this.filingTakeover && !(this.filingReturning && config.captureTools.includes(exec.name) && exec.agent?.id === this.desktop.snapshot().owner)) throw new Error('Owner filing takeover blocks all app tool control and capture; query the existing intent')
       this.filingInFlight += 1
       try {

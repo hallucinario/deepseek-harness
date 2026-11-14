@@ -208,7 +208,7 @@ it.each(invalidFilingConfigurations)('rejects enabled filing with %s before regi
   const config: ConstructorParameters<typeof FilingService>[1] = {
     maxTextBytes: 4096, filingEnabled: true, filingRecorderSocketPath: '/private/mock-recorder.sock',
     filingRecorderTimeoutMs: 1000, filingRecorderMaxAgeMs: 1000,
-    takeover: async () => {}, returnControl: async () => {}, read: async () => '', ...overrides,
+    recovered: () => {}, takeover: async () => {}, returnControl: async () => {}, read: async () => '', ...overrides,
   }
   if (omitted !== undefined) Reflect.deleteProperty(config, omitted)
   expect(() => new FilingService(ctx, config)).toThrow('Synthetic filing requires a fixed recorder socket and explicit positive request deadline and freshness limit')
@@ -690,6 +690,104 @@ it('rejects invalid and oversized model plans through actual tool execution with
   expect(oversized.concludesTurn).toBeUndefined()
   expect(agent.session.snapshotEvents()).toEqual(before)
   expect(recorder.readRecorderStatus).not.toHaveBeenCalled()
+})
+
+it.each(['agent', 'human', 'return-authorized'] as const)('retains only acquired ownership after a rejected takeover from %s', async (control) => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  const first = await prepared(runtime)
+  const second = await anotherFiling(runtime, first)
+  for (const { view } of [first, second]) await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+  const recording = vi.mocked(recorder.readRecorderStatus).getMockImplementation()!
+  if (control !== 'agent') await ctx.mydotFiling.begin(first.view.plan.caseId, first.view.revision, first.view.planDigest, true)
+  if (control === 'return-authorized') {
+    await ctx.mydotFiling.cancel(first.view.plan.caseId, first.view.revision, first.view.planDigest)
+    stoppedFilingRecorder()
+    await ctx.mydotFiling.returnControl(first.view.plan.caseId, first.view.revision, first.view.planDigest)
+    vi.mocked(recorder.readRecorderStatus).mockImplementation(recording)
+  } else if (control === 'agent') await writeFile(join(runtime.root, 'source.txt'), 'changed before takeover')
+  await expect(ctx.mydotFiling.begin(first.view.plan.caseId, control === 'human' ? first.view.revision + 1 : first.view.revision,
+    first.view.planDigest, true)).rejects.toThrow(control === 'agent' ? 'files changed' : control === 'human' ? 'revision' : 'cancelled')
+  if (control === 'human') {
+    await expect(ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)).rejects.toThrow('Another case owns app control')
+  } else {
+    if (control === 'agent') {
+      await writeFile(join(runtime.root, 'source.txt'), 'public source')
+      expect(await ctx.mydotFiling.prepare(first.agent, first.view.plan)).toMatchObject({ phase: 'prepared', revision: 2 })
+    }
+    expect(await ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)).toMatchObject({ phase: 'intent', control: 'human' })
+  }
+})
+
+it('rejects preparation admitted during owner verification before it can wait on the takeover workflow', async () => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  const { agent, view } = await prepared(runtime)
+  await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+  const entered = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const read = ctx.mydot.readFile.bind(ctx.mydot)
+  let held = false
+  vi.spyOn(ctx.mydot, 'readFile').mockImplementation(async (...args) => {
+    if (!held) { held = true; entered.resolve(undefined); await release.promise }
+    return read(...args)
+  })
+  let beginning: Promise<PreparedFiling['view']> | undefined
+  let preparation: ReturnType<typeof filingTool> | undefined
+  let settled = false
+  try {
+    beginning = ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)
+    await entered.promise
+    preparation = filingTool(ctx, 'prepare_mock_filing', agent, { plan: view.plan }).then((result) => { settled = true; return result })
+    await vi.waitFor(() => { expect(settled).toBe(true) })
+    expect((await preparation).isError).toBe(true)
+    expect(JSON.stringify(await preparation)).toContain('Return owner control before preparing')
+    release.resolve(undefined)
+    expect(await beginning).toMatchObject({ phase: 'intent', control: 'human' })
+  } finally {
+    release.reject(new Error('Controlled owner verification cleanup'))
+    await Promise.allSettled([beginning, preparation])
+  }
+})
+
+it.each(['human', 'stopping', 'none'] as const)('closes admission while persisted %s ownership is still being recovered', async (control) => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  const { agent, view } = await prepared(runtime)
+  await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+  if (control === 'human') await ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)
+  else if (control === 'stopping') {
+    vi.mocked(recorder.readRecorderStatus).mockRejectedValueOnce(new Error('Controlled recorder failure'))
+    await expect(ctx.mydotFiling.begin(view.plan.caseId, view.revision, view.planDigest, true)).rejects.toThrow('Controlled recorder failure')
+  }
+  const body = vi.fn()
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-recovering-probe', description: '', parameters: {}, execute: async () => {
+    body(); return [{ type: 'text', text: 'ordinary app control' }]
+  } }))
+  const entry = filingEntry(ctx)
+  await entry.update({ disabled: true })
+  const entered = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const observe = ctx.sessionQuery.observeSession.bind(ctx.sessionQuery)
+  let held = false
+  vi.spyOn(ctx.sessionQuery, 'observeSession').mockImplementation(async (...args) => {
+    const source = await observe(...args)
+    if (!held && args[0] === agent.id) { held = true; entered.resolve(undefined); await release.promise }
+    return source
+  })
+  const enabling = entry.update({ disabled: false })
+  try {
+    await entered.promise
+    expect((await filingTool(ctx, 'filing-recovering-probe', agent)).isError).toBe(true)
+    expect(body).not.toHaveBeenCalled()
+    release.resolve(undefined)
+    await enabling; await entry.fiber!.await(); await ctx.mydotFiling.snapshot()
+    expect((await filingTool(ctx, 'filing-recovering-probe', agent)).isError).toBe(control !== 'none')
+    expect(body).toHaveBeenCalledTimes(control === 'none' ? 1 : 0)
+  } finally {
+    release.resolve(undefined)
+    await enabling; await entry.fiber!.await()
+  }
 })
 
 it('aborts queued desktop admission and drains both desktop and unrelated app tools before preparing confirmation', async () => {

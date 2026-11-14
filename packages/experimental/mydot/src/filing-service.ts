@@ -24,6 +24,7 @@ export interface FilingConfig {
   maxTextBytes: number
 }
 interface FilingServiceConfig extends FilingConfig {
+  recovered(): void
   takeover(sessionId: SessionId): Promise<void>
   returnControl(): Promise<void>
   read(sessionId: SessionId, path: string): Promise<string>
@@ -71,6 +72,7 @@ export class FilingService extends TypertRemoteService {
       }
       if (human !== undefined) await config.takeover(human.sessionId)
       else if (returned !== undefined) { await config.takeover(returned.sessionId); await config.returnControl() }
+      config.recovered()
       return () => undefined
     })
     if (config.filingEnabled) this.registerTool()
@@ -171,6 +173,7 @@ export class FilingService extends TypertRemoteService {
       using source = await this.ctx.sessionQuery.observeSession(record.header.id)
       if ((source.projections?.values.mydotFilings ?? []).some(view => view.plan.caseId === plan.caseId && view.sessionId !== agent.id)) throw new Error('Case belongs to another original Session')
     }
+    if (this.takeoverCase !== undefined) throw new Error('Return owner control before preparing filing documents')
     const result = await this.bind(agent.session, plan.caseId).prepare(agent.id, plan)
     this.ctx.get('goals')?.disarm(agent)
     return result
@@ -217,7 +220,12 @@ export class FilingService extends TypertRemoteService {
       const workflow = await this.find(id)
       if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control; finish and return it first')
       this.takeoverCase = id
-      return workflow.begin(revision, digest, externalControlsClosed)
+      try { return await workflow.begin(revision, digest, externalControlsClosed) }
+      catch (error: unknown) {
+        const control = workflow.control
+        if (control !== 'human' && control !== 'stopping') this.takeoverCase = undefined
+        throw error
+      }
     })
   }
   /** Owner-only final synthetic confirmation; never sends to a real portal.
