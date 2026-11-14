@@ -34,6 +34,7 @@ export class FilingService extends TypertRemoteService {
   static inject = ['sessions', 'sessionQuery', 'sessionController', 'sessionProjections', 'tools', 'agents']
   private readonly cases = new Map<FilingCaseId, { session: Session; workflow: FilingWorkflow }>()
   private takeoverCase: FilingCaseId | undefined
+  private controlOrder: Promise<unknown> = Promise.resolve()
   private readonly failed = new Set<FilingCaseId>()
   private readonly loading: PromiseLike<unknown>
   private readonly recorderConnection!: RecorderConnection
@@ -77,6 +78,11 @@ export class FilingService extends TypertRemoteService {
   private ownerOnly(): void {
     if (principalOf(this.ctx.invocation) !== undefined) throw new Error('Only the authenticated Host owner may decide a filing')
     if (!this.config.filingEnabled) throw new Error('Synthetic filing is disabled')
+  }
+  private transferControl<T>(work: () => Promise<T>): Promise<T> {
+    const next = this.controlOrder.catch(() => undefined).then(work)
+    this.controlOrder = next
+    return next
   }
   private views(session: Session): readonly FilingView[] { return this.ctx.sessionProjections.stateOf(session, 'mydotFilings') ?? [] }
   private bind(session: Session, id: FilingCaseId): FilingWorkflow {
@@ -207,10 +213,12 @@ export class FilingService extends TypertRemoteService {
   async begin(id: FilingCaseId, revision: number, digest: string, externalControlsClosed: boolean): Promise<FilingView> {
     this.ownerOnly()
     if (!externalControlsClosed) throw new Error('The owner must confirm other clients and scheduled controls are stopped')
-    const workflow = await this.find(id)
-    if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control; finish and return it first')
-    this.takeoverCase = id
-    return workflow.begin(revision, digest, externalControlsClosed)
+    return this.transferControl(async () => {
+      const workflow = await this.find(id)
+      if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control; finish and return it first')
+      this.takeoverCase = id
+      return workflow.begin(revision, digest, externalControlsClosed)
+    })
   }
   /** Owner-only final synthetic confirmation; never sends to a real portal.
    * @param id - Stable case identity.
@@ -231,10 +239,13 @@ export class FilingService extends TypertRemoteService {
   @Remote
   async returnControl(id: FilingCaseId, revision: number, digest: string): Promise<FilingView> {
     this.ownerOnly()
-    if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control')
-    const result = await (await this.find(id)).returnControl(revision, digest)
-    this.takeoverCase = undefined
-    return result
+    return this.transferControl(async () => {
+      const workflow = await this.find(id)
+      if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control')
+      const result = await workflow.returnControl(revision, digest)
+      this.takeoverCase = undefined
+      return result
+    })
   }
   /** Query by existing stable intent without resending, including after restart.
    * @param id - Stable case identity.

@@ -294,6 +294,64 @@ it('does not reserve app control for a false owner assertion and admits only one
   expect(await ctx.mydotFiling.begin(first.view.plan.caseId, first.view.revision, first.view.planDigest, true)).toMatchObject({ phase: 'intent' })
 })
 
+it.each(['return-first', 'takeover-first'] as const)('serializes a delayed duplicate return with the next takeover (%s)', async (order) => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  const first = await prepared(runtime)
+  const second = await anotherFiling(runtime, first)
+  for (const { view } of [first, second]) await ctx.mydotFiling.approve(view.plan.caseId, view.revision, view.planDigest)
+  await ctx.mydotFiling.begin(first.view.plan.caseId, first.view.revision, first.view.planDigest, true)
+  await ctx.mydotFiling.cancel(first.view.plan.caseId, first.view.revision, first.view.planDigest)
+  const source = await ctx.mydot.readFile(first.agent.id, 'source.txt')
+  const preview = await ctx.mydot.readFile(first.agent.id, 'preview.txt')
+  vi.spyOn(ctx.mydot, 'readFile').mockImplementation(async (_session, path) => path === 'source.txt' ? source : preview)
+  vi.spyOn(ctx.sessions, 'flush').mockResolvedValue(true)
+  const entered = Promise.withResolvers<undefined>()
+  const finish = Promise.withResolvers<undefined>()
+  const recording = vi.mocked(recorder.readRecorderStatus).getMockImplementation()!
+  let returns = 0
+  vi.mocked(recorder.readRecorderStatus).mockImplementation(async (config, caseId, digest) => {
+    if (caseId === first.view.plan.caseId && ++returns === 2) {
+      entered.resolve(undefined); await finish.promise
+    }
+    const status = await recording(config, caseId, digest)
+    return caseId === first.view.plan.caseId
+      ? { ...status, state: 'stopped', readyForConfirmation: false, sequence: 2 } : status
+  })
+  const body = vi.fn()
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-duplicate-return-probe', description: '', parameters: {}, execute: async () => {
+    body(); return [{ type: 'text', text: 'ordinary app control' }]
+  } }))
+  const returning = () => ctx.mydotFiling.returnControl(first.view.plan.caseId, first.view.revision, first.view.planDigest)
+  const firstReturn = returning()
+  let duplicate: ReturnType<typeof returning> | undefined
+  let duplicateResult: Promise<PromiseSettledResult<PreparedFiling['view']>[]> | undefined
+  let beginning: Promise<PreparedFiling['view']> | undefined
+  try {
+    if (order === 'return-first') {
+      duplicate = returning(); duplicateResult = Promise.allSettled([duplicate])
+      await firstReturn; await entered.promise
+      beginning = ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)
+    } else {
+      await firstReturn
+      beginning = ctx.mydotFiling.begin(second.view.plan.caseId, second.view.revision, second.view.planDigest, true)
+      duplicate = returning(); duplicateResult = Promise.allSettled([duplicate])
+    }
+    // All adapters now resolve immediately except the controlled recorder response.
+    await new Promise<void>(resolve => setImmediate(resolve))
+    finish.resolve(undefined)
+    expect(await beginning).toMatchObject({ phase: 'intent', control: 'human' })
+    const [result] = await duplicateResult
+    expect(result?.status).toBe(order === 'return-first' ? 'fulfilled' : 'rejected')
+    expect((await filingTool(ctx, 'filing-duplicate-return-probe', first.agent)).isError).toBe(true)
+    expect(body).not.toHaveBeenCalled()
+    await expect(returning()).rejects.toThrow('Another case owns app control')
+  } finally {
+    finish.resolve(undefined)
+    await Promise.allSettled([firstReturn, duplicate, beginning])
+  }
+})
+
 it('requires an original-Session reservation even when another Session copies the reservation and plan', async () => {
   const runtime = await setup()
   const { ctx } = runtime
