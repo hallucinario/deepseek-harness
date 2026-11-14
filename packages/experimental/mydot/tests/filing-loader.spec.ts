@@ -151,7 +151,9 @@ function filingEntry(ctx: Context) {
 
 async function reloadFiling(runtime: FilingRuntime, overrides: Partial<Config> = {}): Promise<void> {
   const entry = filingEntry(runtime.ctx)
+  const prior = entry.fiber!
   await entry.update({ disabled: true })
+  await prior.await()
   await entry.update({ disabled: false, config: {
     memoryDirectory: join(runtime.root, 'memory'), filingEnabled: true,
     filingRecorderSocketPath: '/private/mock-recorder.sock', filingRecorderTimeoutMs: 1000, filingRecorderMaxAgeMs: 1000,
@@ -1015,6 +1017,86 @@ it('keeps app control fenced when desktop return has no configured capture and r
   expect((await filingTool(ctx, 'filing-reconfigured-action', agent)).isError).toBe(false)
 })
 
+it.each(['begin', 'begin-error', 'confirm', 'confirm-accepted', 'return'] as const)('drains an admitted owner %s before Loader replacement releases projections and tool fencing', async (operation) => {
+  const runtime = await setup()
+  const { ctx } = runtime
+  const { agent, view } = await prepared(runtime)
+  const prior = ctx.mydotFiling
+  await prior.approve(view.plan.caseId, view.revision, view.planDigest)
+  if (operation === 'confirm' || operation === 'confirm-accepted' || operation === 'return') await prior.begin(view.plan.caseId, view.revision, view.planDigest, true)
+  if (operation === 'return') {
+    await prior.cancel(view.plan.caseId, view.revision, view.planDigest)
+    stoppedFilingRecorder()
+  }
+  const entered = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const unloading = Promise.withResolvers<undefined>()
+  if (operation === 'confirm-accepted') {
+    const flush = ctx.sessions.flush.bind(ctx.sessions)
+    let held = false
+    vi.spyOn(ctx.sessions, 'flush').mockImplementation(async (session) => {
+      if (!held && session.snapshotEvents().at(-1)?.type === 'mydot/mock-receipt') {
+        held = true; entered.resolve(undefined); await release.promise
+      }
+      return flush(session)
+    })
+  } else {
+    const status = vi.mocked(recorder.readRecorderStatus).getMockImplementation()!
+    vi.mocked(recorder.readRecorderStatus).mockImplementationOnce(async (...args) => {
+      entered.resolve(undefined); await release.promise
+      if (operation === 'begin-error') throw new Error('Controlled closing recorder failure')
+      return status(...args)
+    })
+  }
+  const fiber = [...ctx.registry.get(FilingService)!.fibers][0]!
+  fiber.ctx.effect(() => () => { unloading.resolve(undefined) })
+  const body = vi.fn()
+  ctx.tools.register(defineContentToolFixture({ name: 'filing-owner-disposal-probe', description: '', parameters: {}, execute: async () => {
+    body(); return [{ type: 'text', text: 'ordinary app control' }]
+  } }))
+  const active = operation === 'confirm' || operation === 'confirm-accepted' ? prior.confirmMock(view.plan.caseId, view.revision, view.planDigest)
+    : operation === 'return' ? prior.returnControl(view.plan.caseId, view.revision, view.planDigest)
+      : prior.begin(view.plan.caseId, view.revision, view.planDigest, true)
+  const completed = Promise.allSettled([active])
+  const entry = filingEntry(ctx)
+  const owner = entry.fiber!
+  let replacing: Promise<unknown> | undefined
+  let replaced = false
+  try {
+    await entered.promise
+    replacing = Promise.resolve(entry.update({ config: {
+      memoryDirectory: join(runtime.root, 'replacement-memory'), filingEnabled: true,
+      filingRecorderSocketPath: '/private/mock-recorder.sock', filingRecorderTimeoutMs: 1000, filingRecorderMaxAgeMs: 1000,
+    } }))
+      .then(async () => { await owner.await(); replaced = true })
+    await unloading.promise
+    expect(replaced).toBe(false)
+    expect(ctx.sessionProjections.stateOf(agent.session, 'mydotFilings')).toHaveLength(1)
+    expect((await filingTool(ctx, 'filing-owner-disposal-probe', agent)).isError).toBe(true)
+    expect(body).not.toHaveBeenCalled()
+    await expect(prior.snapshot()).rejects.toThrow('Filing service is closing')
+    expect(ctx.get('mydotFiling')).toBeUndefined()
+    release.resolve(undefined)
+    const [result] = await completed
+    expect(result?.status).toBe('rejected')
+    await replacing
+    expect(ctx.mydotFiling).not.toBe(prior)
+    if (operation === 'confirm-accepted') {
+      expect(await ctx.mydotFiling.reconcile(view.plan.caseId)).toMatchObject({ phase: 'accepted' })
+      expect(await ctx.mydotFiling.confirmMock(view.plan.caseId, view.revision, view.planDigest)).toMatchObject({ phase: 'accepted' })
+    } else await ctx.mydotFiling.cancel(view.plan.caseId, view.revision, view.planDigest)
+    await expect(prior.cancel(view.plan.caseId, view.revision, view.planDigest)).rejects.toThrow('Filing service is closing')
+    const phase = operation === 'confirm-accepted' ? 'accepted' : 'cancelled'
+    expect((await ctx.mydotFiling.snapshot())[0]).toMatchObject({ filing: { phase }, confirmationReady: false })
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'mydot/mock-receipt')).toHaveLength(operation === 'confirm-accepted' ? 1 : 0)
+    const terminal = agent.session.snapshotEvents().filter(event => event.type === 'mydot/filing').at(-1)
+    expect(terminal?.data.view.phase).toBe(phase)
+  } finally {
+    release.resolve(undefined)
+    await Promise.allSettled([active, replacing])
+  }
+})
+
 it('cancels queued desktop admission on plugin disposal and removes filing tools and execution listeners', async () => {
   const runtime = await setup()
   await reloadFiling(runtime, { desktopTools: ['filing-dispose-action'] })
@@ -1041,7 +1123,9 @@ it('cancels queued desktop admission on plugin disposal and removes filing tools
     await entered.promise
     queued = filingTool(ctx, 'filing-dispose-action', other)
     await queuedEntered.promise
-    disposal = Promise.resolve(filingEntry(ctx).update({ disabled: true }))
+    const entry = filingEntry(ctx)
+    const owner = entry.fiber!
+    disposal = Promise.resolve(entry.update({ disabled: true })).then(() => owner.await())
     expect((await queued).isError).toBe(true)
     expect(bodies).toHaveBeenCalledOnce()
     finish.resolve(undefined)

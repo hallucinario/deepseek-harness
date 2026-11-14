@@ -59,6 +59,8 @@ The existing MyDot panel displays the plan, changes from its prior revision, act
 
 Before takeover, finish or stop all app-managed background jobs, including jobs owned by other Sessions and unowned jobs. A cancellation request is insufficient until the producer has released its resources; MyDot refuses takeover while a job is running or stopping.
 
+Unloading closes filing admission and prevents pending operations from appending decisions or invoking a synthetic confirmation callback. It waits for admitted operations and ownership recovery to settle before releasing filing tools, projections and the app tool fence. A receipt persisted before unloading is recovered by query after replacement; an interrupted callback never authorizes resending.
+
 The trusted recorder adapter sends one JSON line `{command: "status", caseId, planDigest}` to its configured socket and strictly decodes `{ok: true, result: status}`. The versioned host status carries identity/digest, state, completeness, readiness, monotonic sequence, observation time and archive metadata. MyDot retains only opaque archive, segment, protected-interval and gap references. The recorder observes capture and storage; it does not attest that external controllers have stopped. Protected authentication stops video and input producers before acknowledging protection. Confirmation refuses protected, stale, failed, empty or unready capture. Accepted receipts with partial or unavailable recording remain visibly distinct. Returning app controls requires a terminal decision and a fresh matching stopped recorder; configured desktops additionally require a new capture through the existing resume operation.
 
 -----

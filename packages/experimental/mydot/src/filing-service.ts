@@ -36,6 +36,8 @@ export class FilingService extends TypertRemoteService {
   private readonly cases = new Map<FilingCaseId, { session: Session; workflow: FilingWorkflow }>()
   private takeoverCase: FilingCaseId | undefined
   private controlOrder: Promise<unknown> = Promise.resolve()
+  private closing = false
+  private readonly admitted = new Set<Promise<unknown>>()
   private readonly failed = new Set<FilingCaseId>()
   private readonly loading: PromiseLike<unknown>
   private readonly recorderConnection!: RecorderConnection
@@ -54,8 +56,8 @@ export class FilingService extends TypertRemoteService {
         timeoutMs: config.filingRecorderTimeoutMs, maxBytes: config.maxTextBytes }
       this.recorderMaxAgeMs = config.filingRecorderMaxAgeMs
     }
-    ctx.sessionProjections.register(filingProjection)
-    this.loading = ctx.effect(async () => {
+    const projection = ctx.sessionProjections.register(filingProjection)
+    const loading = ctx.effect(async () => {
       if (!config.filingEnabled) return () => undefined
       let human: FilingView | undefined
       let returned: FilingView | undefined
@@ -75,7 +77,24 @@ export class FilingService extends TypertRemoteService {
       config.recovered()
       return () => undefined
     })
-    if (config.filingEnabled) this.registerTool()
+    this.loading = loading
+    ctx.effect(function* (this: FilingService) {
+      yield loading
+      yield projection
+      if (config.filingEnabled) yield this.registerTool()
+      yield async () => {
+        this.closing = true
+        await Promise.allSettled([Promise.resolve(this.loading), ...this.admitted])
+      }
+    }.bind(this))
+  }
+  private assertOpen(): void { if (this.closing) throw new Error('Filing service is closing') }
+  private admit<T>(work: () => Promise<T>): Promise<T> {
+    this.assertOpen()
+    const task = Promise.resolve().then(work)
+    this.admitted.add(task)
+    void task.then(() => { this.admitted.delete(task) }, () => { this.admitted.delete(task) })
+    return task
   }
   private ownerOnly(): void {
     if (principalOf(this.ctx.invocation) !== undefined) throw new Error('Only the authenticated Host owner may decide a filing')
@@ -94,14 +113,16 @@ export class FilingService extends TypertRemoteService {
       return prior.workflow
     }
     const persist = async (view: FilingView): Promise<void> => {
+      this.assertOpen()
       session.append('mydot/filing', { view: filingViewSchema.parse(view) })
       try { if (!(await this.ctx.sessions.flush(session))) throw new Error('Filing requires durable Session persistence') }
       catch (error: unknown) { this.failed.add(id); throw error }
       this.ctx.emit('mydot/handoff-changed')
     }
     const workflow = new FilingWorkflow({ load: () => this.views(session).find(view => view.plan.caseId === id), persist,
-      read: path => this.config.read(session.id, path), now: Date.now, fence: () => this.config.takeover(session.id),
-      returnControl: () => this.config.returnControl(), recorderMaxAgeMs: this.recorderMaxAgeMs,
+      read: path => this.config.read(session.id, path), now: Date.now,
+      fence: () => { this.assertOpen(); return this.config.takeover(session.id) },
+      returnControl: () => { this.assertOpen(); return this.config.returnControl() }, recorderMaxAgeMs: this.recorderMaxAgeMs,
       recorder: (caseId, digest) => readRecorderStatus(this.recorderConnection, caseId, digest),
       recipient: {
         query: async (intentId) => {
@@ -111,6 +132,7 @@ export class FilingService extends TypertRemoteService {
         confirm: async (intent) => {
           const known = await this.receipt(session, intent.intentId)
           if (known !== null) return known
+          this.assertOpen()
           // The synthetic recipient is a narrow adapter within this Session, not a network sender.
           const receipt = mockReceiptSchema.parse({ ...intent, receiptId: `receipt-${intent.intentId}` })
           session.append('mydot/mock-receipt', receipt)
@@ -148,12 +170,15 @@ export class FilingService extends TypertRemoteService {
    * @returns Durably reserved identity; no filing authority is granted.
    */
   async startCase(agent: Agent): Promise<FilingCaseId> {
-    await this.loading
-    if (!this.config.filingEnabled) throw new Error('Synthetic filing is disabled')
-    const caseId = randomUUID().replaceAll('-', '') as FilingCaseId
-    agent.session.append('mydot/filing-case', { caseId, sessionId: agent.id })
-    if (!(await this.ctx.sessions.flush(agent.session))) throw new Error('Case reservation requires durable Session persistence')
-    return caseId
+    return this.admit(async () => {
+      await this.loading
+      if (!this.config.filingEnabled) throw new Error('Synthetic filing is disabled')
+      this.assertOpen()
+      const caseId = randomUUID().replaceAll('-', '') as FilingCaseId
+      agent.session.append('mydot/filing-case', { caseId, sessionId: agent.id })
+      if (!(await this.ctx.sessions.flush(agent.session))) throw new Error('Case reservation requires durable Session persistence')
+      return caseId
+    })
   }
   /** Prepare from the actual initiating Session; never accepts a model-selected writer.
    * @param agent - Actual tool caller.
@@ -161,39 +186,43 @@ export class FilingService extends TypertRemoteService {
    * @returns Flushed candidate carrying no owner authority.
    */
   async prepare(agent: Agent, input: FilingPlan): Promise<FilingView> {
-    await this.loading
-    if (!this.config.filingEnabled) throw new Error('Synthetic filing is disabled')
-    const plan = filingPlanSchema.parse(input)
-    using ownSource = await this.ctx.sessionQuery.observeSession(agent.id)
-    if (!ownSource.events.slice(ownSource.inheritedEventCount).some(event => event.type === 'mydot/filing-case' && event.data.caseId === plan.caseId && event.data.sessionId === agent.id)) {
-      throw new Error('Reserve the case in this original Session before preparing filing documents')
-    }
-    if (this.failed.has(plan.caseId)) throw new Error('Filing persistence is unconfirmed; restart and query')
-    for (const record of await this.ctx.sessionQuery.listSessions()) {
-      using source = await this.ctx.sessionQuery.observeSession(record.header.id)
-      if ((source.projections?.values.mydotFilings ?? []).some(view => view.plan.caseId === plan.caseId && view.sessionId !== agent.id)) throw new Error('Case belongs to another original Session')
-    }
-    if (this.takeoverCase !== undefined) throw new Error('Return owner control before preparing filing documents')
-    const result = await this.bind(agent.session, plan.caseId).prepare(agent.id, plan)
-    this.ctx.get('goals')?.disarm(agent)
-    return result
+    return this.admit(async () => {
+      await this.loading
+      if (!this.config.filingEnabled) throw new Error('Synthetic filing is disabled')
+      const plan = filingPlanSchema.parse(input)
+      using ownSource = await this.ctx.sessionQuery.observeSession(agent.id)
+      if (!ownSource.events.slice(ownSource.inheritedEventCount).some(event => event.type === 'mydot/filing-case' && event.data.caseId === plan.caseId && event.data.sessionId === agent.id)) {
+        throw new Error('Reserve the case in this original Session before preparing filing documents')
+      }
+      if (this.failed.has(plan.caseId)) throw new Error('Filing persistence is unconfirmed; restart and query')
+      for (const record of await this.ctx.sessionQuery.listSessions()) {
+        using source = await this.ctx.sessionQuery.observeSession(record.header.id)
+        if ((source.projections?.values.mydotFilings ?? []).some(view => view.plan.caseId === plan.caseId && view.sessionId !== agent.id)) throw new Error('Case belongs to another original Session')
+      }
+      if (this.takeoverCase !== undefined) throw new Error('Return owner control before preparing filing documents')
+      const result = await this.bind(agent.session, plan.caseId).prepare(agent.id, plan)
+      this.ctx.get('goals')?.disarm(agent)
+      return result
+    })
   }
   /** Read owner filing cards; persisted intents alone never enable confirmation.
    * @returns Projected owner decisions and live readiness.
    */
   async snapshot(): Promise<readonly FilingCardView[]> {
-    await this.loading
-    if (!this.config.filingEnabled || principalOf(this.ctx.invocation) !== undefined) return []
-    const result: FilingCardView[] = []
-    for (const record of await this.ctx.sessionQuery.listSessions()) {
-      using source = await this.ctx.sessionQuery.observeSession(record.header.id)
-      for (const filing of source.projections?.values.mydotFilings ?? []) {
-        if (filing.sessionId !== record.header.id) continue
-        result.push({ filing: this.failed.has(filing.plan.caseId) ? { ...filing, phase: 'invalidated', reason: 'persistence-unconfirmed' } : filing,
-          confirmationReady: !this.failed.has(filing.plan.caseId) && (this.cases.get(filing.plan.caseId)?.workflow.ready() ?? false) })
+    return this.admit(async () => {
+      await this.loading
+      if (!this.config.filingEnabled || principalOf(this.ctx.invocation) !== undefined) return []
+      const result: FilingCardView[] = []
+      for (const record of await this.ctx.sessionQuery.listSessions()) {
+        using source = await this.ctx.sessionQuery.observeSession(record.header.id)
+        for (const filing of source.projections?.values.mydotFilings ?? []) {
+          if (filing.sessionId !== record.header.id) continue
+          result.push({ filing: this.failed.has(filing.plan.caseId) ? { ...filing, phase: 'invalidated', reason: 'persistence-unconfirmed' } : filing,
+            confirmationReady: !this.failed.has(filing.plan.caseId) && (this.cases.get(filing.plan.caseId)?.workflow.ready() ?? false) })
+        }
       }
-    }
-    return result
+      return result
+    })
   }
   /** Approve precisely the displayed revision and digest.
    * @param id - Stable case identity.
@@ -203,7 +232,7 @@ export class FilingService extends TypertRemoteService {
    */
   @Remote
   async approve(id: FilingCaseId, revision: number, digest: string): Promise<FilingView> {
-    this.ownerOnly(); return (await this.find(id)).approve(revision, digest)
+    this.ownerOnly(); return this.admit(async () => (await this.find(id)).approve(revision, digest))
   }
   /** Persist owner intent after closing controls and verifying independent recorder readiness.
    * @param id - Stable case identity.
@@ -216,7 +245,7 @@ export class FilingService extends TypertRemoteService {
   async begin(id: FilingCaseId, revision: number, digest: string, externalControlsClosed: boolean): Promise<FilingView> {
     this.ownerOnly()
     if (!externalControlsClosed) throw new Error('The owner must confirm other clients and scheduled controls are stopped')
-    return this.transferControl(async () => {
+    return this.admit(() => this.transferControl(async () => {
       const workflow = await this.find(id)
       if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control; finish and return it first')
       this.takeoverCase = id
@@ -226,7 +255,7 @@ export class FilingService extends TypertRemoteService {
         if (control !== 'human' && control !== 'stopping') this.takeoverCase = undefined
         throw error
       }
-    })
+    }))
   }
   /** Owner-only final synthetic confirmation; never sends to a real portal.
    * @param id - Stable case identity.
@@ -236,7 +265,7 @@ export class FilingService extends TypertRemoteService {
    */
   @Remote
   async confirmMock(id: FilingCaseId, revision: number, digest: string): Promise<FilingView> {
-    this.ownerOnly(); return (await this.find(id)).confirm(revision, digest)
+    this.ownerOnly(); return this.admit(async () => (await this.find(id)).confirm(revision, digest))
   }
   /** Return app control after independent recorder stop; configured desktops still need a fresh capture.
    * @param id - Stable terminal case identity.
@@ -247,20 +276,22 @@ export class FilingService extends TypertRemoteService {
   @Remote
   async returnControl(id: FilingCaseId, revision: number, digest: string): Promise<FilingView> {
     this.ownerOnly()
-    return this.transferControl(async () => {
+    return this.admit(() => this.transferControl(async () => {
       const workflow = await this.find(id)
       if (this.takeoverCase !== undefined && this.takeoverCase !== id) throw new Error('Another case owns app control')
       const result = await workflow.returnControl(revision, digest)
       this.takeoverCase = undefined
       return result
-    })
+    }))
   }
   /** Query by existing stable intent without resending, including after restart.
    * @param id - Stable case identity.
    * @returns Receipt or unresolved state.
    */
   @Remote
-  async reconcile(id: FilingCaseId): Promise<FilingView> { this.ownerOnly(); return (await this.find(id)).reconcile() }
+  async reconcile(id: FilingCaseId): Promise<FilingView> {
+    this.ownerOnly(); return this.admit(async () => (await this.find(id)).reconcile())
+  }
   /** Revoke an unconsumed owner decision.
    * @param id - Stable case identity.
    * @param revision - Exact displayed revision.
@@ -269,27 +300,29 @@ export class FilingService extends TypertRemoteService {
    */
   @Remote
   async cancel(id: FilingCaseId, revision: number, digest: string): Promise<FilingView> {
-    this.ownerOnly(); return (await this.find(id)).cancel(revision, digest)
+    this.ownerOnly(); return this.admit(async () => (await this.find(id)).cancel(revision, digest))
   }
-  private registerTool(): void {
-    this.ctx.tools.register(defineTool({ name: 'start_mock_filing_case', description: 'Reserve a stable synthetic filing case in this Session before reading or preparing filing documents. No approval or external effect is granted.',
-      parameters: {}, output: { schema: { type: 'object', additionalProperties: false, properties: { caseId: { type: 'string', required: true } } },
-        render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
-      execute: async (_args, exec) => {
-        if (exec.agent === undefined) throw new Error('Case reservation requires the initiating Session')
-        return { caseId: await this.startCase(exec.agent) }
-      },
-    }))
-    this.ctx.tools.register(defineTool({ name: 'prepare_mock_filing', description: 'Prepare an exact synthetic filing plan for owner review. Supply a stable case identity before work. This tool cannot approve, submit, pay, or change standing settings.',
-      parameters: { plan: { type: 'json', required: true } },
-      output: { schema: { type: 'object', additionalProperties: false, properties: { caseId: { type: 'string', required: true }, planDigest: { type: 'string', required: true }, revision: { type: 'integer', required: true } } },
-        render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
-      execute: async (args, exec) => {
-        if (exec.agent === undefined) throw new Error('Filing preparation requires the initiating Session')
-        if (Buffer.byteLength(JSON.stringify(args.plan)) > this.config.maxTextBytes) throw new Error('Filing exceeds configured byte allowance')
-        const view = await this.prepare(exec.agent, filingPlanSchema.parse(args.plan))
-        exec.concludeTurn(); return { caseId: view.plan.caseId, planDigest: view.planDigest, revision: view.revision }
-      },
-    }))
+  private registerTool() {
+    return this.ctx.effect(function* (this: FilingService) {
+      yield this.ctx.tools.register(defineTool({ name: 'start_mock_filing_case', description: 'Reserve a stable synthetic filing case in this Session before reading or preparing filing documents. No approval or external effect is granted.',
+        parameters: {}, output: { schema: { type: 'object', additionalProperties: false, properties: { caseId: { type: 'string', required: true } } },
+          render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+        execute: async (_args, exec) => {
+          if (exec.agent === undefined) throw new Error('Case reservation requires the initiating Session')
+          return { caseId: await this.startCase(exec.agent) }
+        },
+      }))
+      yield this.ctx.tools.register(defineTool({ name: 'prepare_mock_filing', description: 'Prepare an exact synthetic filing plan for owner review. Supply a stable case identity before work. This tool cannot approve, submit, pay, or change standing settings.',
+        parameters: { plan: { type: 'json', required: true } },
+        output: { schema: { type: 'object', additionalProperties: false, properties: { caseId: { type: 'string', required: true }, planDigest: { type: 'string', required: true }, revision: { type: 'integer', required: true } } },
+          render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+        execute: async (args, exec) => {
+          if (exec.agent === undefined) throw new Error('Filing preparation requires the initiating Session')
+          if (Buffer.byteLength(JSON.stringify(args.plan)) > this.config.maxTextBytes) throw new Error('Filing exceeds configured byte allowance')
+          const view = await this.prepare(exec.agent, filingPlanSchema.parse(args.plan))
+          exec.concludeTurn(); return { caseId: view.plan.caseId, planDigest: view.planDigest, revision: view.revision }
+        },
+      }))
+    }.bind(this))
   }
 }

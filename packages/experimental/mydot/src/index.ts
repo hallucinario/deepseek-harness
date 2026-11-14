@@ -109,7 +109,7 @@ export class MyDotService extends TypertRemoteService {
     this.controls = new JobControls(ctx)
     this.filingRecovering = config.filingEnabled === true
     ctx.plugin(HumanHandoffService, config)
-    ctx.plugin(FilingService, { ...config, takeover: async (sessionId) => {
+    const filing = ctx.plugin(FilingService, { ...config, takeover: async (sessionId) => {
       this.filingTakeover = true
       this.filingReturning = false
       this.filingAdmissions.abort(new Error('Filing takeover closes queued desktop admission'))
@@ -176,7 +176,8 @@ export class MyDotService extends TypertRemoteService {
         content: [{ type: 'text', text }], source: { kind: 'mydot', form: 'snapshot', sections: [{ name: 'mydot', text }] },
       })] }
     }, { prepend: true })
-    ctx.on('tools/execute', async (exec, next) => {
+    const filingFence = ctx.on('tools/execute', async (exec, next) => {
+      if (this.lifecycle.signal.aborted) throw new Error('MyDot is closing')
       if (this.filingRecovering) throw new Error('Filing ownership recovery is pending')
       if (this.filingTakeover && !(this.filingReturning && config.captureTools.includes(exec.name) && exec.agent?.id === this.desktop.snapshot().owner)) throw new Error('Owner filing takeover blocks all app tool control and capture; query the existing intent')
       this.filingInFlight += 1
@@ -197,6 +198,11 @@ export class MyDotService extends TypertRemoteService {
         if (this.filingInFlight === 0) { for (const resolve of this.filingDrained) resolve(); this.filingDrained.clear() }
       }
     })
+    ctx.effect(function* (this: MyDotService) {
+      yield filingFence
+      yield filing.dispose
+      yield () => { this.lifecycle.abort() }
+    }.bind(this))
   }
 
   async [Service.init](): Promise<void> { await this.initialized }
