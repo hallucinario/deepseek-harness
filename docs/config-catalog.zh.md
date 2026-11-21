@@ -1168,7 +1168,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:52`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:53`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
@@ -1183,6 +1183,8 @@ export interface Config extends HumanHandoffConfig, FilingConfig {
   captureTools: string[]
   /** Maximum characters quoted from a job’s latest logged assistant output. */
   summaryCharacters: number
+  /** Explicit material-file search limits; omit to retain memory-only context. */
+  materialSearch?: MaterialSearchConfig | undefined
 }
 
 /** Optional local integration; no timeout is invented for a disabled feature. */
@@ -1211,6 +1213,14 @@ export interface FilingConfig {
   filingRecorderMaxAgeMs?: number
   /** Existing complete UTF-8 input/output allowance. */
   maxTextBytes: number
+}
+
+/** Explicit opt-in limits; omitted configuration performs no material reads. */
+export interface MaterialSearchConfig {
+  /** Maximum selected file references attempted, in Space order. */
+  maxFiles: number
+  /** Maximum UTF-8 bytes of the complete added message, including source metadata. */
+  maxContextBytes: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->

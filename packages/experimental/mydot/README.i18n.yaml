@@ -15,11 +15,11 @@
   en: d152484eb41ac6b4
   zh: 87d7d2dbd7777429
 /deepseek-ai-dsh-experimental-mydot/use-this-package:
-  en: deb315b98ef6c2fb
-  zh: 38d15606a0b6491f
+  en: d5893e09719a651f
+  zh: 386699d22af1f308
 /deepseek-ai-dsh-experimental-mydot/understand-the-implementation:
-  en: 3da34c6a69fcc9ee
-  zh: 50bc75b6bc29c6e8
+  en: cf21dfea165eda1b
+  zh: 0c7228b147e4ec2c
 /deepseek-ai-dsh-experimental-mydot/further-exploration:
   en: f9acc1cf671bb19d
   zh: 06594d2d62ad2d7b
@@ -30,11 +30,11 @@
   en: 33ab835232e67c85
   zh: 3f3960fef35f3d8d
 /deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/what-the-model-sees:
-  en: 638fea97befca4c0
-  zh: e0f5e7b0bfeaebda
+  en: 5f397458f89f8f7a
+  zh: 6a4fb7ad41738e2e
 /deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/token-effect:
-  en: e35ea95630cbc33e
-  zh: 6e019d8772a669ca
+  en: e557889bb5babae9
+  zh: 9e2a10661549b0a1
 /deepseek-ai-dsh-experimental-mydot/model-experience/space-and-scoped-memory/kv-cache-effect:
   en: f0bc18c74ea84577
   zh: e7a27d302d423182
@@ -63,8 +63,8 @@
   en: be6be0225b9d9a59
   zh: 7b863cf0e3280723
 /deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work:
-  en: a9e0d42ccf75329d
-  zh: 75a071bc1c9adf55
+  en: 51df0991c5f2a8b6
+  zh: b309e8c8189a0fb0
 /deepseek-ai-dsh-experimental-mydot/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 6df6019931844fb2
