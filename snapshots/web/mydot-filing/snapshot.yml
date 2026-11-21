@@ -1,0 +1,10 @@
+version: 1
+scenario: mydot-filing
+profile: web
+composition: web-mydot-filing
+recording: authored
+replay:
+  override: true
+header:
+  class: web-mydot-filing
+  pin: true

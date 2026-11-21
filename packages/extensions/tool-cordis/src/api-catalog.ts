@@ -1730,6 +1730,104 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mydotFiling',
+    summary: 'Owner authority stays in Remote methods; model tools can only prepare plans.',
+    description: 'Owner authority stays in Remote methods; model tools can only prepare plans.',
+    methods: [
+      {
+        signature: 'async startCase(agent: Agent): Promise<FilingCaseId>',
+        description: 'Reserve the stable case before preparing or reading filing documents.',
+        parameters: [{ name: 'agent', description: 'Actual initiating Session.' }],
+        returns: 'Durably reserved identity; no filing authority is granted.',
+      },
+      {
+        signature: 'async prepare(agent: Agent, input: FilingPlan): Promise<FilingView>',
+        description: 'Prepare from the actual initiating Session; never accepts a model-selected writer.',
+        parameters: [{ name: 'agent', description: 'Actual tool caller.' }, { name: 'input', description: 'Exact synthetic plan with current document digests.' }],
+        returns: 'Flushed candidate carrying no owner authority.',
+      },
+      {
+        signature: 'async snapshot(): Promise<readonly FilingCardView[]>',
+        description: 'Read owner filing cards; persisted intents alone never enable confirmation.',
+        parameters: [],
+        returns: 'Projected owner decisions and live readiness.',
+      },
+      {
+        signature: '@Remote async approve(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>',
+        description: 'Approve precisely the displayed revision and digest.',
+        parameters: [{ name: 'id', description: 'Stable case identity.' }, { name: 'revision', description: 'Displayed revision.' }, { name: 'digest', description: 'Server-computed digest.' }],
+        returns: 'Durable owner approval without any effect.',
+      },
+      {
+        signature: '@Remote async begin(id: FilingCaseId, revision: number, digest: string, externalControlsClosed: boolean): Promise<FilingView>',
+        description: 'Persist owner intent after closing controls and verifying independent recorder readiness.',
+        parameters: [{ name: 'id', description: 'Stable case identity.' }, { name: 'revision', description: 'Owner-approved revision.' }, { name: 'digest', description: 'Owner-approved digest.' }, { name: 'externalControlsClosed', description: 'Explicit owner assertion about other clients and scheduled controls.' }],
+        returns: 'Durable confirmation intent; no recipient invocation yet.',
+      },
+      {
+        signature: '@Remote async confirmMock(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>',
+        description: 'Owner-only final synthetic confirmation; never sends to a real portal.',
+        parameters: [{ name: 'id', description: 'Stable case identity.' }, { name: 'revision', description: 'Exact reviewed revision.' }, { name: 'digest', description: 'Exact reviewed digest.' }],
+        returns: 'Verified local receipt or explicit uncertainty.',
+      },
+      {
+        signature: '@Remote async returnControl(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>',
+        description: 'Return app control after independent recorder stop; configured desktops still need a fresh capture.',
+        parameters: [{ name: 'id', description: 'Stable terminal case identity.' }, { name: 'revision', description: 'Exact terminal revision.' }, { name: 'digest', description: 'Exact reviewed digest.' }],
+        returns: 'Durable owner return authority, separate from desktop resume.',
+      },
+      {
+        signature: '@Remote async reconcile(id: FilingCaseId): Promise<FilingView>',
+        description: 'Query by existing stable intent without resending, including after restart.',
+        parameters: [{ name: 'id', description: 'Stable case identity.' }],
+        returns: 'Receipt or unresolved state.',
+      },
+      {
+        signature: '@Remote async cancel(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>',
+        description: 'Revoke an unconsumed owner decision.',
+        parameters: [{ name: 'id', description: 'Stable case identity.' }, { name: 'revision', description: 'Exact displayed revision.' }, { name: 'digest', description: 'Exact displayed digest.' }],
+        returns: 'Cancellation; existing acceptance is never undone.',
+      },
+    ],
+  },
+  {
+    key: 'mydotHandoff',
+    summary: 'Concrete answer/recovery methods backed by the existing parent Session writer.',
+    description: 'Concrete answer/recovery methods backed by the existing parent Session writer.',
+    methods: [
+      {
+        signature: 'async prepare(agent: Agent, input: PrepareHumanInput): Promise<HumanRequestView>',
+        description: 'Prepare one human dependency and disarm only its original branch.',
+        parameters: [{ name: 'agent', description: 'Actual initiating branch, never a model-selected Session.' }, { name: 'input', description: 'Versioned question and evidence prepared for the owner.' }],
+        returns: 'Persisted pending request.',
+      },
+      {
+        signature: '@Remote async answer(input: HumanAnswer): Promise<HumanRequestView>',
+        description: 'Accept an owner response; a receipt does not certify subsequent work.',
+        parameters: [{ name: 'input', description: 'Stable submission and exact observed request revision.' }],
+        returns: 'Current durable receipt or correlated execution state.',
+      },
+      {
+        signature: '@Remote async reconcile(requestId: HumanRequestId): Promise<HumanRequestView>',
+        description: 'Reconcile a saved external result or an accepted but undelivered answer.',
+        parameters: [{ name: 'requestId', description: 'Exact durable request identity.' }],
+        returns: 'Saved state, including explicit refusal or uncertainty.',
+      },
+      {
+        signature: '@Remote async cancel(requestId: HumanRequestId): Promise<HumanRequestView>',
+        description: 'Retire a dependency without replaying or changing its saved answer.',
+        parameters: [{ name: 'requestId', description: 'Exact request the owner is cancelling.' }],
+        returns: 'Durable retired state; no external action or model turn is started.',
+      },
+      {
+        signature: 'async snapshot(): Promise<readonly HumanRequestView[]>',
+        description: 'Read the canonical projected request list without holding a model or a browser.',
+        parameters: [],
+        returns: 'Current request states reconstructed from Session projections.',
+      },
+    ],
+  },
+  {
     key: 'officeToPdf',
     summary: 'A provider lifetime owns all converters, queued calls, and temporary files.',
     description: 'A provider lifetime owns all converters, queued calls, and temporary files.',
@@ -4560,6 +4658,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; callers own their request inputs and must keep them unchanged until the stream settles.' }],
   },
   {
+    name: 'mydot/handoff-changed',
+    mode: 'emit',
+    signature: '\'mydot/handoff-changed\'(): void',
+    summary: 'Committed request state changed.',
+    description: 'Committed request state changed. @mode emit',
+    parameters: [],
+  },
+  {
     name: 'permission-presets/catalog-changed',
     mode: 'emit',
     signature: '\'permission-presets/catalog-changed\'(): void',
@@ -5712,6 +5818,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FileUploadValue {\n    readonly receiptId: FileUploadReceiptId;\n    readonly file: FileAttachmentRef;\n}',
   },
   {
+    name: 'FilingCardView',
+    declaration: 'export interface FilingCardView {\n    filing: FilingView;\n    confirmationReady: boolean;\n}',
+  },
+  {
+    name: 'FilingCaseId',
+    declaration: 'export type FilingCaseId = Branded<\'MyDotFilingCaseId\'>;',
+  },
+  {
+    name: 'FilingFile',
+    declaration: 'export interface FilingFile {\n    role: \'source\' | \'preview\' | \'attachment\';\n    path: string;\n    digest: string;\n}',
+  },
+  {
+    name: 'FilingPlan',
+    declaration: 'export interface FilingPlan {\n    caseId: FilingCaseId;\n    legalEntity: string;\n    account: string;\n    site: \'local-synthetic-recipient\';\n    period: {\n        from: string;\n        to: string;\n    };\n    tax: string;\n    destination: \'mock-local\';\n    amount: string;\n    currency: \'JPY\';\n    forms: string[];\n    files: FilingFile[];\n    inputDestinations: string[];\n    modelDestinations: string[];\n    expiresAt: number;\n    stopRef: string;\n    queryRef: string;\n    effects: {\n        submit: boolean;\n        payment: \'none\' | \'one-time\';\n        standingSettings: \'none\' | \'auto-debit\';\n    };\n}',
+  },
+  {
+    name: 'FilingView',
+    declaration: 'export interface FilingView {\n    sessionId: SessionId;\n    plan: FilingPlan;\n    previousPlan?: FilingPlan | undefined;\n    revision: number;\n    planDigest: string;\n    phase: \'prepared\' | \'approved\' | \'intent\' | \'unknown\' | \'accepted\' | \'cancelled\' | \'invalidated\';\n    actor: \'model-preparer\' | \'host-owner\';\n    control: \'agent\' | \'stopping\' | \'human\' | \'return-authorized\';\n    ownerControlConfirmation?: {\n        revision: number;\n        planDigest: string;\n        confirmedAt: number;\n        source: \'host-owner\';\n    } | undefined;\n    intentId?: string | undefined;\n    recorder?: RecorderStatus | undefined;\n    receipt?: MockReceipt | undefined;\n    reason?: \'files-changed\' | \'confirmation-unknown\' | \'owner-cancelled\' | \'persistence-unconfirmed\' | undefined;\n}',
+  },
+  {
     name: 'FinishReason',
     declaration: 'export type FinishReason = FinishReasonMap[keyof FinishReasonMap];',
   },
@@ -5854,6 +5980,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'HostConnectionRpc',
     declaration: 'export interface HostConnectionRpc {\n    handle(channel: string, handler: ConnectionRpcHandler): () => Promise<void>;\n    intercept(channel: \'/api\', matches: ConnectionRpcEndpointMatcher, handler: ConnectionRpcHandler): () => Promise<void>;\n}',
+  },
+  {
+    name: 'HumanAnswer',
+    declaration: 'export interface HumanAnswer {\n    requestId: HumanRequestId;\n    requestRevision: number;\n    submissionId: HumanSubmissionId;\n    choice: string;\n    text: string;\n    result: SurveyHandoffResult | null;\n}',
+  },
+  {
+    name: 'HumanRequestId',
+    declaration: 'export type HumanRequestId = Branded<\'MyDotHumanRequestId\'>;',
+  },
+  {
+    name: 'HumanRequestView',
+    declaration: 'export interface HumanRequestView {\n    request: PreparedHumanRequest;\n    phase: \'pending\' | \'received\' | \'dispatching\' | \'queued\' | \'claimed\' | \'resumed\' | \'stopped\' | \'retired\' | \'outcome\';\n    answer?: HumanAnswer | undefined;\n    rpcId?: string | undefined;\n    reason?: string | undefined;\n    outcome?: \'succeeded\' | \'failed\' | \'unknown\' | undefined;\n    evidence?: string | undefined;\n}',
+  },
+  {
+    name: 'HumanSubmissionId',
+    declaration: 'export type HumanSubmissionId = Branded<\'MyDotHumanSubmissionId\'>;',
+  },
+  {
+    name: 'HumanSurveyTarget',
+    declaration: 'export interface HumanSurveyTarget {\n    caseId: string;\n    sourceId: string;\n    sourceRevision: string;\n    baseRevisionId: string;\n    baseVersion: number;\n    workflow: \'independent-reference\' | \'assisted-correction\';\n}',
   },
   {
     name: 'ImageAttachmentLimits',
@@ -6436,6 +6582,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MessageSourceMap {\n    user: {\n        kind: \'user\';\n    };\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    \'system-prompt\': SystemPromptMessageSource;\n}',
   },
   {
+    name: 'MockReceipt',
+    declaration: 'export interface MockReceipt {\n    receiptId: string;\n    intentId: string;\n    caseId: FilingCaseId;\n    planDigest: string;\n    forms: string[];\n}',
+  },
+  {
     name: 'ModDefinition',
     declaration: 'export interface ModDefinition {\n    readonly name: string;\n    readonly version?: string;\n    readonly root?: string;\n    readonly options?: PluginOptions;\n    readonly register: ModRegister;\n}',
   },
@@ -6505,7 +6655,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'MyDotSnapshot',
-    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
+    declaration: 'export interface MyDotSnapshot {\n    spaces: Space[];\n    conversations: {\n        sessionId: SessionId;\n        spaceId: Space[\'id\'];\n        cwd: string;\n    }[];\n    jobs: MyDotJobView[];\n    artifacts: ArtifactView[];\n    desktop: DesktopState;\n    desktopEnabled?: boolean;\n    filings?: readonly FilingCardView[] | undefined;\n    humanRequests?: readonly HumanRequestView[] | undefined;\n    issues?: {\n        sessionId: SessionId;\n        kind: \'unavailable\' | \'artifact-delivery\';\n    }[];\n}',
   },
   {
     name: 'NativeFileApplication',
@@ -6692,12 +6842,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PreparedDeepSeekLlmApiExtensions {\n    readonly fields: Readonly<Partial<DeepSeekLlmApiExtensionMap>>;\n    accept(): Promise<void>;\n}',
   },
   {
+    name: 'PreparedHumanRequest',
+    declaration: 'export interface PreparedHumanRequest {\n    requestId: HumanRequestId;\n    requestRevision: number;\n    sessionId: SessionId;\n    parentSessionId: SessionId | null;\n    question: string;\n    reason: string;\n    role: \'owner\';\n    evidenceUrl: string;\n    resumeInstruction: string;\n    options: string[];\n    target: HumanSurveyTarget | null;\n    goal: {\n        id: string;\n        revision: number;\n        roundsStarted: number;\n        armed: boolean;\n    } | null;\n}',
+  },
+  {
     name: 'PreparedLlmCall',
     declaration: 'export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly toolUpdate?: ToolUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
   {
     name: 'PreparedReferencedMessage',
     declaration: 'export interface PreparedReferencedMessage {\n    content: ContentBlock[];\n    additionalContext?: UserMessage;\n}',
+  },
+  {
+    name: 'PrepareHumanInput',
+    declaration: 'export interface PrepareHumanInput {\n    requestId: string;\n    question: string;\n    reason: string;\n    evidenceUrl: string;\n    resumeInstruction: string;\n    options: string[];\n    target: HumanSurveyTarget | null;\n}',
   },
   {
     name: 'PrepareSessionOptions',
@@ -6886,6 +7044,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReasoningEffortId',
     declaration: 'export type ReasoningEffortId = Branded<\'ReasoningEffortId\'>;',
+  },
+  {
+    name: 'RecorderStatus',
+    declaration: 'export interface RecorderStatus {\n    version: \'high-impact-recorder/v1\';\n    caseId: string;\n    planDigest: string;\n    state: \'starting\' | \'recording\' | \'protected\' | \'failed\' | \'stopped\';\n    evidence: \'complete\' | \'partial\' | \'unavailable\';\n    readyForConfirmation: boolean;\n    sequence: number;\n    observedAt: number;\n    archiveRef: string;\n    segments: string[];\n    protectedIntervals: string[];\n    gaps: string[];\n}',
   },
   {
     name: 'RecurringScheduleRecord',
@@ -8246,6 +8408,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SurfaceSnapshot',
     declaration: 'export interface SurfaceSnapshot {\n    readonly generation: number;\n    readonly tree: readonly SerializedNode[] | null;\n}',
+  },
+  {
+    name: 'SurveyHandoffResult',
+    declaration: 'export interface SurveyHandoffResult {\n    schemaVersion: 1;\n    requestId: HumanRequestId;\n    status: \'saved\' | \'applied\' | \'deferred\' | \'needs-material\';\n    source: {\n        caseId: string;\n        sourceId: string;\n        sourceRevision: string;\n        manifestId: string;\n    };\n    baseSurvey: {\n        revisionId: string;\n        version: number;\n    };\n    survey: {\n        revisionId: string;\n        version: number;\n    };\n    planning: null | {\n        caseId: string;\n        revisionId: string;\n        headVersion: number;\n    };\n    goldId: string | null;\n}',
   },
   {
     name: 'SystemMessage',

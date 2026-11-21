@@ -8,5 +8,7 @@
 .editor { min-height: 160px; resize: vertical; }
 .jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
 .heading { font-size: 16px; font-weight: 500; margin: 0; }
+.humanRequests { display: grid; gap: 12px; min-width: 0; }
+.humanSelected { border-color: var(--dsw-alias-text-primary); }
 .muted { color: var(--dsw-alias-text-secondary); }
 @media (max-width: 600px) { .panel { padding: 12px; } .root { padding: 8px; } }

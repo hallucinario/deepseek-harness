@@ -8,7 +8,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { FsVersion } from '@deepseek-ai/dsh-fs/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SpaceId, MyDotSnapshot, SpaceInput } from '../src/types.ts'
+import type { SpaceId, MyDotSnapshot, SpaceInput, HumanRequestView, HumanRequestId } from '../src/types.ts'
 import { MyDotDock } from '../src/client/Dock.tsx'
 import { MyDotPanel } from '../src/client/Panel.tsx'
 import { createMyDotStore } from '../src/client/store.ts'
@@ -38,6 +38,28 @@ function bench() {
   }
 }
 async function click(name: string) { await act(async () => { fireEvent.click(screen.getByRole('button', { name })) }) }
+
+it('opens the selected pending request first and retains an explicit Japanese response in the editor store', async () => {
+  localStorage.setItem('dsh.mydot.editor.v1.coverage', JSON.stringify({ spaceId: null, editor: null }))
+  const b = bench()
+  const request = (id: string): HumanRequestView => ({ phase: 'pending', request: { requestId: id as HumanRequestId, requestRevision: 1,
+    sessionId: parent, parentSessionId: null, question: `Question ${id}`, reason: 'Owner decision', role: 'owner', evidenceUrl: '',
+    resumeInstruction: 'Continue the original Session', options: [], target: null, goal: null } })
+  const answer = vi.fn(async () => {})
+  b.source.set({ phase: 'ready', value: { ...b.snapshot, humanRequests: [request('first'), request('selected'), request('last')] } })
+  render(<MyDotPanel {...b.panelProps} selectedHumanRequestId="selected" answerHumanRequest={answer}
+    reconcileHumanRequest={vi.fn(async () => {})} cancelHumanRequest={vi.fn(async () => {})} />)
+  const cards = screen.getAllByRole('article')
+  expect(within(cards[0]!).getByRole('heading').textContent).toBe('Question selected')
+  const selected = within(cards[0]!)
+  fireEvent.change(selected.getByRole('combobox', { name: ja.humanResponse }), { target: { value: 'unknown' } })
+  fireEvent.change(selected.getByRole('textbox', { name: ja.humanDetails }), { target: { value: '原図を再確認してください' } })
+  await act(async () => { fireEvent.click(selected.getByRole('button', { name: ja.humanSubmit })) })
+  expect(answer).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'selected', choice: 'unknown', text: '原図を再確認してください' }))
+  expect(b.editor.getSnapshot().humanDrafts?.['selected:1']).toMatchObject({ choice: 'unknown', text: '原図を再確認してください', submissionId: 'request' })
+  fireEvent.click(selected.getByRole('button', { name: ja.open }))
+  expect(b.commands.openConversation).toHaveBeenCalledWith(parent)
+})
 
 it('names the targeted composer in the active locale and clears an accepted parent draft', async () => {
   const b = bench()
@@ -160,7 +182,7 @@ it('keeps store guards valid after an editor closes and rejects replacing a dirt
   a.conflict(null, 'ignored')
   a.close()
   a.open({ sessionId: parent, scope: null, path: '/report', version: null, saved: '', draft: 'unsaved', conflict: null })
-  expect(() => a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })).toThrow('Save or discard')
+  expect(() =>{  a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null }) }).toThrow('Save or discard')
   a.discard()
   a.open({ sessionId: parent, scope: null, path: '/other', version: null, saved: '', draft: '', conflict: null })
   a.close()
@@ -222,4 +244,67 @@ it('reports archive failures without changing the selected Space', async () => {
   await click(ja.archive)
   expect(screen.getByText(/archive failed/)).toBeTruthy()
   expect(b.editor.getSnapshot().spaceId).toBe(spaceId)
+})
+import type { FilingView } from '../src/filing-types.ts'
+
+const panelFiling: FilingView = {
+  sessionId: child, revision: 3, planDigest: 'a'.repeat(64), actor: 'model-preparer', control: 'agent', phase: 'prepared',
+  plan: { caseId: 'panel-review' as FilingView['plan']['caseId'], legalEntity: 'Panel Entity', account: 'mock-account',
+    site: 'local-synthetic-recipient', destination: 'mock-local', period: { from: '2025-01-01', to: '2025-12-31' },
+    tax: 'mock-tax', amount: '1000', currency: 'JPY', forms: ['return'], expiresAt: 2000000000000,
+    files: [{ role: 'source', path: 'source.txt', digest: 'b'.repeat(64) }, { role: 'preview', path: 'preview.txt', digest: 'c'.repeat(64) }],
+    inputDestinations: ['local-preview'], modelDestinations: [], stopRef: 'cancel', queryRef: 'query',
+    effects: { submit: true, payment: 'none', standingSettings: 'none' } },
+}
+
+it('opens filing source and preview text in the existing editor using their original Session', async () => {
+  const b = bench()
+  b.source.set({ phase: 'ready', value: { ...b.snapshot, filings: [{ filing: panelFiling, confirmationReady: false }] } })
+  const readFile = vi.fn<Commands['readFile']>().mockImplementation(async (_sessionId, path) => ({
+    kind: 'text', path: `/current/${path}`, content: `Read ${path}`, version: FsVersion('filing-v1'),
+  }))
+  const filingCommand = vi.fn<NonNullable<Commands['filingCommand']>>().mockResolvedValue(undefined)
+  render(<MyDotPanel {...b.panelProps} readFile={readFile} filingCommand={filingCommand} />)
+  const card = within(screen.getByRole('heading', { name: `${ja.filingTitle} · ${panelFiling.plan.caseId}` }).closest('article')!)
+  expect(readFile).not.toHaveBeenCalled()
+  expect(filingCommand).not.toHaveBeenCalled()
+  fireEvent.click(card.getByRole('button', { name: ja.open }))
+  expect(b.commands.openConversation).toHaveBeenCalledWith(child)
+  for (const file of panelFiling.plan.files) {
+    await act(async () => { fireEvent.click(card.getByRole('button', { name: `${ja.filingOpenFile} ${file.path}` })) })
+    expect(readFile).toHaveBeenLastCalledWith(child, file.path)
+    expect(b.editor.getSnapshot().editor).toEqual({
+      sessionId: child, scope: null, path: `/current/${file.path}`, version: FsVersion('filing-v1'),
+      saved: `Read ${file.path}`, draft: `Read ${file.path}`, conflict: null,
+    })
+    const editor = within(screen.getByRole('region', { name: ja.edit }))
+    expect(editor.getByRole<HTMLTextAreaElement>('textbox', { name: ja.edit }).value).toBe(`Read ${file.path}`)
+    expect(editor.getByText(`/current/${file.path}`)).toBeTruthy()
+  }
+  expect(readFile.mock.calls).toEqual(panelFiling.plan.files.map(file => [child, file.path]))
+  expect(b.commands.preview).not.toHaveBeenCalled()
+  await act(async () => { fireEvent.click(card.getByRole('button', { name: ja.filingApprove })) })
+  expect(filingCommand).toHaveBeenCalledExactlyOnceWith('approve', panelFiling)
+})
+
+it.each(['missing', 'rejected'] as const)('reports a %s filing read while retaining the open document', async (kind) => {
+  const b = bench()
+  const existing = { sessionId: parent, scope: null, path: '/retained', version: FsVersion('retained-v1'),
+    saved: 'Retained document', draft: 'Retained document', conflict: null }
+  b.editor.actions.open(existing)
+  b.source.set({ phase: 'ready', value: { ...b.snapshot, filings: [{ filing: panelFiling, confirmationReady: false }] } })
+  const readFile = vi.fn<Commands['readFile']>()
+  const file = panelFiling.plan.files[kind === 'missing' ? 0 : 1]!
+  const failure = new Error(kind === 'missing' ? ja.missing : 'filing read offline')
+  if (kind === 'missing') readFile.mockResolvedValue({ kind: 'missing', path: file.path })
+  else readFile.mockRejectedValue(failure)
+  render(<MyDotPanel {...b.panelProps} readFile={readFile} />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: `${ja.filingOpenFile} ${file.path}` })) })
+  expect(readFile).toHaveBeenCalledExactlyOnceWith(child, file.path)
+  expect(screen.getByRole('alert').textContent).toBe(b.common.t('error', { message: String(failure) }))
+  expect(b.editor.getSnapshot().editor).toEqual(existing)
+  expect(within(screen.getByRole('region', { name: ja.edit })).getByRole<HTMLTextAreaElement>('textbox').value)
+    .toBe('Retained document')
+  expect(b.commands.openConversation).not.toHaveBeenCalled()
+  expect(b.commands.preview).not.toHaveBeenCalled()
 })

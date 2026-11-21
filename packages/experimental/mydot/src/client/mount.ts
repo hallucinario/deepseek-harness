@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
@@ -67,6 +68,14 @@ export function registerUi(ctx: Context): void {
   const commands: Commands = {
     hooks: { mydot: source }, retry: watch,
     newRequestId: randomUUID,
+    filingCommand: async (command, filing, externalControlsClosed) => {
+      if (command === 'reconcile') value(await ctx.remote.mydotFiling.reconcile(filing.plan.caseId))
+      else if (command === 'begin') value(await ctx.remote.mydotFiling.begin(filing.plan.caseId, filing.revision, filing.planDigest, externalControlsClosed === true))
+      else value(await ctx.remote.mydotFiling[command](filing.plan.caseId, filing.revision, filing.planDigest))
+    },
+    answerHumanRequest: async (answer) => { value(await ctx.remote.mydotHandoff.answer(answer)) },
+    reconcileHumanRequest: async (requestId) => { value(await ctx.remote.mydotHandoff.reconcile(requestId)) },
+    cancelHumanRequest: async (requestId) => { value(await ctx.remote.mydotHandoff.cancel(requestId)) },
     presentResults: async (sessionId) => { value(await ctx.remote.mydot.presentResults(sessionId)) },
     releaseDesktop: async (sessionId) => { value(await ctx.remote.mydot.releaseDesktop(sessionId)) },
     saveSpace: async input => value(await ctx.remote.mydot.saveSpace(input)),
@@ -124,6 +133,12 @@ export function registerUi(ctx: Context): void {
   ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main', key: 'mydot', locale: NS, store: createEditorStore, inject: () => commands,
   }, MyDotPanel))
+  const selected = new URL(window.location.href).searchParams.getAll('humanRequest')
+  const selectedId = selected.join('')
+  if (selected.length === 1 && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(selectedId)) {
+    commands.selectedHumanRequestId = selectedId
+    ctx.layout.selectPanel('mydot' as MainPanelId)
+  }
   const t = ctx.locale.bind(NS)
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: 'mydot', locale: NS, label: () => t('title') }, MyDotIcon))
 }

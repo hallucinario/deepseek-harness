@@ -1168,11 +1168,11 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:46`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:53`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
-export interface Config {
+export interface Config extends HumanHandoffConfig, FilingConfig {
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -1185,6 +1185,34 @@ export interface Config {
   summaryCharacters: number
   /** Explicit material-file search limits; omit to retain memory-only context. */
   materialSearch?: MaterialSearchConfig | undefined
+}
+
+/** Optional local integration; no timeout is invented for a disabled feature. */
+export interface HumanHandoffConfig {
+  /** Enable preparation and the owner pending list; durable decoding remains registered when off. */
+  humanHandoffEnabled: boolean
+  /** Absolute owner-only Unix socket in an existing canonical private directory; empty disables ingress. */
+  humanHandoffSocketPath: string
+  /** Fixed loopback HTTP origin used to read authoritative drawing results; no model-selected destination. */
+  humanHandoffSurveyOrigin: string
+  /** Measured positive callback/verification deadline in milliseconds; required only for the optional socket. */
+  humanHandoffTimeoutMs?: number
+  /** Existing complete UTF-8 request/result byte allowance. */
+  maxTextBytes: number
+}
+
+/** Optional synthetic filing and independently operated recorder; no operational default deadlines. */
+export interface FilingConfig {
+  /** Enable synthetic plans and owner commands; no real recipient is supported. */
+  filingEnabled?: boolean
+  /** Fixed owner-private recorder socket; no model-selected endpoint. */
+  filingRecorderSocketPath?: string
+  /** Positive status request deadline, supplied from deployment evidence. */
+  filingRecorderTimeoutMs?: number
+  /** Maximum acceptable observation age, supplied from deployment evidence. */
+  filingRecorderMaxAgeMs?: number
+  /** Existing complete UTF-8 input/output allowance. */
+  maxTextBytes: number
 }
 
 /** Explicit opt-in limits; omitted configuration performs no material reads. */

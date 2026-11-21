@@ -86,7 +86,10 @@ export function redactSessionSnapshotIds(logs: readonly string[]): string[] {
     const identifiedMessage = messageId(value)
     if (identifiedMessage !== undefined) claim(identifiedMessage, 'message')
     for (const [childKey, item] of Object.entries(value)) {
-      if (recordType === 'approval/asked' || recordType === 'approval/decided') {
+      if ((recordType === 'mydot/filing-case' || recordType === 'mydot/filing' || recordType === 'mydot/mock-receipt')
+        && ['caseId', 'planDigest', 'intentId', 'receiptId'].includes(childKey)) {
+        claim(item, 'id', true)
+      } else if (recordType === 'approval/asked' || recordType === 'approval/decided') {
         if (childKey === 'id') claim(item, 'approval')
       } else if (childKey === 'commandId') {
         claim(item, 'command', true)

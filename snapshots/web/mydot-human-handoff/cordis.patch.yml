@@ -1,0 +1,10 @@
+- id: agent-default-model
+  config:
+    provider: human-handoff-fixture
+    model: fixture
+
+- insert:
+    - name: '@deepseek-ai/dsh-experimental-mydot'
+      config:
+        memoryDirectory: !!js dshHomePath('mydot-memory')
+        humanHandoffEnabled: true

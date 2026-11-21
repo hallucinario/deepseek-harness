@@ -7,7 +7,8 @@
   },
   "include": [
     "src/client/**/*",
-    "src/types.ts"
+    "src/types.ts",
+    "src/filing-types.ts"
   ],
   "references": [
     {
@@ -84,6 +85,9 @@
     },
     {
       "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../session/session-projection"
     }
   ]
 }

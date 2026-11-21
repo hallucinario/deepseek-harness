@@ -61,6 +61,8 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
 
 /** Runtime exports that require every consumer to resolve the provider's shared peer instance. */
 const PEER_REQUIRED_HOST_EXPORTS = {
+  // Tool definitions retain the provider's ToolArgsError constructor inside their execution closure.
+  '@deepseek-ai/dsh-tools': ['defineTool'],
   // MyDot's Host shares the application's file-error identity and message/domain vocabulary.
   '@deepseek-ai/dsh-fs': ['FsError'],
   '@deepseek-ai/dsh-llm': ['createUserMessage'],

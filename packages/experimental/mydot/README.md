@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Create a Space, choose reference files and an execution Workspace, and continue talking while two local child Sessions work independently. Send steering or queued text to an exact child, stop one child, and open current deliverables through their source conversation. Edit bounded UTF-8 files and personal or Space Markdown memory with version checks. This opt-in experimental composition adds no task database and enables no desktop automation or recurring schedule by default.
+Create a Space, choose reference files and an execution Workspace, and continue talking while two local child Sessions work independently. Send text to an exact child, stop one child, and open deliverables through their source conversation. Edit bounded UTF-8 files and Markdown memory with version checks. Enable human requests to park one branch, answer from the pending list, and return to its original Session. This opt-in experimental composition adds no task database and enables no desktop automation or recurring schedule by default.
 
 ## Table of Contents
 
@@ -26,6 +26,8 @@ Create a Space, choose reference files and an execution Workspace, and continue 
 ## Use this package
 
 Add this row to a Web Host composition whose resolver can load this package; keep the existing Session Controller, Subagent Spawn/Fork, filesystem and configured storage-domain services. The browser module is `@deepseek-ai/dsh-experimental-mydot/client`; it mounts its generated Remote contribution and effect-owned sidebar and conversation slots. No standard profile is changed.
+
+The `/types` entry provides declarations through `import type`; runtime consumers use the Host or `/client` entry.
 
 ```yaml
 - name: '@deepseek-ai/dsh-experimental-mydot'
@@ -61,6 +63,22 @@ Desktop coordination only applies to tool names explicitly listed in `desktopToo
 
 The existing Schedule page pauses or resumes future deliveries under the same ID. Already delivered requests and active turns remain unchanged; delivery receipts do not certify successful output. See the [Schedule reference](../../../docs/subsystems/schedule.md).
 
+Human requests require `humanHandoffEnabled: true` and durable Session persistence. The model prepares a reason, evidence link, exact source/base version, owner response choices and a next action; the tool ends that branch without keeping a model request open. Other branches continue. The MyDot pending list retains drafts and distinguishes a saved answer, delivery, consumption by the original Session, and an explicitly recorded outcome. Opening `/?humanRequest=<requestId>` selects a card without submitting an answer. Unknown, deferred, rejected and needs-material responses stop the branch. Cancel retires its request; a new explicit owner message can supersede a stopped request without replaying its answer. An answer grants no external-action authority.
+
+For drawing review, configure `humanHandoffSocketPath` in an existing canonical owner-private directory and `humanHandoffSurveyOrigin` as a fixed loopback HTTP origin. Set a measured positive `humanHandoffTimeoutMs`; the optional listener has no default deadline. The drawing server posts a persisted result reference to `POST /human-requests/<requestId>/answers`; MyDot independently reads the fixed server's authoritative handoff record and requires exact source/base association and current survey/planning heads. Startup recovers a saved result whose callback was lost. A temporary verification failure retains the pending request; use its recovery button after the server is available. The request stores references, while drawing edits remain in the drawing application. Independent-reference review does not display model answer options.
+
+MyDot flushes the answer before acknowledging it and flushes a delivery marker before waking the original Session. A direct child uses its durable root parent's request ledger and the existing child continuation API. Changed, paused, completed or exhausted goals refuse continuation; consumed rounds remain consumed. After uncertain delivery, MyDot checks the original Session's actual input before reporting consumption. An unconfirmed external outcome stays stopped and is never automatically replayed. Successful outcome recording requires an existing result artifact; it does not establish the artifact's quality or human acceptance.
+
+Synthetic filing is disabled by default. Enable `filingEnabled` only with an owner-private fixed Unix recorder socket (`filingRecorderSocketPath`), an explicit positive `filingRecorderTimeoutMs` and an evidence-based `filingRecorderMaxAgeMs`. Both deadlines are milliseconds and have no defaults. Existing desktop/capture arrays remain empty. The model first reserves a stable case with `start_mock_filing_case`, then uses `prepare_mock_filing` to prepare its exact legal entity, account, period, tax, amount, forms, source/preview/attachment digests, permitted destinations and separate submission/payment/standing-setting effects. The Host recomputes the plan digest and rereads bounded UTF-8 documents; a changed document invalidates approval.
+
+The existing MyDot panel displays the plan, changes from its prior revision, actor, expiry and decision, and opens reviewed documents in its existing editor. Owner-only approval binds the exact revision and digest. Before taking control, the owner confirms that other clients and scheduled operations are stopped; this assertion is recorded separately from observed app inactivity. MyDot persists `stopping`, closes all app tool admission across every Session and child, drains admitted operations, verifies recorder readiness and flushes the confirmation intent before publishing `human` ownership. Only then can the explicit local mock confirmation button become enabled. Recording, receipt acceptance and unknown results are separate states. Cancellation cannot undo an accepted or uncertain effect. A restart, disconnect or uncertain callback requires querying the persisted intent; it never automatically resends. The local synthetic recipient persists one receipt per intent in the same Session and checks case, digest and exact forms on retrieval. No real tax portal, payment or standing-setting operation is implemented.
+
+Before takeover, finish or stop all app-managed background jobs, including jobs owned by other Sessions and unowned jobs. A cancellation request is insufficient until the producer has released its resources; MyDot refuses takeover while a job is running or stopping.
+
+Unloading closes filing admission and prevents pending operations from appending decisions or invoking a synthetic confirmation callback. It waits for admitted operations and ownership recovery to settle before releasing filing tools, projections and the app tool fence. A receipt persisted before unloading is recovered by query after replacement; an interrupted callback never authorizes resending.
+
+The trusted recorder adapter sends one JSON line `{command: "status", caseId, planDigest}` to its configured socket and strictly decodes `{ok: true, result: status}`. The versioned host status carries identity/digest, state, completeness, readiness, monotonic sequence, observation time and archive metadata. MyDot retains only opaque archive, segment, protected-interval and gap references. The recorder observes capture and storage; it does not attest that external controllers have stopped. Protected authentication stops video and input producers before acknowledging protection. Confirmation refuses protected, stale, failed, empty or unready capture. Accepted receipts with partial or unavailable recording remain visibly distinct. Returning app controls requires a terminal decision and a fresh matching stopped recorder; configured desktops additionally require a new capture through the existing resume operation.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -79,6 +97,8 @@ The `mydot` storage domain owns small Space records and the authoritative Sessio
 | [`src/files.ts`](src/files.ts) | Consistent reads and version-guarded edits |
 | [`src/material-search.ts`](src/material-search.ts) | Selected-file lexical excerpts and complete message bounds |
 | [`src/desktop.ts`](src/desktop.ts) | Software ownership and handoff admission |
+| [`src/filing-service.ts`](src/filing-service.ts) | Session-owned synthetic filing decisions and recorder verification |
+| [`src/human-handoff.ts`](src/human-handoff.ts) | Durable owner requests, answer admission and recovery |
 | [`src/client/mount.ts`](src/client/mount.ts) | Shared subscription, navigation and Slot registration |
 
 </details>
@@ -109,17 +129,49 @@ Space and selected memory text add input tokens on each step. Their byte bounds 
 
 Snapshots append after existing conversation input. Editing Space instructions or memory changes the next snapshot and can reduce prefix reuse from that point; unchanged earlier conversation entries remain reusable.
 
+### Human requests
+
+#### What the model sees
+
+`prepare_human_request` returns the persisted request ID and pending state, then ends only its branch. The continuation contains the saved question, exact answer/result references and prepared next action, with an explicit statement that the response grants no broader external-action permission. `record_human_request_outcome` records artifact evidence or a concrete failed/unknown stopping reason only after that Session consumes the answer.
+
+#### Token effect
+
+Waiting starts no model or long-lived tool call. Preparation, the accepted answer and any explicit outcome occupy ordinary logged tool/input tokens; all existing model and goal limits still apply.
+
+#### KV Cache effect
+
+The answer appends to its original Session. It does not rebuild a fresh child or rewrite earlier conversation text.
+
+### Synthetic filing
+
+#### What the model sees
+
+`start_mock_filing_case` returns a durably reserved identity. `prepare_mock_filing` returns only case identity, server digest and revision, then ends that branch. Owner approval and confirmation are separate Remote operations; no model tool grants these effects.
+
+#### Token effect
+
+Preparation fields and results occupy ordinary logged tool tokens. Owner review and recording checks start no model request and send no document contents to another model destination.
+
+#### KV Cache effect
+
+The preparation result appends to its original Session. Owner decisions do not rewrite model history or start a fresh child.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 The package operates on current local Session and file capabilities:
 
+- Synthetic filing supports bounded UTF-8 documents and a local mock recipient. External client exclusion requires the owner's explicit confirmation; native protected-input behavior, privileged archive custody and iPhone use require separate deployment and device acceptance.
 - Text editing supports bounded UTF-8 Markdown/text, not full Office editing or immutable file versions.
 - Memory is explicit editable Markdown; external embeddings and cross-Space history injection are not required.
 - Material search reads current text only. It neither parses PDF/Office files nor restores older file versions; the log retains quoted evidence and content identity. Keyword matching can miss synonyms or rank common words too highly. Broader semantic search and automatic source collection are outside this option.
 - Desktop ownership is per Host instance and only gates configured tools. Real human handoff and phone keyboard, photo and navigation acceptance require device testing.
 - External one-shot executions have no continuation controls. Runtime completion and assistant summaries never certify correct deliverables.
+- Human handoff supports a root or its direct local child; nested children and children with an explicit per-activation token cap refuse preparation because the current cold-child API cannot preserve that cap. The owner can prepare on the root instead.
+- The first drawing workflow binds survey and planning to the same case. Notifications, global Codex app-server integration, PC takeover and additional business widgets remain unconfigured; revisit them only for a concrete supported consumer.
+- Unix callbacks require POSIX ownership and a measured deployment deadline. Arbitrary external effects cannot be delivered exactly once; uncertain delivery requires inspection or new explicit owner work. No iPhone or independent-human acceptance follows from automated fixtures.
 
 <a id="dev-note"></a>
 ### Dev Note

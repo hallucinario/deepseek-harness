@@ -94,6 +94,8 @@ interface MyDotSnapshot {
   artifacts: ArtifactView[]
   desktop: DesktopState
   desktopEnabled?: boolean
+  filings?: readonly FilingCardView[] | undefined
+  humanRequests?: readonly HumanRequestView[] | undefined
   issues?: { sessionId: SessionId; kind: 'unavailable' | 'artifact-delivery' }[]
 }
 ```
@@ -135,6 +137,222 @@ interface JobInput { parentSessionId: SessionId; childSessionId: SessionId; requ
 ```ts type-equiv
 /** Exact direct-parent ownership address. */
 interface JobAddress { parentSessionId: SessionId; childSessionId: SessionId }
+```
+
+## `HumanRequestId`
+
+```ts type-equiv
+/** Opaque identity of one durable request, independent of its label or Session. */
+type HumanRequestId = Branded<'MyDotHumanRequestId'>
+```
+
+## `HumanSubmissionId`
+
+```ts type-equiv
+/** Stable identity retained when an answer response is lost. */
+type HumanSubmissionId = Branded<'MyDotHumanSubmissionId'>
+```
+
+## `HumanSurveyTarget`
+
+```ts type-equiv
+/** Immutable survey source and exact starting edit revision. */
+interface HumanSurveyTarget {
+  caseId: string
+  sourceId: string
+  sourceRevision: string
+  baseRevisionId: string
+  baseVersion: number
+  workflow: 'independent-reference' | 'assisted-correction'
+}
+```
+
+## `SurveyHandoffResult`
+
+```ts type-equiv
+/** Reference returned by the survey server; drawing contents stay in that application. */
+interface SurveyHandoffResult {
+  schemaVersion: 1
+  requestId: HumanRequestId
+  status: 'saved' | 'applied' | 'deferred' | 'needs-material'
+  source: { caseId: string; sourceId: string; sourceRevision: string; manifestId: string }
+  baseSurvey: { revisionId: string; version: number }
+  survey: { revisionId: string; version: number }
+  planning: null | { caseId: string; revisionId: string; headVersion: number }
+  goldId: string | null
+}
+```
+
+## `PreparedHumanRequest`
+
+```ts type-equiv
+/** Prepared request bound to one original branch and observed source version. */
+interface PreparedHumanRequest {
+  requestId: HumanRequestId
+  requestRevision: number
+  sessionId: SessionId
+  parentSessionId: SessionId | null
+  question: string
+  reason: string
+  role: 'owner'
+  evidenceUrl: string
+  resumeInstruction: string
+  options: string[]
+  target: HumanSurveyTarget | null
+  goal: { id: string; revision: number; roundsStarted: number; armed: boolean } | null
+}
+```
+
+## `HumanAnswer`
+
+```ts type-equiv
+/** Explicit response; its meaning never expands external-action permission. */
+interface HumanAnswer {
+  requestId: HumanRequestId
+  requestRevision: number
+  submissionId: HumanSubmissionId
+  choice: string
+  text: string
+  result: SurveyHandoffResult | null
+}
+```
+
+## `HumanRequestView`
+
+```ts type-equiv
+/** Receipt, model admission and actual outcome are distinct durable facts. */
+interface HumanRequestView {
+  request: PreparedHumanRequest
+  phase: 'pending' | 'received' | 'dispatching' | 'queued' | 'claimed' | 'resumed' | 'stopped' | 'retired' | 'outcome'
+  answer?: HumanAnswer | undefined
+  rpcId?: string | undefined
+  reason?: string | undefined
+  outcome?: 'succeeded' | 'failed' | 'unknown' | undefined
+  evidence?: string | undefined
+}
+```
+
+## `HumanRequestChange`
+
+```ts type-equiv
+/** Changes belong to the original Session's single append-only writer. */
+type HumanRequestChange =
+  | { kind: 'prepared'; request: PreparedHumanRequest }
+  | { kind: 'received'; requestId: HumanRequestId; answer: HumanAnswer; responder: string }
+  | { kind: 'dispatching'; requestId: HumanRequestId; rpcId: string }
+  | { kind: 'queued' | 'claimed' | 'resumed'; requestId: HumanRequestId }
+  | { kind: 'stopped'; requestId: HumanRequestId; reason: string }
+  | { kind: 'retired'; requestId: HumanRequestId; reason: string }
+  | { kind: 'outcome'; requestId: HumanRequestId; outcome: 'succeeded' | 'failed' | 'unknown'; evidence: string }
+```
+
+## `PrepareHumanInput`
+
+```ts type-equiv
+/** Model preparation fields; Session ownership and goal state come from the Host. */
+interface PrepareHumanInput {
+  requestId: string
+  question: string
+  reason: string
+  evidenceUrl: string
+  resumeInstruction: string
+  options: string[]
+  target: HumanSurveyTarget | null
+}
+```
+
+## `FilingCaseId`
+
+```ts type-equiv
+/** Identity minted before preparing any filing work. */
+type FilingCaseId = Branded<'MyDotFilingCaseId'>
+```
+
+## `FilingFile`
+
+```ts type-equiv
+/** Immutable document observation, rechecked before an owner decision. */
+interface FilingFile { role: 'source' | 'preview' | 'attachment'; path: string; digest: string }
+```
+
+## `FilingPlan`
+
+```ts type-equiv
+/** Exact effects and destinations reviewed by the owner. */
+interface FilingPlan {
+  caseId: FilingCaseId
+  legalEntity: string
+  account: string
+  site: 'local-synthetic-recipient'
+  period: { from: string; to: string }
+  tax: string
+  destination: 'mock-local'
+  amount: string
+  currency: 'JPY'
+  forms: string[]
+  files: FilingFile[]
+  inputDestinations: string[]
+  modelDestinations: string[]
+  expiresAt: number
+  stopRef: string
+  queryRef: string
+  effects: { submit: boolean; payment: 'none' | 'one-time'; standingSettings: 'none' | 'auto-debit' }
+}
+```
+
+## `RecorderStatus`
+
+```ts type-equiv
+/** Independent host observation; all recording details are opaque references. */
+interface RecorderStatus {
+  version: 'high-impact-recorder/v1'
+  caseId: string
+  planDigest: string
+  state: 'starting' | 'recording' | 'protected' | 'failed' | 'stopped'
+  evidence: 'complete' | 'partial' | 'unavailable'
+  readyForConfirmation: boolean
+  sequence: number
+  observedAt: number
+  archiveRef: string
+  segments: string[]
+  protectedIntervals: string[]
+  gaps: string[]
+}
+```
+
+## `MockReceipt`
+
+```ts type-equiv
+/** Synthetic recipient identity, checked independently of the owner button result. */
+interface MockReceipt { receiptId: string; intentId: string; caseId: FilingCaseId; planDigest: string; forms: string[] }
+```
+
+## `FilingView`
+
+```ts type-equiv
+/** Durable state reconstructed from the original Session; authority never comes from a model answer. */
+interface FilingView {
+  sessionId: SessionId
+  plan: FilingPlan
+  previousPlan?: FilingPlan | undefined
+  revision: number
+  planDigest: string
+  phase: 'prepared' | 'approved' | 'intent' | 'unknown' | 'accepted' | 'cancelled' | 'invalidated'
+  actor: 'model-preparer' | 'host-owner'
+  control: 'agent' | 'stopping' | 'human' | 'return-authorized'
+  ownerControlConfirmation?: { revision: number; planDigest: string; confirmedAt: number; source: 'host-owner' } | undefined
+  intentId?: string | undefined
+  recorder?: RecorderStatus | undefined
+  receipt?: MockReceipt | undefined
+  reason?: 'files-changed' | 'confirmation-unknown' | 'owner-cancelled' | 'persistence-unconfirmed' | undefined
+}
+```
+
+## `FilingCardView`
+
+```ts type-equiv
+/** Runtime readiness is never inferred from a persisted intent after restart. */
+interface FilingCardView { filing: FilingView; confirmationReady: boolean }
 ```
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
@@ -266,4 +484,140 @@ MyDot metadata, projected work and current-file access.
 Types: [FsVersion](filesystem.zh.md) · [SessionId](core.zh.md) · [SessionPromptValue](session.zh.md) · [SessionRequestId](session.zh.md) · [SubagentInterruptReceipt](subagent.zh.md) · [SubagentPromptReceipt](subagent.zh.md)
 
 Source: [`packages/experimental/mydot/src/index.ts`](../../packages/experimental/mydot/src/index.ts)
+
+<a id="ctxmydotfiling--filingservice"></a>
+
+### `ctx.mydotFiling` — `FilingService`
+
+Owner authority stays in Remote methods; model tools can only prepare plans.
+
+```ts cordis-catalog
+/** Reserve the stable case before preparing or reading filing documents.
+ * @param agent - Actual initiating Session.
+ * @returns Durably reserved identity; no filing authority is granted.
+ */
+async startCase(agent: Agent): Promise<FilingCaseId>
+
+/** Prepare from the actual initiating Session; never accepts a model-selected writer.
+ * @param agent - Actual tool caller.
+ * @param input - Exact synthetic plan with current document digests.
+ * @returns Flushed candidate carrying no owner authority.
+ */
+async prepare(agent: Agent, input: FilingPlan): Promise<FilingView>
+
+/** Read owner filing cards; persisted intents alone never enable confirmation.
+ * @returns Projected owner decisions and live readiness.
+ */
+async snapshot(): Promise<readonly FilingCardView[]>
+
+/** Approve precisely the displayed revision and digest.
+ * @param id - Stable case identity.
+ * @param revision - Displayed revision.
+ * @param digest - Server-computed digest.
+ * @returns Durable owner approval without any effect.
+ */
+@Remote async approve(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Persist owner intent after closing controls and verifying independent recorder readiness.
+ * @param id - Stable case identity.
+ * @param revision - Owner-approved revision.
+ * @param digest - Owner-approved digest.
+ * @param externalControlsClosed - Explicit owner assertion about other clients and scheduled controls.
+ * @returns Durable confirmation intent; no recipient invocation yet.
+ */
+@Remote async begin(id: FilingCaseId, revision: number, digest: string, externalControlsClosed: boolean): Promise<FilingView>
+
+/** Owner-only final synthetic confirmation; never sends to a real portal.
+ * @param id - Stable case identity.
+ * @param revision - Exact reviewed revision.
+ * @param digest - Exact reviewed digest.
+ * @returns Verified local receipt or explicit uncertainty.
+ */
+@Remote async confirmMock(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Return app control after independent recorder stop; configured desktops still need a fresh capture.
+ * @param id - Stable terminal case identity.
+ * @param revision - Exact terminal revision.
+ * @param digest - Exact reviewed digest.
+ * @returns Durable owner return authority, separate from desktop resume.
+ */
+@Remote async returnControl(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+
+/** Query by existing stable intent without resending, including after restart.
+ * @param id - Stable case identity.
+ * @returns Receipt or unresolved state.
+ */
+@Remote async reconcile(id: FilingCaseId): Promise<FilingView>
+
+/** Revoke an unconsumed owner decision.
+ * @param id - Stable case identity.
+ * @param revision - Exact displayed revision.
+ * @param digest - Exact displayed digest.
+ * @returns Cancellation; existing acceptance is never undone.
+ */
+@Remote async cancel(id: FilingCaseId, revision: number, digest: string): Promise<FilingView>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/experimental/mydot/src/filing-service.ts`](../../packages/experimental/mydot/src/filing-service.ts)
+
+<a id="ctxmydothandoff--humanhandoffservice"></a>
+
+### `ctx.mydotHandoff` — `HumanHandoffService`
+
+Concrete answer/recovery methods backed by the existing parent Session writer.
+
+```ts cordis-catalog
+/** Prepare one human dependency and disarm only its original branch.
+ * @param agent - Actual initiating branch, never a model-selected Session.
+ * @param input - Versioned question and evidence prepared for the owner.
+ * @returns Persisted pending request.
+ */
+async prepare(agent: Agent, input: PrepareHumanInput): Promise<HumanRequestView>
+
+/** Accept an owner response; a receipt does not certify subsequent work.
+ * @param input - Stable submission and exact observed request revision.
+ * @returns Current durable receipt or correlated execution state.
+ */
+@Remote async answer(input: HumanAnswer): Promise<HumanRequestView>
+
+/** Reconcile a saved external result or an accepted but undelivered answer.
+ * @param requestId - Exact durable request identity.
+ * @returns Saved state, including explicit refusal or uncertainty.
+ */
+@Remote async reconcile(requestId: HumanRequestId): Promise<HumanRequestView>
+
+/** Retire a dependency without replaying or changing its saved answer.
+ * @param requestId - Exact request the owner is cancelling.
+ * @returns Durable retired state; no external action or model turn is started.
+ */
+@Remote async cancel(requestId: HumanRequestId): Promise<HumanRequestView>
+
+/** Read the canonical projected request list without holding a model or a browser.
+ * @returns Current request states reconstructed from Session projections.
+ */
+async snapshot(): Promise<readonly HumanRequestView[]>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/experimental/mydot/src/human-handoff.ts`](../../packages/experimental/mydot/src/human-handoff.ts)
+
+<a id="mydot-events"></a>
+
+### `mydot/*` events
+
+<a id="mydothandoff-changed--emit"></a>
+
+#### `mydot/handoff-changed` — emit
+
+Committed request state changed. @mode emit
+
+```ts cordis-catalog
+/** Committed request state changed. @mode emit */
+'mydot/handoff-changed'(): void
+```
+
+Source: [`packages/experimental/mydot/src/human-handoff.ts`](../../packages/experimental/mydot/src/human-handoff.ts)
 <!-- END GENERATED cordis-surface -->

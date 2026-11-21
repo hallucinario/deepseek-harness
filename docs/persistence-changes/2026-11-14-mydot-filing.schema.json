@@ -1,0 +1,817 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:mydot/filing",
+      "kind": "event",
+      "event": "mydot/filing",
+      "surface": false,
+      "digest": "20b727602a2f823af7ff5421dc2de6b9dd966c325ff92ecf5af6d02219c1bc6d",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 59,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 60,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "view",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "actor",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "control",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "ownerControlConfirmation",
+                "type": 12,
+                "optional": true
+              },
+              {
+                "name": "phase",
+                "type": 14,
+                "optional": false
+              },
+              {
+                "name": "plan",
+                "type": 22,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "previousPlan",
+                "type": 22,
+                "optional": true
+              },
+              {
+                "name": "reason",
+                "type": 41,
+                "optional": true
+              },
+              {
+                "name": "receipt",
+                "type": 46,
+                "optional": true
+              },
+              {
+                "name": "recorder",
+                "type": 47,
+                "optional": true
+              },
+              {
+                "name": "revision",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "model-preparer"
+          },
+          {
+            "kind": "literal",
+            "value": "host-owner"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8,
+              9,
+              10
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "agent"
+          },
+          {
+            "kind": "literal",
+            "value": "return-authorized"
+          },
+          {
+            "kind": "literal",
+            "value": "stopping"
+          },
+          {
+            "kind": "literal",
+            "value": "human"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "confirmedAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "revision",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "source",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "accepted"
+          },
+          {
+            "kind": "literal",
+            "value": "prepared"
+          },
+          {
+            "kind": "literal",
+            "value": "unknown"
+          },
+          {
+            "kind": "literal",
+            "value": "approved"
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "intent"
+          },
+          {
+            "kind": "literal",
+            "value": "invalidated"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "account",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "amount",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "currency",
+                "type": 23,
+                "optional": false
+              },
+              {
+                "name": "destination",
+                "type": 24,
+                "optional": false
+              },
+              {
+                "name": "effects",
+                "type": 25,
+                "optional": false
+              },
+              {
+                "name": "expiresAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "files",
+                "type": 32,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "inputDestinations",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "legalEntity",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "modelDestinations",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "period",
+                "type": 39,
+                "optional": false
+              },
+              {
+                "name": "queryRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "site",
+                "type": 40,
+                "optional": false
+              },
+              {
+                "name": "stopRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "tax",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "JPY"
+          },
+          {
+            "kind": "literal",
+            "value": "mock-local"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "payment",
+                "type": 26,
+                "optional": false
+              },
+              {
+                "name": "standingSettings",
+                "type": 29,
+                "optional": false
+              },
+              {
+                "name": "submit",
+                "type": 31,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              27,
+              28
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "none"
+          },
+          {
+            "kind": "literal",
+            "value": "one-time"
+          },
+          {
+            "kind": "union",
+            "types": [
+              27,
+              30
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "auto-debit"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "array",
+            "element": 33
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "digest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "path",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 34,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              35,
+              36,
+              37
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "preview"
+          },
+          {
+            "kind": "literal",
+            "value": "source"
+          },
+          {
+            "kind": "literal",
+            "value": "attachment"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "from",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "to",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "local-synthetic-recipient"
+          },
+          {
+            "kind": "union",
+            "types": [
+              42,
+              43,
+              44,
+              45
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "owner-cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "persistence-unconfirmed"
+          },
+          {
+            "kind": "literal",
+            "value": "files-changed"
+          },
+          {
+            "kind": "literal",
+            "value": "confirmation-unknown"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "receiptId",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "archiveRef",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "caseId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "evidence",
+                "type": 48,
+                "optional": false
+              },
+              {
+                "name": "gaps",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "observedAt",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "protectedIntervals",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "readyForConfirmation",
+                "type": 31,
+                "optional": false
+              },
+              {
+                "name": "segments",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "sequence",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "state",
+                "type": 52,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 58,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              49,
+              50,
+              51
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "partial"
+          },
+          {
+            "kind": "literal",
+            "value": "unavailable"
+          },
+          {
+            "kind": "literal",
+            "value": "complete"
+          },
+          {
+            "kind": "union",
+            "types": [
+              53,
+              54,
+              55,
+              56,
+              57
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "protected"
+          },
+          {
+            "kind": "literal",
+            "value": "recording"
+          },
+          {
+            "kind": "literal",
+            "value": "starting"
+          },
+          {
+            "kind": "literal",
+            "value": "stopped"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "high-impact-recorder/v1"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/filing"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:mydot/filing-case",
+      "kind": "event",
+      "event": "mydot/filing-case",
+      "surface": false,
+      "digest": "d17b88e306880844053389ba3b679561fd0e0c5d04b2cc5da3de52e7d68df765",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/filing-case"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:mydot/mock-receipt",
+      "kind": "event",
+      "event": "mydot/mock-receipt",
+      "surface": false,
+      "digest": "d3a0ec99d05af3002b52439b6a5a1ce811f7296f141efebac5bcb1056be3b7b4",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "forms",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "intentId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "planDigest",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "receiptId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 2
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/mock-receipt"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

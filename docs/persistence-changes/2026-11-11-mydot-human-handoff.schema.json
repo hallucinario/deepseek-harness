@@ -1,0 +1,656 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:mydot/human-handoff",
+      "kind": "event",
+      "event": "mydot/human-handoff",
+      "surface": false,
+      "digest": "f24e6e714844f9e94412cc4f98fd3cc36163f6b5a614a8c29b276a39b39fa53a",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 51,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 52,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              21,
+              27,
+              29,
+              31,
+              44,
+              46
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "answer",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "kind",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "responder",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "choice",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestRevision",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "result",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "submissionId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "text",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              10
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "baseSurvey",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "goldId",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "planning",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "schemaVersion",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "source",
+                "type": 14,
+                "optional": false
+              },
+              {
+                "name": "status",
+                "type": 15,
+                "optional": false
+              },
+              {
+                "name": "survey",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "revisionId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              10
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              12
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "headVersion",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "revisionId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": 1
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "caseId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "manifestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "sourceId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "sourceRevision",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              16,
+              17,
+              18,
+              19
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "applied"
+          },
+          {
+            "kind": "literal",
+            "value": "deferred"
+          },
+          {
+            "kind": "literal",
+            "value": "needs-material"
+          },
+          {
+            "kind": "literal",
+            "value": "saved"
+          },
+          {
+            "kind": "literal",
+            "value": "received"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "evidence",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "kind",
+                "type": 22,
+                "optional": false
+              },
+              {
+                "name": "outcome",
+                "type": 23,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "outcome"
+          },
+          {
+            "kind": "union",
+            "types": [
+              24,
+              25,
+              26
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "succeeded"
+          },
+          {
+            "kind": "literal",
+            "value": "unknown"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 28,
+                "optional": false
+              },
+              {
+                "name": "reason",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "retired"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 30,
+                "optional": false
+              },
+              {
+                "name": "reason",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "stopped"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 32,
+                "optional": false
+              },
+              {
+                "name": "request",
+                "type": 33,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "prepared"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "evidenceUrl",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "goal",
+                "type": 34,
+                "optional": false
+              },
+              {
+                "name": "options",
+                "type": 37,
+                "optional": false
+              },
+              {
+                "name": "parentSessionId",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "question",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "reason",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "requestRevision",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "resumeInstruction",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "role",
+                "type": 38,
+                "optional": false
+              },
+              {
+                "name": "sessionId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "target",
+                "type": 39,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              35
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "armed",
+                "type": 36,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "revision",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "roundsStarted",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "array",
+            "element": 4
+          },
+          {
+            "kind": "literal",
+            "value": "owner"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              40
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "baseRevisionId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "baseVersion",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "caseId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "sourceId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "sourceRevision",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "workflow",
+                "type": 41,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              42,
+              43
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "assisted-correction"
+          },
+          {
+            "kind": "literal",
+            "value": "independent-reference"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 45,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "rpcId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "dispatching"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 47,
+                "optional": false
+              },
+              {
+                "name": "requestId",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              48,
+              49,
+              50
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "claimed"
+          },
+          {
+            "kind": "literal",
+            "value": "queued"
+          },
+          {
+            "kind": "literal",
+            "value": "resumed"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "mydot/human-handoff"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

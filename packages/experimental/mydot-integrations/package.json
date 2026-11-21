@@ -16,7 +16,7 @@
   "dsh": { "client": { "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-plugin-manager"], "platform": "web" } },
   "scripts": { "bundle": "tsdown", "watch": "tsdown --watch" },
   "license": "MIT",
-  "files": ["lib/index.js", "lib/client.js", "lib/types/**/*.d.ts", "examples/**/*"],
+  "files": ["lib/index.js", "lib/client.js", "lib/types/**/*.d.ts"],
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
   },

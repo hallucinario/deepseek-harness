@@ -9,6 +9,8 @@ import type { Space, SpaceId, SpaceInput } from '../types.ts'
 import type { PanelProps } from './props.ts'
 import { MyDotEditor } from './Editor.tsx'
 import { createEditorStore } from './editor-store.ts'
+import { FilingCard } from './Filing.tsx'
+import { HumanRequestCard } from './HumanRequest.tsx'
 import type { NS } from './locales.ts'
 import css from './MyDot.module.css'
 
@@ -97,6 +99,7 @@ export function MyDotPanel(props: GlobalProps) {
   const data = view.value
   const desktopOwner = data.desktop.owner
   const captureTime = data.desktop.capturedAt
+  const humanRequests = data.humanRequests ?? []
   const space = data.spaces.find(item => item.id === state.spaceId)
   const conversations = data.conversations.filter(item => state.spaceId === null || item.spaceId === state.spaceId)
   const parentIds = new Set(conversations.map(item => item.sessionId))
@@ -108,6 +111,26 @@ export function MyDotPanel(props: GlobalProps) {
   }
   return <main className={`${css.root} ${css.panel}`} data-mydot-panel>
     <h1 className={css.heading}>{t('title')}</h1>
+    {(data.filings ?? []).map(card => <FilingCard key={`${card.filing.plan.caseId}:${card.filing.revision}`} card={card}
+      command={props.filingCommand} t={t} open={() => { props.openConversation(card.filing.sessionId) }}
+      openFile={(path) => { void props.readFile(card.filing.sessionId, path).then((file) => {
+        if (file.kind !== 'text') throw new Error(t('missing'))
+        actions.open({ sessionId: card.filing.sessionId, scope: null, path: file.path, version: file.version,
+          saved: file.content, draft: file.content, conflict: null })
+      }).catch(report) }} />)}
+    {humanRequests.length > 0 && <section className={css.humanRequests}>
+      <h2 className={css.heading}>{t('humanRequests')}</h2>
+      {[...humanRequests].sort((left, right) => Number(right.request.requestId === props.selectedHumanRequestId)
+        - Number(left.request.requestId === props.selectedHumanRequestId))
+        .map((view) => {
+          const key = `${view.request.requestId}:${view.request.requestRevision}`
+          return <HumanRequestCard key={key} view={view} draft={state.humanDrafts?.[key] ?? { choice: '', text: '', submissionId: '' }}
+            change={(draft) => { actions.humanDraft(key, draft) }} answer={props.answerHumanRequest} reconcile={props.reconcileHumanRequest}
+            cancel={props.cancelHumanRequest}
+            mint={props.newRequestId} selected={view.request.requestId === props.selectedHumanRequestId} t={t}
+            open={() => { props.openConversation(view.request.sessionId) }} />
+        })}
+    </section>}
     {view.disconnected && <p role="alert">{t('failed')} <Button onClick={props.retry}>{t('retry')}</Button></p>}
     <label>{t('spaces')}<select className={css.input} value={state.spaceId ?? ''} onChange={(event) =>{  actions.select(event.target.value === '' ? null : event.target.value as SpaceId) }}>
       <option value="">{t('newSpace')}</option>{data.spaces.map(item => <option key={item.id} value={item.id}>{item.name}{item.archived ? ` · ${t('archived')}` : ''}</option>)}

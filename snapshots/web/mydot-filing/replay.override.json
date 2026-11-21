@@ -1,0 +1,82 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "tool-call"
+      },
+      {
+        "type": "tool-call-delta",
+        "index": 0,
+        "id": "reserve-case",
+        "name": "start_mock_filing_case",
+        "argumentsDelta": "{}"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "tool-call",
+          "id": "reserve-case",
+          "name": "start_mock_filing_case",
+          "arguments": "{}"
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 5
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "tool-calls"
+        }
+      }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "tool-call"
+      },
+      {
+        "type": "tool-call-delta",
+        "index": 0,
+        "id": "prepare-case",
+        "name": "prepare_mock_filing",
+        "argumentsDelta": "{\"plan\":{\"caseId\":\"{{fromRequest:\\\"caseId\\\":\\\"([a-f0-9]{32})\\\"}}\",\"legalEntity\":\"Public synthetic corporation\",\"account\":\"public-mock-account\",\"site\":\"local-synthetic-recipient\",\"period\":{\"from\":\"2025-01-01\",\"to\":\"2025-12-31\"},\"tax\":\"synthetic-tax\",\"destination\":\"mock-local\",\"amount\":\"1000\",\"currency\":\"JPY\",\"forms\":[\"public-return\"],\"files\":[{\"role\":\"source\",\"path\":\"source.txt\",\"digest\":\"cdff59741790a237bf7493dcfa27e47de98212a5f79b86d5e398dec47260afcd\"},{\"role\":\"preview\",\"path\":\"preview.txt\",\"digest\":\"7001095986ac800325423807a8cea09ad959541c0b04e2b85fa6ac08bafd812b\"}],\"inputDestinations\":[\"local-preview\"],\"modelDestinations\":[],\"expiresAt\":4102444800000,\"stopRef\":\"owner-cancel\",\"queryRef\":\"mock-intent-query\",\"effects\":{\"submit\":true,\"payment\":\"none\",\"standingSettings\":\"none\"}}}"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "tool-call",
+          "id": "prepare-case",
+          "name": "prepare_mock_filing",
+          "arguments": "{\"plan\":{\"caseId\":\"{{fromRequest:\\\"caseId\\\":\\\"([a-f0-9]{32})\\\"}}\",\"legalEntity\":\"Public synthetic corporation\",\"account\":\"public-mock-account\",\"site\":\"local-synthetic-recipient\",\"period\":{\"from\":\"2025-01-01\",\"to\":\"2025-12-31\"},\"tax\":\"synthetic-tax\",\"destination\":\"mock-local\",\"amount\":\"1000\",\"currency\":\"JPY\",\"forms\":[\"public-return\"],\"files\":[{\"role\":\"source\",\"path\":\"source.txt\",\"digest\":\"cdff59741790a237bf7493dcfa27e47de98212a5f79b86d5e398dec47260afcd\"},{\"role\":\"preview\",\"path\":\"preview.txt\",\"digest\":\"7001095986ac800325423807a8cea09ad959541c0b04e2b85fa6ac08bafd812b\"}],\"inputDestinations\":[\"local-preview\"],\"modelDestinations\":[],\"expiresAt\":4102444800000,\"stopRef\":\"owner-cancel\",\"queryRef\":\"mock-intent-query\",\"effects\":{\"submit\":true,\"payment\":\"none\",\"standingSettings\":\"none\"}}}"
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 5
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "tool-calls"
+        }
+      }
+    ]
+  }
+]

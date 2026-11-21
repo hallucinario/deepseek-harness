@@ -13,7 +13,8 @@ import { existsSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, delimiter, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
   assertPersistedSessionVersion,
@@ -597,6 +598,18 @@ async function runScenario(scenario: CorpusScenario): Promise<{
   const assertions = SDK_ASSERTIONS[scenario.name] ?? {}
   const patches = [...authoredPatches(scenario, !recording), ...assertions.patches ?? []]
     .map((patch, index) => materializeProfilePatch(patch, cwd, scenario.manifest.profile, patchRoot, index))
+  if (scenario.name === 'text-turn') {
+    const source = fileURLToPath(new URL('../../scripts/fixtures/sdk-filing-events.ts', import.meta.url))
+    const producer = join(patchRoot, 'sdk-filing-events.mjs')
+    await writeFile(producer, ts.transpileModule(await readFile(source, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    }).outputText)
+    const patch = join(patchRoot, 'filing-events.patch.yml')
+    await writeFile(patch, JSON.stringify([{ insert: [{
+      id: 'snapshot-filing-events', name: pathToFileURL(producer).href,
+    }] }]))
+    patches.push(patch)
+  }
   let childSessionsRoot: string | undefined
   let childEnvironment: Record<string, string> = {}
   if (assertions.dshSdkChild !== undefined) {
@@ -958,6 +971,21 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
       )
       reconcileCatalogCreationTimes(ordered.map(log => log.content), 'validate')
       const actualContext = contextOf(ordered, cwd)
+      if (scenario.name === 'text-turn') {
+        const filingEvents = results.flatMap(result => result.events)
+          .filter(event => event.type.startsWith('mydot/'))
+        expect(filingEvents.map(event => event.type)).toEqual([
+          'mydot/filing-case', 'mydot/filing', 'mydot/mock-receipt',
+        ])
+        expect(notifications.flatMap(notification => {
+          const event = notificationEvent(notification)
+          return typeof event?.type === 'string' && event.type.startsWith('mydot/') ? [event] : []
+        }), 'filing payloads delivered through session.event').toEqual(filingEvents)
+        const parent = ordered[0]
+        if (parent === undefined) throw new Error('text-turn requires its persisted root Session')
+        expect(parseSessionLog(parent.content).filter(event => event.type.startsWith('mydot/')),
+          'filing payloads retained by the Session writer').toEqual(filingEvents)
+      }
       if (scenario.name === 'current-context') {
         const parent = ordered[0]
         if (parent === undefined) throw new Error('current-context requires its recorded parent Session')

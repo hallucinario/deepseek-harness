@@ -990,12 +990,91 @@
       }
     },
     {
-      "type": "assistant/message",
+      "type": "assistant/attempt",
       "seq": 43,
       "time": 0,
       "data": {
         "turn": 1,
         "step": 4,
+        "stream": []
+      }
+    },
+    {
+      "type": "step/end",
+      "seq": 44,
+      "time": 0,
+      "data": {
+        "turn": 1,
+        "step": 4
+      }
+    },
+    {
+      "type": "agent/inbox/spliced",
+      "seq": 45,
+      "time": 0,
+      "data": {
+        "target": "next-step",
+        "start": 0,
+        "removedCount": 1,
+        "inserted": []
+      }
+    },
+    {
+      "type": "step/start",
+      "seq": 46,
+      "time": 0,
+      "data": {
+        "turn": 1,
+        "step": 5
+      }
+    },
+    {
+      "type": "user/message",
+      "seq": 47,
+      "time": 0,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Background subagent {{child-1}} finished and will do no further work unless you send it more."
+          },
+          {
+            "type": "text",
+            "text": "Its closing message:"
+          },
+          {
+            "type": "text",
+            "text": "DIRECT_CHILD_OK"
+          }
+        ],
+        "source": {
+          "kind": "subagent-settled",
+          "form": "notice",
+          "summary": "Background subagent {{child-1}} finished and will do no further work unless you send it more.",
+          "senderSessionId": "{{child-1}}"
+        },
+        "role": "user",
+        "id": "{{messageId}}"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "session-log-deepseek/delivery-accepted",
+      "seq": 48,
+      "time": 0,
+      "data": {
+        "sessionId": "{{parent}}",
+        "sessionFormatVersion": 4,
+        "throughSeq": 47
+      }
+    },
+    {
+      "type": "assistant/message",
+      "seq": 49,
+      "time": 0,
+      "data": {
+        "turn": 1,
+        "step": 5,
         "message": {
           "role": "assistant",
           "content": [
@@ -1115,11 +1194,11 @@
     },
     {
       "type": "tool/call",
-      "seq": 44,
+      "seq": 50,
       "time": 0,
       "data": {
         "turn": 1,
-        "step": 4,
+        "step": 5,
         "callId": "advanced-workflow",
         "name": "workflow",
         "arguments": "{\"script\": \"phase('Delegate')\\nconst reply = await agent('Reply with exactly WORKFLOW_CHILD_OK and nothing else.', { label: 'workflow-child' })\\nreturn { reply }\", \"meta\": {\"name\": \"advanced-exe-snapshot\", \"description\": \"exercise one packaged workflow child\"}}"
@@ -1127,7 +1206,7 @@
     },
     {
       "type": "tool-workflow/run-start",
-      "seq": 45,
+      "seq": 51,
       "time": 0,
       "data": {
         "runId": "{{workflow-run}}",
@@ -1136,7 +1215,7 @@
     },
     {
       "type": "subagent/catalog",
-      "seq": 46,
+      "seq": 52,
       "time": 0,
       "data": {
         "version": 0,
@@ -1148,7 +1227,7 @@
     },
     {
       "type": "tool-workflow/agent-start",
-      "seq": 47,
+      "seq": 53,
       "time": 0,
       "data": {
         "runId": "{{workflow-run}}",
@@ -1160,7 +1239,7 @@
     },
     {
       "type": "tool-workflow/agent-end",
-      "seq": 48,
+      "seq": 54,
       "time": 0,
       "data": {
         "runId": "{{workflow-run}}",
@@ -1170,7 +1249,7 @@
     },
     {
       "type": "tool-workflow/run-end",
-      "seq": 49,
+      "seq": 55,
       "time": 0,
       "data": {
         "runId": "{{workflow-run}}",
@@ -1179,11 +1258,11 @@
     },
     {
       "type": "tool/result",
-      "seq": 50,
+      "seq": 56,
       "time": 0,
       "data": {
         "turn": 1,
-        "step": 4,
+        "step": 5,
         "message": {
           "role": "tool",
           "source": {
@@ -1202,33 +1281,13 @@
         }
       },
       "sourceEventSeqs": [
-        44
+        50
       ],
       "surfaceOp": "append"
     },
     {
       "type": "step/end",
-      "seq": 51,
-      "time": 0,
-      "data": {
-        "turn": 1,
-        "step": 4
-      }
-    },
-    {
-      "type": "agent/inbox/spliced",
-      "seq": 52,
-      "time": 0,
-      "data": {
-        "target": "next-step",
-        "start": 0,
-        "removedCount": 1,
-        "inserted": []
-      }
-    },
-    {
-      "type": "step/start",
-      "seq": 53,
+      "seq": 57,
       "time": 0,
       "data": {
         "turn": 1,
@@ -1236,52 +1295,31 @@
       }
     },
     {
-      "type": "user/message",
-      "seq": 54,
+      "type": "step/start",
+      "seq": 58,
       "time": 0,
       "data": {
-        "content": [
-          {
-            "type": "text",
-            "text": "Background subagent {{child-1}} finished and will do no further work unless you send it more."
-          },
-          {
-            "type": "text",
-            "text": "Its closing message:"
-          },
-          {
-            "type": "text",
-            "text": "DIRECT_CHILD_OK"
-          }
-        ],
-        "source": {
-          "kind": "subagent-settled",
-          "form": "notice",
-          "summary": "Background subagent {{child-1}} finished and will do no further work unless you send it more.",
-          "senderSessionId": "{{child-1}}"
-        },
-        "role": "user",
-        "id": "{{messageId}}"
-      },
-      "surfaceOp": "append"
+        "turn": 1,
+        "step": 6
+      }
     },
     {
       "type": "session-log-deepseek/delivery-accepted",
-      "seq": 55,
+      "seq": 59,
       "time": 0,
       "data": {
         "sessionId": "{{parent}}",
         "sessionFormatVersion": 4,
-        "throughSeq": 54
+        "throughSeq": 58
       }
     },
     {
       "type": "assistant/message",
-      "seq": 56,
+      "seq": 60,
       "time": 0,
       "data": {
         "turn": 1,
-        "step": 5,
+        "step": 6,
         "message": {
           "role": "assistant",
           "content": [
@@ -1385,16 +1423,95 @@
     },
     {
       "type": "step/end",
-      "seq": 57,
+      "seq": 61,
       "time": 0,
       "data": {
         "turn": 1,
-        "step": 5
+        "step": 6
+      }
+    },
+    {
+      "type": "mydot/filing-case",
+      "seq": 62,
+      "time": 0,
+      "data": {
+        "caseId": "{{id:2}}",
+        "sessionId": "{{parent}}"
+      }
+    },
+    {
+      "type": "mydot/filing",
+      "seq": 63,
+      "time": 0,
+      "data": {
+        "view": {
+          "sessionId": "{{parent}}",
+          "plan": {
+            "caseId": "{{id:2}}",
+            "legalEntity": "Public SDK fixture corporation",
+            "account": "public-mock-account",
+            "site": "local-synthetic-recipient",
+            "period": {
+              "from": "2025-01-01",
+              "to": "2025-12-31"
+            },
+            "tax": "synthetic-tax",
+            "destination": "mock-local",
+            "amount": "1000",
+            "currency": "JPY",
+            "forms": [
+              "public-mock-return"
+            ],
+            "files": [
+              {
+                "role": "source",
+                "path": "public-source.txt",
+                "digest": "e4a116ab8c0c4b81d06d209468f8df1e15223a2ed441a36f0837aab70d485661"
+              },
+              {
+                "role": "preview",
+                "path": "public-preview.txt",
+                "digest": "fface715ff0ac4a7bb6c678be835d95c1536cb4ab1a1190fc56b8b9119322cf9"
+              }
+            ],
+            "inputDestinations": [
+              "local-preview"
+            ],
+            "modelDestinations": [],
+            "expiresAt": 4102444800000,
+            "stopRef": "owner-cancel",
+            "queryRef": "mock-intent-query",
+            "effects": {
+              "submit": true,
+              "payment": "none",
+              "standingSettings": "none"
+            }
+          },
+          "revision": 1,
+          "planDigest": "{{id:3}}",
+          "phase": "prepared",
+          "actor": "model-preparer",
+          "control": "agent"
+        }
+      }
+    },
+    {
+      "type": "mydot/mock-receipt",
+      "seq": 64,
+      "time": 0,
+      "data": {
+        "caseId": "{{id:2}}",
+        "planDigest": "{{id:3}}",
+        "intentId": "{{id:4}}",
+        "receiptId": "{{id:5}}",
+        "forms": [
+          "public-mock-return"
+        ]
       }
     },
     {
       "type": "command/run",
-      "seq": 58,
+      "seq": 65,
       "time": 0,
       "data": {
         "commandId": "{{command:1}}",
@@ -1406,7 +1523,7 @@
     },
     {
       "type": "feedback/record",
-      "seq": 59,
+      "seq": 66,
       "time": 0,
       "data": {
         "text": "The session needs a clearer explanation."
@@ -1414,7 +1531,7 @@
     },
     {
       "type": "command/done",
-      "seq": 60,
+      "seq": 67,
       "time": 0,
       "data": {
         "commandId": "{{command:1}}",
@@ -1424,7 +1541,7 @@
     },
     {
       "type": "feedback/record",
-      "seq": 61,
+      "seq": 68,
       "time": 0,
       "data": {
         "category": "other"
@@ -1432,7 +1549,7 @@
     },
     {
       "type": "feedback/message-put",
-      "seq": 62,
+      "seq": 69,
       "time": 0,
       "data": {
         "sessionId": "{{parent}}",
@@ -1449,7 +1566,7 @@
     },
     {
       "type": "feedback/message-put",
-      "seq": 63,
+      "seq": 70,
       "time": 0,
       "data": {
         "sessionId": "{{parent}}",
@@ -1465,7 +1582,7 @@
     },
     {
       "type": "feedback/message-delete",
-      "seq": 64,
+      "seq": 71,
       "time": 0,
       "data": {
         "sessionId": "{{parent}}",
@@ -1474,7 +1591,7 @@
     },
     {
       "type": "turn/end",
-      "seq": 65,
+      "seq": 72,
       "time": 0,
       "data": {
         "turn": 1,
@@ -3240,12 +3357,127 @@
       "payload": {
         "sessionId": "{{parent}}",
         "event": {
-          "type": "assistant/message",
+          "type": "assistant/attempt",
           "seq": 43,
           "time": 0,
           "data": {
             "turn": 1,
             "step": 4,
+            "stream": []
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "step/end",
+          "seq": 44,
+          "time": 0,
+          "data": {
+            "turn": 1,
+            "step": 4
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "agent/inbox/spliced",
+          "seq": 45,
+          "time": 0,
+          "data": {
+            "target": "next-step",
+            "start": 0,
+            "removedCount": 1,
+            "inserted": []
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "step/start",
+          "seq": 46,
+          "time": 0,
+          "data": {
+            "turn": 1,
+            "step": 5
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "user/message",
+          "seq": 47,
+          "time": 0,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Background subagent {{child-1}} finished and will do no further work unless you send it more."
+              },
+              {
+                "type": "text",
+                "text": "Its closing message:"
+              },
+              {
+                "type": "text",
+                "text": "DIRECT_CHILD_OK"
+              }
+            ],
+            "source": {
+              "kind": "subagent-settled",
+              "form": "notice",
+              "summary": "Background subagent {{child-1}} finished and will do no further work unless you send it more.",
+              "senderSessionId": "{{child-1}}"
+            },
+            "role": "user",
+            "id": "{{messageId}}"
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "session-log-deepseek/delivery-accepted",
+          "seq": 48,
+          "time": 0,
+          "data": {
+            "sessionId": "{{parent}}",
+            "sessionFormatVersion": 4,
+            "throughSeq": 47
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "assistant/message",
+          "seq": 49,
+          "time": 0,
+          "data": {
+            "turn": 1,
+            "step": 5,
             "message": {
               "role": "assistant",
               "content": [
@@ -3371,11 +3603,11 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool/call",
-          "seq": 44,
+          "seq": 50,
           "time": 0,
           "data": {
             "turn": 1,
-            "step": 4,
+            "step": 5,
             "callId": "advanced-workflow",
             "name": "workflow",
             "arguments": "{\"script\": \"phase('Delegate')\\nconst reply = await agent('Reply with exactly WORKFLOW_CHILD_OK and nothing else.', { label: 'workflow-child' })\\nreturn { reply }\", \"meta\": {\"name\": \"advanced-exe-snapshot\", \"description\": \"exercise one packaged workflow child\"}}"
@@ -3389,7 +3621,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool-workflow/run-start",
-          "seq": 45,
+          "seq": 51,
           "time": 0,
           "data": {
             "runId": "{{workflow-run}}",
@@ -3526,7 +3758,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "subagent/catalog",
-          "seq": 46,
+          "seq": 52,
           "time": 0,
           "data": {
             "version": 0,
@@ -3544,7 +3776,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool-workflow/agent-start",
-          "seq": 47,
+          "seq": 53,
           "time": 0,
           "data": {
             "runId": "{{workflow-run}}",
@@ -3962,7 +4194,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool-workflow/agent-end",
-          "seq": 48,
+          "seq": 54,
           "time": 0,
           "data": {
             "runId": "{{workflow-run}}",
@@ -3978,7 +4210,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool-workflow/run-end",
-          "seq": 49,
+          "seq": 55,
           "time": 0,
           "data": {
             "runId": "{{workflow-run}}",
@@ -3993,11 +4225,11 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "tool/result",
-          "seq": 50,
+          "seq": 56,
           "time": 0,
           "data": {
             "turn": 1,
-            "step": 4,
+            "step": 5,
             "message": {
               "role": "tool",
               "source": {
@@ -4016,7 +4248,7 @@
             }
           },
           "sourceEventSeqs": [
-            44
+            50
           ],
           "surfaceOp": "append"
         }
@@ -4028,39 +4260,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "step/end",
-          "seq": 51,
-          "time": 0,
-          "data": {
-            "turn": 1,
-            "step": 4
-          }
-        }
-      }
-    },
-    {
-      "method": "session.event",
-      "payload": {
-        "sessionId": "{{parent}}",
-        "event": {
-          "type": "agent/inbox/spliced",
-          "seq": 52,
-          "time": 0,
-          "data": {
-            "target": "next-step",
-            "start": 0,
-            "removedCount": 1,
-            "inserted": []
-          }
-        }
-      }
-    },
-    {
-      "method": "session.event",
-      "payload": {
-        "sessionId": "{{parent}}",
-        "event": {
-          "type": "step/start",
-          "seq": 53,
+          "seq": 57,
           "time": 0,
           "data": {
             "turn": 1,
@@ -4074,34 +4274,13 @@
       "payload": {
         "sessionId": "{{parent}}",
         "event": {
-          "type": "user/message",
-          "seq": 54,
+          "type": "step/start",
+          "seq": 58,
           "time": 0,
           "data": {
-            "content": [
-              {
-                "type": "text",
-                "text": "Background subagent {{child-1}} finished and will do no further work unless you send it more."
-              },
-              {
-                "type": "text",
-                "text": "Its closing message:"
-              },
-              {
-                "type": "text",
-                "text": "DIRECT_CHILD_OK"
-              }
-            ],
-            "source": {
-              "kind": "subagent-settled",
-              "form": "notice",
-              "summary": "Background subagent {{child-1}} finished and will do no further work unless you send it more.",
-              "senderSessionId": "{{child-1}}"
-            },
-            "role": "user",
-            "id": "{{messageId}}"
-          },
-          "surfaceOp": "append"
+            "turn": 1,
+            "step": 6
+          }
         }
       }
     },
@@ -4111,12 +4290,12 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "session-log-deepseek/delivery-accepted",
-          "seq": 55,
+          "seq": 59,
           "time": 0,
           "data": {
             "sessionId": "{{parent}}",
             "sessionFormatVersion": 4,
-            "throughSeq": 54
+            "throughSeq": 58
           }
         }
       }
@@ -4127,11 +4306,11 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "assistant/message",
-          "seq": 56,
+          "seq": 60,
           "time": 0,
           "data": {
             "turn": 1,
-            "step": 5,
+            "step": 6,
             "message": {
               "role": "assistant",
               "content": [
@@ -4241,11 +4420,108 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "step/end",
-          "seq": 57,
+          "seq": 61,
           "time": 0,
           "data": {
             "turn": 1,
-            "step": 5
+            "step": 6
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "mydot/filing-case",
+          "seq": 62,
+          "time": 0,
+          "data": {
+            "caseId": "{{id:2}}",
+            "sessionId": "{{parent}}"
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "mydot/filing",
+          "seq": 63,
+          "time": 0,
+          "data": {
+            "view": {
+              "sessionId": "{{parent}}",
+              "plan": {
+                "caseId": "{{id:2}}",
+                "legalEntity": "Public SDK fixture corporation",
+                "account": "public-mock-account",
+                "site": "local-synthetic-recipient",
+                "period": {
+                  "from": "2025-01-01",
+                  "to": "2025-12-31"
+                },
+                "tax": "synthetic-tax",
+                "destination": "mock-local",
+                "amount": "1000",
+                "currency": "JPY",
+                "forms": [
+                  "public-mock-return"
+                ],
+                "files": [
+                  {
+                    "role": "source",
+                    "path": "public-source.txt",
+                    "digest": "e4a116ab8c0c4b81d06d209468f8df1e15223a2ed441a36f0837aab70d485661"
+                  },
+                  {
+                    "role": "preview",
+                    "path": "public-preview.txt",
+                    "digest": "fface715ff0ac4a7bb6c678be835d95c1536cb4ab1a1190fc56b8b9119322cf9"
+                  }
+                ],
+                "inputDestinations": [
+                  "local-preview"
+                ],
+                "modelDestinations": [],
+                "expiresAt": 4102444800000,
+                "stopRef": "owner-cancel",
+                "queryRef": "mock-intent-query",
+                "effects": {
+                  "submit": true,
+                  "payment": "none",
+                  "standingSettings": "none"
+                }
+              },
+              "revision": 1,
+              "planDigest": "{{id:3}}",
+              "phase": "prepared",
+              "actor": "model-preparer",
+              "control": "agent"
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "session.event",
+      "payload": {
+        "sessionId": "{{parent}}",
+        "event": {
+          "type": "mydot/mock-receipt",
+          "seq": 64,
+          "time": 0,
+          "data": {
+            "caseId": "{{id:2}}",
+            "planDigest": "{{id:3}}",
+            "intentId": "{{id:4}}",
+            "receiptId": "{{id:5}}",
+            "forms": [
+              "public-mock-return"
+            ]
           }
         }
       }
@@ -4256,7 +4532,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "command/run",
-          "seq": 58,
+          "seq": 65,
           "time": 0,
           "data": {
             "commandId": "{{command:1}}",
@@ -4274,7 +4550,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "feedback/record",
-          "seq": 59,
+          "seq": 66,
           "time": 0,
           "data": {
             "text": "The session needs a clearer explanation."
@@ -4288,7 +4564,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "command/done",
-          "seq": 60,
+          "seq": 67,
           "time": 0,
           "data": {
             "commandId": "{{command:1}}",
@@ -4304,7 +4580,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "feedback/record",
-          "seq": 61,
+          "seq": 68,
           "time": 0,
           "data": {
             "category": "other"
@@ -4318,7 +4594,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "feedback/message-put",
-          "seq": 62,
+          "seq": 69,
           "time": 0,
           "data": {
             "sessionId": "{{parent}}",
@@ -4341,7 +4617,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "feedback/message-put",
-          "seq": 63,
+          "seq": 70,
           "time": 0,
           "data": {
             "sessionId": "{{parent}}",
@@ -4363,7 +4639,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "feedback/message-delete",
-          "seq": 64,
+          "seq": 71,
           "time": 0,
           "data": {
             "sessionId": "{{parent}}",
@@ -4378,7 +4654,7 @@
         "sessionId": "{{parent}}",
         "event": {
           "type": "turn/end",
-          "seq": 65,
+          "seq": 72,
           "time": 0,
           "data": {
             "turn": 1,

@@ -296,6 +296,38 @@ def test_advanced_snapshot_normalizes_catalog_child_creation_time() -> None:
     ) == {"type": "fixture/event", "data": {"childCreatedAt": 1788246207176}}
 
 
+def test_filing_snapshot_preserves_identity_relationships_and_document_digests() -> None:
+    normalize = SMOKE["normalize_snapshot_value"]
+    digest = "e" * 64
+    receipt = {
+        "caseId": "case-identity", "planDigest": "plan-identity",
+        "intentId": "intent-identity", "receiptId": "receipt-identity", "forms": ["mock-return"],
+    }
+    events = [
+        {"type": "mydot/filing-case", "data": {"caseId": "case-identity", "sessionId": "fixture-session"}},
+        {"type": "mydot/filing", "data": {"view": {
+            "plan": {"caseId": "case-identity", "files": [{"digest": digest}]},
+            "planDigest": "plan-identity", "intentId": "intent-identity", "receipt": receipt,
+        }}},
+        {"type": "mydot/mock-receipt", "data": receipt},
+    ]
+    replacements: list[tuple[str, str]] = []
+    normalized = normalize(events, replacements)
+    assert normalized[0]["data"]["caseId"] == "{{id:1}}"
+    view = normalized[1]["data"]["view"]
+    assert view["plan"]["caseId"] == "{{id:1}}"
+    assert view["plan"]["files"] == [{"digest": digest}]
+    assert view["receipt"] == normalized[2]["data"] == {
+        "caseId": "{{id:1}}", "planDigest": "{{id:2}}",
+        "intentId": "{{id:3}}", "receiptId": "{{id:4}}", "forms": ["mock-return"],
+    }
+    notification = {"method": "session.event", "payload": {"event": events[2]}}
+    assert normalize(notification, replacements)["payload"]["event"] == normalized[2]
+    assert normalize(normalized, []) == normalized
+    unrelated = {"type": "fixture/event", "data": receipt}
+    assert normalize(unrelated, []) == unrelated
+
+
 def test_snapshot_comparison_preserves_opaque_generation_qualifiers() -> None:
     normalize = SMOKE["normalize_session_format_comparison"]
     expected = {

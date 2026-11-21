@@ -1,6 +1,6 @@
 /** Explicit material selection, source identity and complete UTF-8 context bounds. */
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -10,7 +10,7 @@ import { expect, it, vi } from 'vitest'
 import { searchMaterials, minimumMaterialContextBytes } from '../src/material-search.ts'
 
 async function setup(onTestFinished: (fn: () => Promise<void>) => void) {
-  const root = await mkdtemp(join(tmpdir(), 'mydot-materials-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'mydot-materials-')))
   const ctx = new Context()
   onTestFinished(async () => { await ctx.fiber.dispose(); await rm(root, { recursive: true, force: true }) })
   await ctx.plugin(LocalFileSystem, { cwd: root })

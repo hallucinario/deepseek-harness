@@ -108,6 +108,22 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'mydotFiling',
+    pkg: 'experimental-mydot',
+    title: 'Owner-reviewed synthetic filing and independent recording evidence',
+    mode: 'service',
+    consumers: ['experimental-mydot'],
+    note: 'Persists plans, owner decisions and query-only uncertain intents in the original Session; only the owner can confirm the local synthetic recipient.',
+  },
+  {
+    key: 'mydotHandoff',
+    pkg: 'experimental-mydot',
+    title: 'Versioned owner requests and original-Session continuation',
+    mode: 'service',
+    consumers: ['experimental-mydot'],
+    note: 'Keeps request, answer, actual input admission and outcome in Session events; the optional protected callback verifies drawing result references.',
+  },
+  {
     key: 'mydot',
     pkg: 'experimental-mydot',
     title: 'Space-linked local work and current files',
