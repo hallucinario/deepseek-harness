@@ -40,6 +40,9 @@
       "path": "../../session-query/session-query"
     },
     {
+      "path": "../../session/session-persistence"
+    },
+    {
       "path": "../../subagent/subagent"
     },
     {

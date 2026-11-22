@@ -1,5 +1,6 @@
 /** Keyless Loader composition with real loop, child Sessions, filesystem and storage. */
 import { chmod, mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, posix } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -18,6 +19,7 @@ import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-j
 import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
 import SandboxPolicy, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
+import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import { assertWorkspaceOutsideTemp, outsideTempWorkspaceParent } from '../../../../scripts/snapshot-workspace-parent.ts'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
@@ -325,12 +327,13 @@ async function setupCaps(onTestFinished: (fn: () => Promise<void>) => void, opti
   const quoted = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
   const command = [process.execPath, '--import', import.meta.resolve('tsx/esm'), fixture].map(quoted).join(' ')
   await writeFile(launcher, '#!/bin/sh\nexec ' + command + ' "$@"\n', { mode: 0o500 })
-  const { ctx } = await setup({ root, pool: new MemoryMediaPool() }, undefined, {
+  const config = {
     caps: { launcher, workspaceRoots: [workspace], timeoutMs: 5_000 },
     ...(options?.maxTextBytes === undefined ? {} : { maxTextBytes: options.maxTextBytes }),
-  }, options?.persist)
-  const space = await ctx.mydot.saveSpace({ name: 'Guide', purpose: 'Compile the public guide', instructions: '', materials: ['guide.md'] })
-  return { ctx, workspace, space, launcher }
+  }
+  const environment = await setup({ root, pool: new MemoryMediaPool() }, undefined, config, options?.persist)
+  const space = await environment.ctx.mydot.saveSpace({ name: 'Guide', purpose: 'Compile the public guide', instructions: '', materials: ['guide.md'] })
+  return { ...environment, workspace, space, launcher, config }
 }
 
 it('binds a native Caps attempt and its output to a durable MyDot Session through stdio', async ({ onTestFinished }) => {
@@ -382,6 +385,160 @@ it('binds a native Caps attempt and its output to a durable MyDot Session throug
   expect(await ctx.mydot.readFile(agent.id, artifact)).toMatchObject({ kind: 'text', content: '# Public guide\n\nRead this guide.\n' })
 })
 
+it('projects one authorized durable attempt to the Foundry intake contract across a restart', async ({ onTestFinished }) => {
+  const first = await setupCaps(onTestFinished)
+  const { ctx, space, workspace } = first
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse('run-caps', 'caps_compile_document_bundle', { name: 'bundle', documents: [{ source: 'guide.md' }] }),
+    textResponse('response excluded from observation'),
+  ]))
+  const agent = await ctx.agentLoop.create(SessionId('observe-caps'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  agent.followup(createUserMessage({
+    content: [{ type: 'text', text: 'request excluded from observation' }],
+    source: { kind: 'user', rpcId: 'chosen-request' as SessionRequestId },
+  }))
+  await agent.whenIdle()
+  expect(await ctx.sessions.flush(agent.session)).toBe(true)
+  using recorded = await ctx.sessionQuery.observeSession(agent.id)
+  const opened = recorded.events.find(event => event.type === 'turn/start')!
+  const ended = recorded.events.find(event => event.type === 'turn/end')!
+  const request = recorded.events.find(event => event.type === 'user/message' && event.data.source.kind === 'user')!
+  const result = recorded.events.find(event => event.type === 'tool/result')!
+  const file = recorded.events.find(event => event.type === 'deliverables/presented')!.data.files
+    .find(item => item.path.endsWith('/guide.md'))!
+  const content = await readFile(file.path)
+  const selection = {
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id, requestSequence: request.seq,
+    firstSequence: opened.seq, lastSequence: ended.seq,
+    artifacts: [{
+      path: file.path, sourceRef: 'approved-guide', version: '1', artifactType: 'MARKDOWN_DOCUMENT' as const,
+      contentDigest: createHash('sha256').update(content).digest('hex'),
+    }],
+  }
+  const projected = await ctx.mydot.projectFoundryObservation(selection)
+  expect(remoteMethods(ctx.mydot).map(marker => marker.method)).not.toContain('projectFoundryObservation')
+  const caps = result.data.meta as { sessionRef: string; taskRef: string; executionRef: string; runtimeVersion: string }
+  expect(projected).toMatchObject({
+    hccScope: { sessionRef: caps.sessionRef, taskRef: caps.taskRef, executionRef: caps.executionRef },
+    observation: {
+      identity: { projectId: 'bound-project', requestId: 'chosen-request', sessionId: agent.id, attemptId: caps.executionRef },
+      runtimeVersion: caps.runtimeVersion, status: 'SUCCEEDED', context: null,
+      observedAt: new Date(ended.time).toISOString(), eventRange: { firstSequence: opened.seq, lastSequence: ended.seq },
+      artifacts: [{ sourceRef: 'approved-guide', version: '1', artifactType: 'MARKDOWN_DOCUMENT', content: new Uint8Array(content) }],
+    },
+  })
+  expect(projected.observation.runtimeVersion).toMatch(/^\d+\.\d+\.\d+/u)
+  expect(projected.observation.events.find(event => event.sequence === result.seq)).toMatchObject({
+    type: 'TOOL_CALL_END', payload: { invocationId: 'inv-stdio-fixture', executionRef: caps.executionRef },
+  })
+  expect(projected.observation.events.find(event => event.type === 'MODEL_CALL_END')?.payload)
+    .toMatchObject({ modelId: 'mock', providerId: 'mock', inputTokens: 10, outputTokens: 5 })
+  expect(JSON.stringify(projected)).not.toMatch(/request excluded|response excluded|guide\.md/u)
+  expect(await readFile(join(workspace, 'calls.jsonl'), 'utf8')).toMatch(/"phase":"invoke"/u)
+  await ctx.fiber.dispose()
+  const cold = await setup(first, undefined, first.config)
+  expect(await cold.ctx.mydot.projectFoundryObservation(selection)).toEqual(projected)
+  const wrongSpace = await cold.ctx.mydot.saveSpace({ name: 'Other', purpose: '', instructions: '', materials: [] })
+  await expect(cold.ctx.mydot.projectFoundryObservation({ ...selection, spaceId: wrongSpace.id })).rejects.toThrow('approved Space')
+  await expect(cold.ctx.mydot.projectFoundryObservation({ ...selection, lastSequence: ended.seq + 1 })).rejects.toThrow('durable closed turn')
+  await expect(cold.ctx.mydot.projectFoundryObservation({ ...selection, lastSequence: Number.MAX_SAFE_INTEGER }))
+    .rejects.toThrow('Invalid Foundry observation selection')
+  await expect(cold.ctx.mydot.projectFoundryObservation({ ...selection, requestSequence: request.seq + 1 })).rejects.toThrow('single recorded input')
+  const approved = selection.artifacts[0]!
+  await expect(cold.ctx.mydot.projectFoundryObservation({
+    ...selection, artifacts: [{ ...approved, path: join(workspace, 'guide.md') }],
+  })).rejects.toThrow('was not presented by this attempt')
+  await expect(cold.ctx.mydot.projectFoundryObservation({
+    ...selection, artifacts: [{ ...approved, path: join(first.root, 'outside.md') }],
+  })).rejects.toThrow('inside the recorded workspace')
+  await expect(cold.ctx.mydot.projectFoundryObservation({
+    ...selection, artifacts: [{ ...approved, contentDigest: '0'.repeat(64) }],
+  })).rejects.toThrow('did not match the recorded handoff')
+  await expect(cold.ctx.mydot.projectFoundryObservation({
+    ...selection, artifacts: [approved, approved],
+  })).rejects.toThrow('Duplicate artifact')
+  await writeFile(file.path, 'Changed after the receipt')
+  await expect(cold.ctx.mydot.projectFoundryObservation(selection)).rejects.toThrow('digest verification')
+  expect((await cold.ctx.mydot.projectFoundryObservation({ ...selection, artifacts: [] })).observation.artifacts).toEqual([])
+  expect((await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim().split('\n')).toHaveLength(2)
+})
+
+it('requires a real terminal boundary before projecting an otherwise admissible persisted input', async ({ onTestFinished }) => {
+  const { ctx, space, workspace } = await setupCaps(onTestFinished)
+  const agent = await ctx.agentLoop.create(SessionId('observation-open-turn'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  const start = agent.session.append('turn/start', { turn: 1 })
+  const request = agent.session.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'actual persisted request' }], source: { kind: 'user' },
+  }), { surfaceOp: 'append' })
+  const selection = {
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id,
+    firstSequence: start.seq, requestSequence: request.seq, lastSequence: request.seq + 1, artifacts: [],
+  }
+  await expect(ctx.mydot.projectFoundryObservation(selection)).rejects.toThrow('durable closed turn')
+  const ended = agent.session.append('turn/end', { turn: 1, reason: { kind: 'interrupted' } })
+  expect(ended.seq).toBe(selection.lastSequence)
+  const projected = await ctx.mydot.projectFoundryObservation(selection)
+  expect(projected).toMatchObject({
+    hccScope: null, observation: {
+      identity: { requestId: request.data.id }, runtimeVersion: null, status: 'UNKNOWN',
+      events: [{ type: 'RUN_STATE_TRANSITION' }, { type: 'RUN_STATE_TRANSITION', payload: { state: 'UNKNOWN', reason: 'interrupted' } }],
+    },
+  })
+  const second = agent.session.append('turn/start', { turn: 2 })
+  const secondInput = agent.session.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'later request' }], source: { kind: 'user' },
+  }), { surfaceOp: 'append' })
+  const cancelled = agent.session.append('turn/end', { turn: 2, reason: { kind: 'aborted', reason: { kind: 'user' } } })
+  const later = await ctx.mydot.projectFoundryObservation({
+    ...selection, firstSequence: second.seq, requestSequence: secondInput.seq, lastSequence: cancelled.seq,
+  })
+  expect(later.observation.status).toBe('CANCELLED')
+  expect(later.observation.identity.attemptId).not.toBe(projected.observation.identity.attemptId)
+})
+
+it('refuses unpersisted Sessions before and after the persistence service is enabled', async ({ onTestFinished }) => {
+  const { ctx, root, space, workspace } = await setupCaps(onTestFinished, { persist: false })
+  const agent = await ctx.agentLoop.create(SessionId('observation-not-stored'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  const selection = {
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id, firstSequence: 0, requestSequence: 1, lastSequence: 2, artifacts: [],
+  }
+  await expect(ctx.mydot.projectFoundryObservation(selection)).rejects.toThrow('requires durable Session storage')
+  await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'late-sessions') })
+  await expect(ctx.mydot.projectFoundryObservation(selection)).rejects.toThrow('session "observation-not-stored" not found')
+})
+
+it('refuses child lineage and requires a recorded workspace before reading any approved file', async ({ onTestFinished }) => {
+  const { ctx, space } = await setupCaps(onTestFinished)
+  const root = ctx.sessions.create(SessionId('observation-no-workspace'))
+  await ctx.mydot.attach(root.id, space.id)
+  const first = root.append('turn/start', { turn: 1 })
+  const request = root.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'Root request' }], source: { kind: 'user' },
+  }), { surfaceOp: 'append' })
+  const last = root.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+  await using writer = await ctx.sessionPersistence.create(root.header)
+  await writer.append([first, request, last])
+  await writer.flush()
+  const selection = {
+    projectId: 'bound-project', spaceId: space.id, sessionId: root.id,
+    firstSequence: first.seq, lastSequence: last.seq, requestSequence: request.seq, artifacts: [],
+  }
+  expect((await ctx.mydot.projectFoundryObservation(selection)).observation.status).toBe('SUCCEEDED')
+  await expect(ctx.mydot.projectFoundryObservation({
+    ...selection, artifacts: [{
+      path: 'guide.md', sourceRef: 'guide', version: '1', artifactType: 'MARKDOWN_DOCUMENT', contentDigest: '0'.repeat(64),
+    }],
+  })).rejects.toThrow('requires a recorded local workspace')
+  const child = ctx.sessions.create(SessionId('observation-child'), { meta: { parentSession: root.id, origin: 'subagent' } })
+  await using childWriter = await ctx.sessionPersistence.create(child.header)
+  await childWriter.flush()
+  await ctx.mydot.attach(child.id, space.id)
+  await expect(ctx.mydot.projectFoundryObservation({ ...selection, sessionId: child.id })).rejects.toThrow('requires a root Session')
+})
+
 it.for([
   ['approval', 'needs_approval', 'not_applicable', ['check']],
   ['other-task', 'not_dispatched', 'not_applicable', ['check']],
@@ -421,6 +578,16 @@ it.for([
   using observed = await ctx.sessionQuery.observeSession(agent.id)
   const meta = observed.events.find(event => event.type === 'tool/result')?.data.meta
   expect(meta).toMatchObject({ status, handoff })
+  const projected = await ctx.mydot.projectFoundryObservation({
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id,
+    firstSequence: observed.events.find(event => event.type === 'turn/start')!.seq,
+    lastSequence: observed.events.find(event => event.type === 'turn/end')!.seq,
+    requestSequence: observed.events.find(event => event.type === 'user/message' && event.data.source.kind === 'user')!.seq,
+    artifacts: [],
+  })
+  const statusForFoundry = { succeeded: 'SUCCEEDED', cancelled: 'CANCELLED', rejected: 'FAILED' } as const
+  expect(projected.observation.status).toBe(status in statusForFoundry ? statusForFoundry[status as keyof typeof statusForFoundry] : 'UNKNOWN')
+  expect(projected.observation.events.find(event => event.type === 'TOOL_CALL_END')?.payload.status).toBe(status)
   if (name === 'inflight') expect(meta).toMatchObject({ duplicate: true, usageRecording: 'unknown' })
   expect(observed.events.some(event => event.type === 'deliverables/presented')).toBe(false)
   const rows = (await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trimEnd().split('\n')
@@ -442,6 +609,16 @@ it('rejects Caps authority from arguments, agentless calls and Sessions without 
   await agent.whenIdle()
   using observed = await ctx.sessionQuery.observeSession(agent.id)
   expect(JSON.stringify(observed.events.find(event => event.type === 'tool/result'))).toContain('Caps accepts valid bundle arguments only')
+  const projected = await ctx.mydot.projectFoundryObservation({
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id,
+    firstSequence: observed.events.find(event => event.type === 'turn/start')!.seq,
+    lastSequence: observed.events.find(event => event.type === 'turn/end')!.seq,
+    requestSequence: observed.events.find(event => event.type === 'user/message' && event.data.source.kind === 'user')!.seq,
+    artifacts: [],
+  })
+  expect(projected.hccScope).toBeNull()
+  expect(projected.observation.status).toBe('UNKNOWN')
+  expect(projected.observation.events.find(event => event.type === 'TOOL_ERROR')?.payload).toEqual({ status: 'unverified' })
   await expect(readFile(join(workspace, 'calls.jsonl'))).rejects.toMatchObject({ code: 'ENOENT' })
 })
 

@@ -14,7 +14,8 @@ import type { Space } from './types.ts'
 import { capsDigest, compileCapsBundle, type CapsOutcome, type CapsScope } from './caps-mcp.ts'
 import { capsHandoffDirectory, verifyCapsBundle } from './caps-artifacts.ts'
 
-const toolName = 'caps_compile_document_bundle'
+/** The registered native tool name recorded in Session call events. */
+export const capsToolName = 'caps_compile_document_bundle'
 const modelKeys = new Set(['name', 'title', 'documents', 'toc', 'checkLinks'])
 const controlDirectories = new Set(['.git', 'node_modules', '.hcap', capsHandoffDirectory])
 
@@ -48,10 +49,15 @@ function safeRelative(path: string): boolean {
     && path.split('/').every(part => part !== '' && part !== '.' && part !== '..' && !controlDirectories.has(part))
 }
 
-function hostScope(workspace: string, spaceId: string, sessionId: SessionId, turnStart: number): CapsScope {
+/** Derive stable references from the exact Session and its durable turn start.
+ * @param sessionId - Owning DSH Session.
+ * @param turnStart - Original turn start sequence.
+ * @returns Stable IDs shared by tool admission and observation readback.
+ */
+export function capsAttemptRefs(sessionId: SessionId, turnStart: number): Omit<CapsScope, 'workspace' | 'spaceId'> {
   const sessionRef = 'dsh-session-' + capsDigest(sessionId).slice(7)
   const turnRef = capsDigest(JSON.stringify([sessionRef, turnStart])).slice(7)
-  return { workspace, spaceId, sessionRef, taskRef: 'dsh-task-' + turnRef,
+  return { sessionRef, taskRef: 'dsh-task-' + turnRef,
     executionRef: 'dsh-run-' + turnRef, requestId: 'dsh-caps-' + turnRef }
 }
 
@@ -76,7 +82,7 @@ export function mountCapsTool(
   const pending = new WeakMap<ToolExecution, { turn: number; paths: string[] }>()
   ctx.effect(() => async () => { closing.abort(); await Promise.allSettled(running) })
   ctx.tools.register(defineTool({
-    name: toolName,
+    name: capsToolName,
     description: 'Compile text documents from the current MyDot Space workspace using Caps. One attempt per turn. If its outcome is unknown, report the request ID and wait for confirmation before trying again.',
     parameters: {
       name: { ...requiredString, description: 'Lowercase bundle name' },
@@ -95,13 +101,14 @@ export function mountCapsTool(
     output: {
       schema: { type: 'object', additionalProperties: false, properties: {
         status: requiredString, reason: stringValue, requestId: requiredString, sessionRef: requiredString, taskRef: requiredString,
-        executionRef: requiredString, installedVersion: stringValue, invocationId: stringValue, executionFingerprint: stringValue,
+        executionRef: requiredString, runtimeVersion: stringValue, installedVersion: stringValue, invocationId: stringValue,
+        executionFingerprint: stringValue,
         resultDigest: stringValue, receiptVerification: stringValue, recordingStatus: stringValue, usageEventId: stringValue,
         usageRecording: stringValue, duplicate: { type: 'boolean' },
         artifacts: { type: 'array', items: { type: 'object', additionalProperties: false, properties: { path: requiredString, digest: requiredString } } },
         handoff: requiredString,
       } },
-      render: (_args, result) => [{ type: 'text', text: JSON.stringify(result) }],
+      render: (_args, { runtimeVersion: _runtimeVersion, ...result }) => [{ type: 'text', text: JSON.stringify(result) }],
       presentationMeta: (_args, result) => result,
     },
     async execute(args, exec) {
@@ -125,14 +132,16 @@ export function mountCapsTool(
       if (!await ctx.sessions.flush(session)) throw new Error('Caps requires durable Session storage')
       using retained = await ctx.sessionQuery.observeSession(session.id)
       const calls = retained.events.filter(event => event.type === 'tool/call')
-        .filter(event => event.seq > startSeq && event.data.name === toolName)
-      const scope = hostScope(workspace, space.id, session.id, startSeq)
-      const refs = { requestId: scope.requestId, sessionRef: scope.sessionRef, taskRef: scope.taskRef, executionRef: scope.executionRef }
+        .filter(event => event.seq > startSeq && event.data.name === capsToolName)
+      const refs = capsAttemptRefs(session.id, startSeq)
+      const scope = { workspace, spaceId: space.id, ...refs }
       if (calls.length !== 1 || calls[0]?.data.callId !== exec.callId) {
         return { ...refs, status: 'not_dispatched', handoff: 'not_applicable', reason: 'This turn already has a Caps call or its admission could not be confirmed' }
       }
       signal.throwIfAborted()
-      const work = compileCapsBundle(config.launcher, scope, args, config.timeoutMs, signal)
+      const { getDshRuntimeVersion } = await import('@deepseek-ai/dsh-app-boot')
+      const runtimeVersion = getDshRuntimeVersion()
+      const work = compileCapsBundle(config.launcher, scope, args, runtimeVersion, config.timeoutMs, signal)
       running.add(work)
       const outcome = await work.finally(() => { running.delete(work) })
       const artifacts = await verifyCapsBundle(scope, args, outcome, textLimit, signal)
@@ -140,7 +149,7 @@ export function mountCapsTool(
         pending.set(exec, { turn: boundary.lastTurn, paths: artifacts.map(file => file.path) })
       }
       return {
-        ...refs, status: outcome.status, handoff: outcome.status !== 'succeeded' ? 'not_applicable' : artifacts === undefined ? 'unavailable' : 'verified',
+        ...refs, runtimeVersion, status: outcome.status, handoff: outcome.status !== 'succeeded' ? 'not_applicable' : artifacts === undefined ? 'unavailable' : 'verified',
         ...outcome.reason === undefined ? {} : { reason: outcome.reason },
         ...outcome.invocationId === undefined ? {} : { invocationId: outcome.invocationId },
         ...outcome.executionFingerprint === undefined ? {} : { executionFingerprint: outcome.executionFingerprint },

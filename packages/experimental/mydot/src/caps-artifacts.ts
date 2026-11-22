@@ -19,12 +19,26 @@ const manifest = z.object({
   })),
 })
 
-async function readHandedOff(root: string, relativePath: string, digest: string, maxBytes: number, signal: AbortSignal) {
+/** Verify a pre-authorized bounded regular file and its exact content.
+ * @param root - Absolute, canonical containing directory.
+ * @param relativePath - Previously authorized path strictly within that directory.
+ * @param digest - Expected algorithm-tagged content digest.
+ * @param maxBytes - Maximum bytes to admit from this file.
+ * @param signal - Operation lifetime.
+ * @returns The verified bytes and their file identity.
+ */
+export async function readVerifiedArtifact(
+  root: string, relativePath: string, digest: string, maxBytes: number, signal: AbortSignal,
+): Promise<{
+  path: string
+  bytes: Buffer
+  digest: string
+}> {
   const path = join(root, relativePath)
-  if (await realpath(path) !== path) throw new Error('Caps handoff path is not canonical')
+  if (await realpath(path) !== path) throw new Error('Artifact path is not canonical')
   await using file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
   const before = await file.stat()
-  if (!before.isFile() || before.size > maxBytes) throw new Error('Caps handoff must be a bounded regular file')
+  if (!before.isFile() || before.size > maxBytes) throw new Error('Artifact must be a bounded regular file')
   const buffer = Buffer.alloc(before.size + 1)
   const { bytesRead } = await file.read(buffer, 0, buffer.length, 0)
   const after = await file.stat()
@@ -32,7 +46,7 @@ async function readHandedOff(root: string, relativePath: string, digest: string,
   signal.throwIfAborted()
   const bytes = buffer.subarray(0, bytesRead)
   if (bytesRead !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs
-    || current.dev !== after.dev || current.ino !== after.ino || await realpath(path) !== path || capsDigest(bytes) !== digest) throw new Error('Caps handoff changed or failed digest verification')
+    || current.dev !== after.dev || current.ino !== after.ino || await realpath(path) !== path || capsDigest(bytes) !== digest) throw new Error('Artifact changed or failed digest verification')
   return { path, bytes, digest }
 }
 
@@ -56,7 +70,7 @@ export async function verifyCapsBundle(
     const reference = capsDigest(JSON.stringify([scope.requestId, invocationId, relativePath]))
     const item = receipt.artifactObservations.find(entry => entry.reference === reference && entry.status === 'observed')
     if (item?.observedDigest == null) throw new Error('Caps receipt has no matching artifact')
-    return readHandedOff(root, relativePath, item.observedDigest, maxBytes, signal)
+    return readVerifiedArtifact(root, relativePath, item.observedDigest, maxBytes, signal)
   }
   try {
     const checkedManifest = await read('bundle/manifest.json')

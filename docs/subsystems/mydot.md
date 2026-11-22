@@ -479,6 +479,13 @@ MyDot metadata, projected work and current-file access.
  * @returns New ownership state; human handoff cannot be bypassed.
  */
 @Remote releaseDesktop(owner: SessionId): DesktopState
+
+/** Project one persisted attempt for the trusted Foundry Host integration.
+ * @param selection - Independently approved project, Space, source range and file versions.
+ * @param signal - Optional Host cancellation.
+ * @returns Selected observation and the separate Caps scope expected by intake.
+ */
+async projectFoundryObservation(selection: FoundryObservationSelection, signal?: AbortSignal): Promise<FoundryObservationProjection>
 ```
 
 Types: [FsVersion](filesystem.md) · [SessionId](core.md) · [SessionPromptValue](session.md) · [SessionRequestId](session.md) · [SubagentInterruptReceipt](subagent.md) · [SubagentPromptReceipt](subagent.md)

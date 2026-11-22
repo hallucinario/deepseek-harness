@@ -49,6 +49,10 @@ The launcher receives `--dsh-version`, `--workspace`, `--space-id`, `--session-r
 
 Each native turn admits its first recorded Caps call. The durable result carries the request, task and execution references, installed capability version, usage-event state, verification state and matching artifact digest when observed. A connection loss after dispatch leaves the outcome unknown and may require host-side inquiry. The model and the profile never retry that dispatch automatically. Omit `caps` to remove the tool and close its active connections.
 
+Trusted in-process Host code can call `ctx.mydot.projectFoundryObservation(selection, signal)` to read one closed root Session turn for Foundry intake. The selection identifies the authorized project, attached Space, Session, inclusive event range and original recorded request sequence. The range is bounded by the Session query read-window limit. The projection carries the native request ID, a stable attempt ID, source event sequences and model route and token counts when recorded. A matching Caps result adds its recorded DSH version, task and invocation references, receipt state and usage-event reference. The same selection yields the same observation after restart while the approved bytes remain available.
+
+To disclose a presented Markdown or JSON file, the caller supplies its exact recorded path, opaque source reference, version, artifact type and approved SHA-256 digest. The projection verifies the file in the recorded workspace and checks its Caps handoff when applicable. Selected files share the configured `maxTextBytes` budget. The projection omits raw prompts, replies, tool arguments and local paths. Its `context` is `null` because this read does not establish the complete provider input for every call. The owning Host supplies the authorized Foundry task contract and transport.
+
 Desktop coordination only applies to tool names explicitly listed in `desktopTools`. Include every observation, action and verification tool for the same execution world; `captureTools` must be a subset containing only read-only image captures. Operations serialize under one Session owner. Handoff closes admission and waits for admitted bodies; human ownership cannot resume until a successful image capture completes after handoff. Open the owner conversation to inspect that screen and its timestamp. The capture must be requested through the owner’s existing conversation; this package starts no tool by itself. Release a quiescent agent owner to allow another waiting job. Unconfigured tools and external desktop controllers are outside this coordination.
 
 The existing Schedule page pauses or resumes future deliveries under the same ID. Already delivered requests and active turns remain unchanged; delivery receipts do not certify successful output. See the [Schedule reference](../../../docs/subsystems/schedule.md).
@@ -82,6 +86,7 @@ The `mydot` storage domain owns small Space records and the authoritative Sessio
 | Source | Responsibility |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Host composition, recorded context and Remote operations |
+| [`src/foundry-observation.ts`](src/foundry-observation.ts) | Bounded, Host-only projection of a recorded attempt for Foundry |
 | [`src/spaces.ts`](src/spaces.ts) | Serialized metadata and immutable associations |
 | [`src/control.ts`](src/control.ts) | Per-child admission and durable request deduplication |
 | [`src/files.ts`](src/files.ts) | Consistent reads and version-guarded edits |

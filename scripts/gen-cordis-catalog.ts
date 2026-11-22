@@ -303,6 +303,8 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   MyDotJobView: 'mydot.md',
   ArtifactView: 'mydot.md',
   MyDotSnapshot: 'mydot.md',
+  FoundryObservationSelection: 'mydot.md',
+  FoundryObservationProjection: 'mydot.md',
   FilingCaseId: 'mydot.md',
   FilingFile: 'mydot.md',
   FilingPlan: 'mydot.md',

@@ -25,6 +25,7 @@ import { readJobRequest } from './job-request.ts'
 import { relayArtifacts } from './artifacts.ts'
 import { Spaces } from './spaces.ts'
 import { capsConfigSchema, mountCapsTool, type CapsConfig } from './caps-tools.ts'
+import { projectFoundryObservation, type FoundryObservationProjection, type FoundryObservationSelection } from './foundry-observation.ts'
 import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './files.ts'
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
@@ -41,6 +42,7 @@ export type { SpaceId, SpaceInput, Space } from './storage.ts'
 export type { JobInput, JobAddress } from './control.ts'
 export type { TextRead, TextSave, TextSaveResult } from './files.ts'
 export type { DesktopState } from './desktop.ts'
+export type { FoundryObservationProjection, FoundryObservationSelection } from './foundry-observation.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context { mydot: MyDotService }
@@ -524,6 +526,23 @@ export class MyDotService extends TypertRemoteService {
   private validateMemory(scope: MemoryScope): void {
     if (scope.kind === 'space' && !this.spaces.list().some(space => space.id === scope.spaceId)) throw new Error('Space not found')
   }
+
+  /** Project one persisted attempt for the trusted Foundry Host integration.
+   * @param selection - Independently approved project, Space, source range and file versions.
+   * @param signal - Optional Host cancellation.
+   * @returns Selected observation and the separate Caps scope expected by intake.
+   */
+  async projectFoundryObservation(selection: FoundryObservationSelection, signal?: AbortSignal): Promise<FoundryObservationProjection> {
+    if (this.ctx.invocation !== undefined) throw new Error('Foundry observation requires a trusted Host caller')
+    await this.initialized
+    const space = this.spaces.forSession(selection.sessionId)
+    if (space === undefined || space.id !== selection.spaceId) {
+      throw new Error('Selected Session is not attached to the approved Space')
+    }
+    return projectFoundryObservation(this.ctx, selection, this.config.maxTextBytes,
+      signal === undefined ? this.lifecycle.signal : AbortSignal.any([signal, this.lifecycle.signal]))
+  }
+
   private async authorizeFile(sessionId: SessionId, path: string): Promise<{ path: string; policy: Parameters<TextFiles['save']>[1] }> {
     await this.initialized
     using source = await this.ctx.sessionQuery.observeSession(sessionId)

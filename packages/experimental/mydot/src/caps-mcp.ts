@@ -168,12 +168,13 @@ function invocationResult(
  * @param launcher - Exact, operator-managed executable outside the model's workspace.
  * @param scope - Selected workspace and derived task references.
  * @param input - Document bundle request.
+ * @param version - Running DSH Host version captured alongside the native result.
  * @param timeoutMs - Operator-selected lifetime for the whole exchange.
  * @param caller - Tool and plugin cancellation.
  * @returns Validated invocation or a visible refusal/unknown outcome.
  */
 export async function compileCapsBundle(
-  launcher: string, scope: CapsScope, input: BundleInput, timeoutMs: number, caller: AbortSignal,
+  launcher: string, scope: CapsScope, input: BundleInput, version: string, timeoutMs: number, caller: AbortSignal,
 ): Promise<CapsOutcome> {
   let submitted = false
   let client: Client | undefined
@@ -184,8 +185,6 @@ export async function compileCapsBundle(
       || await realpath(launcher) !== launcher) {
       return { status: 'not_dispatched', reason: 'Caps launcher must be a canonical operator-managed executable' }
     }
-    const { getDshRuntimeVersion } = await import('@deepseek-ai/dsh-app-boot')
-    const version = getDshRuntimeVersion()
     signal.throwIfAborted()
     client = new Client({ name: 'MyDot Caps', version })
     await client.connect(new StdioClientTransport({
