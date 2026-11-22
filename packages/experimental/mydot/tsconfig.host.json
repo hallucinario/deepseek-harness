@@ -58,6 +58,9 @@
       "path": "../../workspace/workspace"
     },
     {
+      "path": "../../boot/app-boot"
+    },
+    {
       "path": "../../session/session-projection"
     },
     {

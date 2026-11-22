@@ -1,0 +1,3 @@
+- insert:
+    - id: mydot-caps-admission-fixture
+      name: './fixture.ts'

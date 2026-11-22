@@ -64,6 +64,8 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~",
     "zod": "4.4.3",
+    "@modelcontextprotocol/client": "2.2.0",
+    "@deepseek-ai/dsh-app-boot": "workspace:*",
     "@deepseek-ai/dsh-typert-protocol": "workspace:*"
   },
   "peerDependencies": {
@@ -76,6 +78,7 @@
     "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
+    "@modelcontextprotocol/server": "2.2.0",
     "@deepseek-ai/dsh-api-workspace-controller": "workspace:*",
     "@deepseek-ai/dsh-fs-sandbox": "workspace:*",
     "@deepseek-ai/dsh-sandbox": "workspace:*",

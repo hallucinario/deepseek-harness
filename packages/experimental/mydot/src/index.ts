@@ -24,6 +24,7 @@ import type { SpaceId, SpaceInput, Space, JobInput, JobAddress } from './types.t
 import { readJobRequest } from './job-request.ts'
 import { relayArtifacts } from './artifacts.ts'
 import { Spaces } from './spaces.ts'
+import { capsConfigSchema, mountCapsTool, type CapsConfig } from './caps-tools.ts'
 import { TextFiles, type TextRead, type TextSave, type TextSaveResult } from './files.ts'
 import { JobControls } from './control.ts'
 import { DesktopOwnership, type DesktopState } from './desktop.ts'
@@ -50,6 +51,8 @@ declare module '@deepseek-ai/dsh-llm' {
 
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
 export interface Config extends HumanHandoffConfig, FilingConfig {
+  /** Optional local Caps document compilation. */
+  caps?: CapsConfig | null
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -66,6 +69,7 @@ export interface Config extends HumanHandoffConfig, FilingConfig {
 export class MyDotService extends TypertRemoteService {
   static inject = ['storageDomain', 'sessionController', 'sessions', 'sessionQuery', 'subagents', 'fs', 'sandboxPolicy', 'workingDirectory', 'tools', 'agents']
   static Config: z<Config> = z.object({
+    caps: z.union([capsConfigSchema, z.const(null)]).default(null),
     memoryDirectory: z.string().default(join(homedir(), 'MyDot')),
     maxTextBytes: z.number().step(1).min(1).default(262144),
     desktopTools: z.array(z.string()).default([]),
@@ -151,6 +155,10 @@ export class MyDotService extends TypertRemoteService {
         await this.domain.close()
       }
     })
+    if (config.caps != null) mountCapsTool(ctx, config.caps, async (sessionId) => {
+      await this.initialized
+      return this.spaces.forSession(sessionId)
+    }, config.maxTextBytes, this.lifecycle.signal)
     ctx.on('domain/changed', (event) => { if (event.domain === 'mydot') this.notify() })
     ctx.on('agent/status', () =>{  this.notify() })
     ctx.on('subagent/end', (info) => {

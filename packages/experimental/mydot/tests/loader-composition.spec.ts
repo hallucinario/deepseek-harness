@@ -1,8 +1,8 @@
 /** Keyless Loader composition with real loop, child Sessions, filesystem and storage. */
-import { mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { join, posix } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterEach, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
@@ -11,7 +11,7 @@ import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-test
 import Storage from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
@@ -23,14 +23,17 @@ import { assertWorkspaceOutsideTemp, outsideTempWorkspaceParent } from '../../..
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
 import { TestSessionQuery } from '../../../subagent/subagent/tests/test-session-query.ts'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
-import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
+import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import '../src/index.ts'
 
 const contexts: Context[] = []
 afterEach(async () => { await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose())) })
 
-async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string }) {
+async function setup(
+  existing?: { root: string; pool: MemoryMediaPool }, policy?: { mode: SandboxMode; workspaceRoot: string },
+  config: Record<string, unknown> = {}, persist = true,
+) {
   const root = existing?.root ?? await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-loader-')))
   const ctx = new Context()
   contexts.push(ctx)
@@ -40,7 +43,7 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
     await ctx.plugin(SandboxedFileSystem, { cwd: root })
     await ctx.plugin(WorkingDirectory)
   }
-  await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
+  if (persist) await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(TestSessionQuery)
   await liveConfig(ctx, SubagentRuntime, {})
@@ -56,7 +59,7 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   // by SessionController and is not replaced with a simulated implementation.
   ctx.provide('sessionController', {} as never)
   const file = join(root, 'cordis.yml')
-  await writeFile(file, `- name: '@deepseek-ai/dsh-experimental-mydot'\n  config:\n    memoryDirectory: '${root}/memory'\n`)
+  await writeFile(file, JSON.stringify([{ name: '@deepseek-ai/dsh-experimental-mydot', config: { memoryDirectory: join(root, 'memory'), ...config } }]))
   ctx.baseUrl = pathToFileURL(root).href + '/'
   ctx.loader.builtins.include = Include
   ctx.loader.internal = undefined
@@ -65,6 +68,23 @@ async function setup(existing?: { root: string; pool: MemoryMediaPool }, policy?
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
   return { ctx, root, row, pool }
 }
+
+it('owns the optional Caps tool registration through Loader disposal', async ({ onTestFinished }) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-caps-loader-')))
+  onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
+  const workspace = join(root, 'work')
+  await mkdir(workspace)
+  const { ctx } = await setup({ root, pool: new MemoryMediaPool() }, undefined, {
+    caps: { launcher: process.execPath, workspaceRoots: [workspace], timeoutMs: 5_000 },
+  })
+  const toolNames = () => ctx.tools.schemas().map(tool => tool.name)
+  expect(toolNames()).toContain('caps_compile_document_bundle')
+  const configured = [...ctx.loader.entries()].find(entry => entry.options.name === '@deepseek-ai/dsh-experimental-mydot')!
+  const retiring = configured.fiber!
+  await configured.update({ disabled: true })
+  await retiring.dispose()
+  expect(toolNames()).not.toContain('caps_compile_document_bundle')
+})
 
 it('edits only the configured memory root and historical conversation workspace under the actual file sandbox', async ({ onTestFinished }) => {
   const root = await realpath(await mkdtemp(join(outsideTempWorkspaceParent(), '.dsh-mydot-policy-')))
@@ -292,4 +312,167 @@ it('restores Space and memory after Host restart and unloads/reloads without dup
   using observed = await second.ctx.sessionQuery.observeSession(fresh.id)
   expect(observed.events.filter(event => event.type === 'user/message' && event.data.source.kind === 'mydot')).toHaveLength(1)
   expect(JSON.stringify(adapter.requests)).toContain('Persistent Space decision')
+})
+
+async function setupCaps(onTestFinished: (fn: () => Promise<void>) => void, options?: { maxTextBytes?: number; persist?: boolean }) {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-caps-')))
+  const workspace = join(root, 'work')
+  await mkdir(workspace)
+  await writeFile(join(workspace, 'guide.md'), '# Public guide\n\nRead this guide.\n')
+  onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
+  const launcher = join(root, 'caps-fixture')
+  const fixture = fileURLToPath(new URL('./fixtures/caps-server.ts', import.meta.url))
+  const quoted = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
+  const command = [process.execPath, '--import', import.meta.resolve('tsx/esm'), fixture].map(quoted).join(' ')
+  await writeFile(launcher, '#!/bin/sh\nexec ' + command + ' "$@"\n', { mode: 0o500 })
+  const { ctx } = await setup({ root, pool: new MemoryMediaPool() }, undefined, {
+    caps: { launcher, workspaceRoots: [workspace], timeoutMs: 5_000 },
+    ...(options?.maxTextBytes === undefined ? {} : { maxTextBytes: options.maxTextBytes }),
+  }, options?.persist)
+  const space = await ctx.mydot.saveSpace({ name: 'Guide', purpose: 'Compile the public guide', instructions: '', materials: ['guide.md'] })
+  return { ctx, workspace, space, launcher }
+}
+
+it('binds a native Caps attempt and its output to a durable MyDot Session through stdio', async ({ onTestFinished }) => {
+  const { ctx, workspace, space } = await setupCaps(onTestFinished)
+  const bundle = { name: 'bundle', documents: [{ source: 'guide.md' }] }
+  const toolName = 'caps_compile_document_bundle'
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse('first', toolName, bundle), toolCallResponse('again', toolName, bundle), textResponse('Compiled'),
+  ]))
+  const agent = await ctx.agentLoop.create(SessionId('caps-bundle'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Compile guide.md' }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+  await ctx.sessions.flush(agent.session)
+
+  const calls = (await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trimEnd().split('\n').map(line => JSON.parse(line) as {
+    phase: string
+    spaceId?: string
+    version?: string
+    sessionRef?: string
+    taskRef?: string
+    executionRef?: string
+    requestId: string
+  })
+  const first = calls[0]
+  if (first === undefined) throw new Error('Caps launcher recorded no dispatch')
+  const { requestId } = first
+  expect(first).toMatchObject({ phase: 'check', spaceId: space.id })
+  expect(first.version).toMatch(/^\d+\.\d+\.\d+/u)
+  expect(first.sessionRef).toMatch(/^dsh-session-/u)
+  expect(first.taskRef).toMatch(/^dsh-task-/u)
+  expect(first.executionRef).toMatch(/^dsh-run-/u)
+  expect(calls.slice(1)).toEqual([{ phase: 'invoke', requestId }])
+  using observed = await ctx.sessionQuery.observeSession(agent.id)
+  const results = observed.events.filter(event => event.type === 'tool/result')
+  expect(results.map(event => event.data.meta)).toEqual([
+    expect.objectContaining({ status: 'succeeded', installedVersion: '0.4.1', invocationId: 'inv-stdio-fixture',
+      receiptVerification: 'not_verified', recordingStatus: 'ok', usageRecording: 'ok', handoff: 'verified',
+      requestId }),
+    expect.objectContaining({ status: 'not_dispatched', requestId }),
+  ])
+  const documents = observed.events.filter(event => event.type === 'deliverables/presented')
+  expect(documents).toHaveLength(1)
+  const paths = documents[0]?.data.files.map(file => file.path) ?? []
+  const compiledPath = posix.join('docs', 'guide.md')
+  expect(paths.map(path => path.split('/').slice(-2).join('/'))).toEqual(['bundle/manifest.json', compiledPath])
+  const artifact = paths.find(path => path.endsWith('/' + compiledPath))
+  if (artifact === undefined) throw new Error('Missing receipt-matched delivery')
+  expect(await ctx.mydot.readFile(agent.id, artifact)).toMatchObject({ kind: 'text', content: '# Public guide\n\nRead this guide.\n' })
+})
+
+it.for([
+  ['approval', 'needs_approval', 'not_applicable', ['check']],
+  ['other-task', 'not_dispatched', 'not_applicable', ['check']],
+  ['denied', 'rejected', 'not_applicable', ['check', 'invoke']],
+  ['lost', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['cancelled', 'cancelled', 'not_applicable', ['check', 'invoke']],
+  ['changed', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['linked', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['directory', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['missing-file', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['missing-reference', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['partial-receipt', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['foreign-source', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['wrong-name', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['wrong-manifest', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['wrong-digest', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['wrong-request', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['bad-path', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['wrong-bytes', 'succeeded', 'unavailable', ['check', 'invoke']],
+  ['other-receipt', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['bad-wire', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['inflight', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['bad-null', 'unknown', 'not_applicable', ['check', 'invoke']],
+  ['bad-check', 'not_dispatched', 'not_applicable', ['check']],
+  ['check-lost', 'not_dispatched', 'not_applicable', ['check']],
+] as const)('keeps %s distinct and publishes no artifact', async ([name, status, handoff, phases], { onTestFinished }) => {
+  const { ctx, workspace, space } = await setupCaps(onTestFinished)
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse(name, 'caps_compile_document_bundle', { name, documents: [{ source: 'guide.md' }] }),
+    textResponse('Done'),
+  ]))
+  const agent = await ctx.agentLoop.create(SessionId('caps-' + name), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Compile guide.md' }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+  await ctx.sessions.flush(agent.session)
+  using observed = await ctx.sessionQuery.observeSession(agent.id)
+  const meta = observed.events.find(event => event.type === 'tool/result')?.data.meta
+  expect(meta).toMatchObject({ status, handoff })
+  if (name === 'inflight') expect(meta).toMatchObject({ duplicate: true, usageRecording: 'unknown' })
+  expect(observed.events.some(event => event.type === 'deliverables/presented')).toBe(false)
+  const rows = (await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trimEnd().split('\n')
+  expect(rows.map(line => (JSON.parse(line) as { phase: string }).phase)).toEqual(phases)
+})
+
+it('rejects Caps authority from arguments, agentless calls and Sessions without an open turn', async ({ onTestFinished }) => {
+  const { ctx, workspace, space } = await setupCaps(onTestFinished)
+  const tool = 'caps_compile_document_bundle'
+  const valid = { name: 'bundle', documents: [{ source: 'guide.md' }] }
+  const call = { name: tool, arguments: valid, callId: ToolCallId('outside'), signal: new AbortController().signal }
+  expect(await ctx.tools.execute(call)).toMatchObject({ isError: true })
+  const adapter = new MockAdapter([toolCallResponse('forged', tool, { ...valid, requestId: 'foreign' }), textResponse('Done')])
+  ctx.llm.registerAdapter(['mock'], adapter)
+  const agent = await ctx.agentLoop.create(SessionId('caps-forge'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  expect(await ctx.tools.execute({ ...call, agent })).toMatchObject({ isError: true })
+  agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Compile guide.md' }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+  using observed = await ctx.sessionQuery.observeSession(agent.id)
+  expect(JSON.stringify(observed.events.find(event => event.type === 'tool/result'))).toContain('Caps accepts valid bundle arguments only')
+  await expect(readFile(join(workspace, 'calls.jsonl'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+it.for([
+  ['no-space', 'Caps requires an active MyDot Space'],
+  ['read-only', 'Caps is unavailable for this Session workspace or policy'],
+  ['outside', 'Caps documents must be regular files'],
+  ['unpersisted', 'Caps requires durable Session storage'],
+  ['unsafe-launcher', 'operator-managed executable'],
+] as const)('refuses %s before reaching the launcher', async ([scenario, message], { onTestFinished }) => {
+  const { ctx, workspace, space, launcher } = await setupCaps(onTestFinished, { persist: scenario !== 'unpersisted' })
+  const source = scenario === 'outside' ? '../guide.md' : 'guide.md'
+  if (scenario === 'unsafe-launcher') await chmod(launcher, 0o520)
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse(scenario, 'caps_compile_document_bundle', { name: 'bundle', documents: [{ source }] }),
+    textResponse('Done'),
+  ]))
+  const agent = await ctx.agentLoop.create(SessionId('caps-' + scenario), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  if (scenario !== 'no-space') await ctx.mydot.attach(agent.id, space.id)
+  if (scenario === 'read-only') setSandboxMode(agent.session, 'read-only')
+  agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Compile guide.md' }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+  using observed = await ctx.sessionQuery.observeSession(agent.id)
+  expect(JSON.stringify(observed.events.find(event => event.type === 'tool/result'))).toContain(message)
+  await expect(readFile(join(workspace, 'calls.jsonl'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+it('refuses a configured launcher inside an enrolled workspace', async ({ onTestFinished }) => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-mydot-caps-config-')))
+  onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
+  await expect(setup({ root, pool: new MemoryMediaPool() }, undefined, {
+    caps: { launcher: join(root, 'local'), workspaceRoots: [root], timeoutMs: 5_000 },
+  })).rejects.toThrow('requires an absolute external launcher')
 })
