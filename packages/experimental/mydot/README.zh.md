@@ -43,6 +43,16 @@ kind: "package-reference"
 
 子工作声明通过父对话的持久收件箱提交，保留原始 Session 和当前路径。列表从原始日志重建声明，移动文件后仍保留缺失条目。预览先打开原始对话，再使用其现有右侧栏文件查看器。文本编辑器在保存冲突时保留草稿并显示当前文本，可合并保存或放弃后重新加载。继续操作在原始对话中记录已保存路径和版本，并要求下一轮重新读取。
 
+在原生工具配置档中启用文档编译时，将 `caps.launcher` 设为登记的 Session 工作区之外由运维方管理的规范可执行文件路径，在 `caps.workspaceRoots` 中列出规范工作区根目录，并将 `caps.timeoutMs` 设为经测量的正毫秒数。要求 Session 持久化。打开关联到登记工作区内未归档 Space 的对话。Host 选择固定的 `docs.bundle.compile/cli` 能力。模型可指定文档包名称、工作区相对路径，以及可选的标题、摘录、目录和链接检查。
+
+启动程序从 Host 接收 `--dsh-version`、`--workspace`、`--space-id`、`--session-ref`、`--task-ref`、`--execution-ref` 和 `--request-id`，通过标准输入输出提供仅供这一任务的 Caps MCP。它取得匹配的任务授权，并将运行时、配置、凭据和持久请求状态置于运维控制之下。预检与调用共用同一连接和执行指纹。启动程序必须在返回调用结果前，将 `bundle/manifest.json` 与编译生成的 Markdown 文件放在 `<workspace>/.dsh-caps/<request-id>/` 下。MyDot 先按回执验证清单再读取，然后将各文档与清单及对应回执条目核对。全部匹配后才发布完整文档包供读取当前内容。部署方需确保模型无法访问启动程序、授权发放和主机控制状态，并验证该隔离。
+
+每个原生 turn 只接纳该 turn 已记录的第一条 Caps 调用。Host 在发送调用之前将带执行指纹的发送意图写入 Session，并将观察到的 Caps 结果与工具响应分别记录。取消本地 turn 后，Caps 结果仍可能未知。Foundry 保留确切绑定供后续查询。模型和配置档均不自动重试。省略 `caps` 会移除此工具并关闭活动连接。
+
+受信任的进程内 Host 代码可调用 `ctx.mydot.projectFoundryObservation(selection, signal)`，读取一个已结束的根 Session turn 供 Foundry 接收。选择参数指定已授权的项目、已关联的 Space、Session、包含首尾的事件范围以及原始请求的记录序号。范围遵循 Session 查询读取窗口限制。投影保留原始请求 ID、稳定的尝试 ID、源事件序号以及已记录的模型路由和 Token 计数。匹配的 Caps 结果还提供已记录的 DSH 版本、任务和调用引用、回执状态及用量事件引用。只要获准的文件字节仍可读取，重启后相同的选择仍返回相同投影。
+
+如需披露已呈现的 Markdown 或 JSON 文件，调用方须指定原始记录中的文件路径、不透明来源引用、版本、类型及获准的 SHA-256 摘要。投影在记录的工作区内核验文件，并在适用时核对 Caps 交付记录。选定文件共用配置中的 `maxTextBytes` 限额。投影省略原始提示词、回复、工具参数和本地路径。此读取无法证明每次调用的完整供应商输入，因此 `context` 为 `null`。负责的 Host 提供获准的 Foundry 任务契约与传输。
+
 电脑协调只适用于 `desktopTools` 明确列出的工具名。需包含同一执行环境的全部观察、操作和验证工具；`captureTools` 必须是其中只读图像捕获工具的子集。操作在一个 Session 所有者下串行执行。交接关闭新操作接收并等待已接收操作结束，交接后成功完成新的图像捕获才能从人工状态恢复。打开负责对话可查看该屏幕及时间。捕获需通过负责对话请求，此包不会自行启动工具。释放已静止的代理所有者后，另一等待工作才能继续。未配置工具和外部电脑控制器不在此协调范围内。
 
 现有定期执行页面使用同一 ID 暂停或恢复后续投递。已投递请求和正在执行的轮次保持不变，投递回执不代表输出成功。参见[定期执行参考](../../../docs/subsystems/schedule.zh.md)。
@@ -76,6 +86,7 @@ MyDot 在确认回答前将其刷入持久存储，在唤醒原始 Session 前�
 | 源码 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Host 组合、已记录上下文和 Remote 操作 |
+| [`src/foundry-observation.ts`](src/foundry-observation.ts) | 供 Foundry 读取的有界尝试投影，仅限受信任 Host |
 | [`src/spaces.ts`](src/spaces.ts) | 串行元数据写入和不可变关联 |
 | [`src/control.ts`](src/control.ts) | 每个子工作的接收及持久请求去重 |
 | [`src/files.ts`](src/files.ts) | 一致性读取及带版本检查的编辑 |

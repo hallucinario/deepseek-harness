@@ -40,6 +40,9 @@
       "path": "../../session-query/session-query"
     },
     {
+      "path": "../../session/session-persistence"
+    },
+    {
       "path": "../../subagent/subagent"
     },
     {
@@ -56,6 +59,9 @@
     },
     {
       "path": "../../workspace/workspace"
+    },
+    {
+      "path": "../../boot/app-boot"
     },
     {
       "path": "../../session/session-projection"

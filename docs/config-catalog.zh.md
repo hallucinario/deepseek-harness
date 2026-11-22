@@ -1168,11 +1168,13 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-mydot`
 
 - `inject`: `storageDomain` · `sessionController` · `sessions` · `sessionQuery` · `subagents` · `fs` · `sandboxPolicy` · `workingDirectory` · `tools` · `agents`
-- `source`: [`packages/experimental/mydot/src/index.ts:52`](../packages/experimental/mydot/src/index.ts)
+- `source`: [`packages/experimental/mydot/src/index.ts:55`](../packages/experimental/mydot/src/index.ts)
 
 ```ts config-catalog
 /** Explicit opt-in composition limits; the plugin never starts a desktop tool itself. */
 export interface Config extends HumanHandoffConfig, FilingConfig {
+  /** Optional local Caps document compilation. */
+  caps?: CapsConfig | null
   /** Host directory containing personal and Space Markdown memory. */
   memoryDirectory: string
   /** Maximum UTF-8 bytes admitted by the current-file editor. */
@@ -1211,6 +1213,16 @@ export interface FilingConfig {
   filingRecorderMaxAgeMs?: number
   /** Existing complete UTF-8 input/output allowance. */
   maxTextBytes: number
+}
+
+/** Operator-selected launcher and local workspace scope for the optional Caps tool. */
+export interface CapsConfig {
+  /** Canonical executable path managed outside the approved workspaces. */
+  launcher: string
+  /** Exact local Session roots allowed to invoke Caps. */
+  workspaceRoots: string[]
+  /** Maximum elapsed milliseconds for one check-and-invoke exchange. */
+  timeoutMs: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-mydot -->

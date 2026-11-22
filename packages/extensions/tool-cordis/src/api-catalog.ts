@@ -1727,6 +1727,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'owner', description: 'Exact current agent owner.' }],
         returns: 'New ownership state; human handoff cannot be bypassed.',
       },
+      {
+        signature: 'async projectFoundryObservation(selection: FoundryObservationSelection, signal?: AbortSignal): Promise<FoundryObservationProjection>',
+        description: 'Project one persisted attempt for the trusted Foundry Host integration.',
+        parameters: [{ name: 'selection', description: 'Independently approved project, Space, source range and file versions.' }, { name: 'signal', description: 'Optional Host cancellation.' }],
+        returns: 'Selected observation and the separate Caps scope expected by intake.',
+      },
     ],
   },
   {
@@ -5844,6 +5850,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinishReasonMap',
     declaration: 'export interface FinishReasonMap {\n    \'stop\': {\n        kind: \'stop\';\n    };\n    \'tool-calls\': {\n        kind: \'tool-calls\';\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    \'aborted\': {\n        kind: \'aborted\';\n        failure: LlmFailure;\n    };\n    \'error\': {\n        kind: \'error\';\n        failure: LlmFailure;\n    };\n}',
+  },
+  {
+    name: 'FoundryObservationProjection',
+    declaration: 'export interface FoundryObservationProjection {\n    hccScope: z.infer<typeof scope> | null;\n    observation: {\n        identity: {\n            projectId: string;\n            requestId: string;\n            sessionId: string;\n            attemptId: string;\n        };\n        runtimeVersion: string | null;\n        status: ObservationStatus;\n        observedAt: string;\n        eventRange: {\n            firstSequence: number;\n            lastSequence: number;\n        };\n        events: ObservationEvent[];\n        context: null;\n        artifacts: ObservationArtifact[];\n    };\n}',
+  },
+  {
+    name: 'FoundryObservationSelection',
+    declaration: 'export interface FoundryObservationSelection {\n    projectId: string;\n    spaceId: SpaceId;\n    sessionId: SessionId;\n    firstSequence: number;\n    lastSequence: number;\n    requestSequence: number;\n    artifacts: readonly z.infer<typeof artifactApproval>[];\n}',
   },
   {
     name: 'FrequencyTooHighError',

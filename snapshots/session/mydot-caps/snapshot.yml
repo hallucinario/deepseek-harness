@@ -1,0 +1,9 @@
+version: 1
+scenario: mydot-caps
+profile: headless
+composition: mydot-caps
+recording: authored
+header:
+  class: mydot-caps
+  pin: true
+platform: posix
