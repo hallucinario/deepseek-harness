@@ -82,6 +82,13 @@ export interface CapsScope {
   sessionRef: string
 }
 
+/** Exact authority and capability selected by the successful Caps preflight. */
+export interface CapsInvocationBinding {
+  executionFingerprint: string
+  authorityDigest: string
+  installedVersion: string
+}
+
 /** Capability payload admitted by the model-facing tool. */
 export interface BundleInput {
   name: string
@@ -119,7 +126,7 @@ function matchesScope(ref: z.infer<typeof authority>, scope: CapsScope): boolean
 }
 
 function invocationResult(
-  reply: CallToolResult, scope: CapsScope, check: { executionFingerprint: string; authorityDigest: string; installedVersion: string },
+  reply: CallToolResult, scope: CapsScope, check: CapsInvocationBinding,
 ): CapsOutcome {
   const parsed = invokeDocument.safeParse(reply.structuredContent)
   if (!parsed.success) {
@@ -171,10 +178,12 @@ function invocationResult(
  * @param version - Running DSH Host version captured alongside the native result.
  * @param timeoutMs - Operator-selected lifetime for the whole exchange.
  * @param caller - Tool and plugin cancellation.
+ * @param recordDispatch - Durability barrier for the exact invocation immediately before its submission.
  * @returns Validated invocation or a visible refusal/unknown outcome.
  */
 export async function compileCapsBundle(
   launcher: string, scope: CapsScope, input: BundleInput, version: string, timeoutMs: number, caller: AbortSignal,
+  recordDispatch: (binding: CapsInvocationBinding) => Promise<void>,
 ): Promise<CapsOutcome> {
   let submitted = false
   let client: Client | undefined
@@ -201,16 +210,19 @@ export async function compileCapsBundle(
       || check.authority === undefined || !matchesScope(check.authority, scope)) {
       return { status: 'not_dispatched', reason: 'Caps preflight did not identify the requested task and installed capability' }
     }
-    signal.throwIfAborted()
-    submitted = true
-    const result = await client.callTool({
-      name: 'invoke', arguments: { ...capability, input, expectedFingerprint: check.executionFingerprint, requestId: scope.requestId },
-    }, { signal })
-    return invocationResult(result, scope, {
+    const binding = {
       executionFingerprint: check.executionFingerprint,
       authorityDigest: check.authority.authorityDigest,
       installedVersion: check.installedVersion,
-    })
+    }
+    signal.throwIfAborted()
+    await recordDispatch(binding)
+    signal.throwIfAborted()
+    submitted = true
+    const result = await client.callTool({
+      name: 'invoke', arguments: { ...capability, input, expectedFingerprint: binding.executionFingerprint, requestId: scope.requestId },
+    }, { signal })
+    return invocationResult(result, scope, binding)
   } catch {
     return submitted
       ? { status: 'unknown', reason: 'Caps response was lost after dispatch' }

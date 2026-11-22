@@ -39,6 +39,10 @@ serveStdio(() => {
   })
   server.registerTool('invoke', { inputSchema: inputSchema.extend({ expectedFingerprint: z.literal(fingerprint), requestId: z.literal(requestId) }) }, async ({ input }) => {
     await appendFile(join(workspace, 'calls.jsonl'), JSON.stringify({ phase: 'invoke', requestId }) + '\n')
+    if (input.name === 'abort-invoke') {
+      await writeFile(join(workspace, 'invoke-ready'), '')
+      return new Promise<never>(() => { /* Hold the reply until the caller aborts the real transport. */ })
+    }
     if (input.name === 'lost') process.exit(19)
     if (input.name === 'bad-wire') return handle({ unsupported: true })
     if (input.name === 'denied') return handle({ error: { code: 'HCAP_POLICY_DENIED' } }, true)

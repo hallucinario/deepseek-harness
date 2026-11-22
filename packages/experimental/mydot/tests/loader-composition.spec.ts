@@ -1,18 +1,19 @@
 /** Keyless Loader composition with real loop, child Sessions, filesystem and storage. */
 import { chmod, mkdir, mkdtemp, readFile, realpath, rename, symlink, writeFile } from 'node:fs/promises'
+import { watch } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { join, posix } from 'node:path'
+import { basename, join, posix, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import Storage from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { appendPluginRecord, pluginRecordOf, SessionId } from '@deepseek-ai/dsh-session'
+import { createAssistantMessage, createToolResultMessage, createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
@@ -20,6 +21,7 @@ import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
 import SandboxPolicy, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
+import { Peer } from '@deepseek-ai/dsh-client-connection'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import { assertWorkspaceOutsideTemp, outsideTempWorkspaceParent } from '../../../../scripts/snapshot-workspace-parent.ts'
 import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
@@ -27,6 +29,7 @@ import { TestSessionQuery } from '../../../subagent/subagent/tests/test-session-
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import { capsAttemptRefs } from '../src/caps-tools.ts'
 import '../src/index.ts'
 
 const contexts: Context[] = []
@@ -322,11 +325,17 @@ async function setupCaps(onTestFinished: (fn: () => Promise<void>) => void, opti
   await mkdir(workspace)
   await writeFile(join(workspace, 'guide.md'), '# Public guide\n\nRead this guide.\n')
   onTestFinished(async () => { await rename(root, root + '.tobedeleted') })
-  const launcher = join(root, 'caps-fixture')
+  const windows = process.platform === 'win32'
+  const launcher = join(root, windows ? 'caps-fixture.cmd' : 'caps-fixture')
   const fixture = fileURLToPath(new URL('./fixtures/caps-server.ts', import.meta.url))
-  const quoted = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
+  const quoted = windows ? (value: string) => '"' + value.replaceAll('%', '%%') + '"'
+    : (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
   const command = [process.execPath, '--import', import.meta.resolve('tsx/esm'), fixture].map(quoted).join(' ')
-  await writeFile(launcher, '#!/bin/sh\nexec ' + command + ' "$@"\n', { mode: 0o500 })
+  // The SDK uses cross-spawn, which launches .cmd files through the native Windows command processor.
+  const script = windows ? '@echo off\r\nsetlocal DisableDelayedExpansion\r\n' + command + ' %*\r\n'
+    : '#!/bin/sh\nexec ' + command + ' "$@"\n'
+  await writeFile(launcher, script)
+  await chmod(launcher, windows ? 0o444 : 0o500)
   const config = {
     caps: { launcher, workspaceRoots: [workspace], timeoutMs: 5_000 },
     ...(options?.maxTextBytes === undefined ? {} : { maxTextBytes: options.maxTextBytes }),
@@ -379,8 +388,8 @@ it('binds a native Caps attempt and its output to a durable MyDot Session throug
   expect(documents).toHaveLength(1)
   const paths = documents[0]?.data.files.map(file => file.path) ?? []
   const compiledPath = posix.join('docs', 'guide.md')
-  expect(paths.map(path => path.split('/').slice(-2).join('/'))).toEqual(['bundle/manifest.json', compiledPath])
-  const artifact = paths.find(path => path.endsWith('/' + compiledPath))
+  expect(paths.map(path => path.split(sep).slice(-2).join('/'))).toEqual(['bundle/manifest.json', compiledPath])
+  const artifact = paths.find(path => path.endsWith(sep + join('docs', 'guide.md')))
   if (artifact === undefined) throw new Error('Missing receipt-matched delivery')
   expect(await ctx.mydot.readFile(agent.id, artifact)).toMatchObject({ kind: 'text', content: '# Public guide\n\nRead this guide.\n' })
 })
@@ -406,7 +415,7 @@ it('projects one authorized durable attempt to the Foundry intake contract acros
   const request = recorded.events.find(event => event.type === 'user/message' && event.data.source.kind === 'user')!
   const result = recorded.events.find(event => event.type === 'tool/result')!
   const file = recorded.events.find(event => event.type === 'deliverables/presented')!.data.files
-    .find(item => item.path.endsWith('/guide.md'))!
+    .find(item => basename(item.path) === 'guide.md')!
   const content = await readFile(file.path)
   const selection = {
     projectId: 'bound-project', spaceId: space.id, sessionId: agent.id, requestSequence: request.seq,
@@ -464,6 +473,151 @@ it('projects one authorized durable attempt to the Foundry intake contract acros
   expect((await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim().split('\n')).toHaveLength(2)
 })
 
+it('preserves a dispatched Caps attempt when the real ToolRegistry cancels its result', async ({ onTestFinished }) => {
+  const first = await setupCaps(onTestFinished)
+  const { ctx, space, workspace } = first
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse('cancel-after-dispatch', 'caps_compile_document_bundle', { name: 'abort-invoke', documents: [{ source: 'guide.md' }] }),
+  ]))
+  const agent = await ctx.agentLoop.create(SessionId('caps-after-dispatch'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  const beforeDispatch = Promise.withResolvers<undefined>()
+  const allowDispatch = Promise.withResolvers<undefined>()
+  const received = Promise.withResolvers<undefined>()
+  const watcher = watch(workspace, (_event, filename) => { if (filename === 'invoke-ready') received.resolve(undefined) })
+  ctx.on('session/flush', async (session) => {
+    if (session !== agent.session || !session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:mydot/caps-dispatch')) return
+    beforeDispatch.resolve(undefined)
+    await allowDispatch.promise
+  })
+  try {
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Compile a public guide' }], source: { kind: 'user' },
+    }))
+    await beforeDispatch.promise
+    expect((await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim().split('\n')).toHaveLength(1)
+    allowDispatch.resolve(undefined)
+    await received.promise
+    agent.cancel({ kind: 'user' })
+    await agent.whenIdle()
+  } finally {
+    allowDispatch.resolve(undefined)
+    watcher.close()
+  }
+  using recorded = await ctx.sessionQuery.observeSession(agent.id)
+  const result = recorded.events.find(event => event.type === 'tool/result')
+  expect(result?.data.error?.code).toBe('ABORTED')
+  expect(result?.data.meta).toBeUndefined()
+  const opened = recorded.events.find(event => event.type === 'turn/start')!
+  const ended = recorded.events.find(event => event.type === 'turn/end')!
+  const request = recorded.events.find(event => event.type === 'user/message' && event.data.source.kind === 'user')!
+  expect(ended.data.reason.kind).toBe('aborted')
+  const selection = {
+    projectId: 'bound-project', spaceId: space.id, sessionId: agent.id,
+    firstSequence: opened.seq, lastSequence: ended.seq, requestSequence: request.seq, artifacts: [],
+  }
+  const [check, invoke] = (await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as {
+    phase: string
+    requestId: string
+    sessionRef: string
+    taskRef: string
+    executionRef: string
+    version: string
+  })
+  expect(invoke).toEqual({ phase: 'invoke', requestId: check!.requestId })
+  const { sessionRef, taskRef, executionRef, requestId, version } = check!
+  const projected = await ctx.mydot.projectFoundryObservation(selection)
+  expect(projected.hccScope).toEqual({ sessionRef, taskRef, executionRef })
+  expect(projected.observation).toMatchObject({ status: 'UNKNOWN', runtimeVersion: version, artifacts: [] })
+  expect(projected.observation.events.find(event => event.payload.requestId === requestId)?.payload).toMatchObject({
+    status: 'unknown', requestId, sessionRef, taskRef, executionRef,
+    executionFingerprint: 'sha256:' + createHash('sha256').update('fixture-fingerprint').digest('hex'),
+  })
+  await ctx.fiber.dispose()
+  const cold = await setup(first, undefined, first.config)
+  expect(await cold.ctx.mydot.projectFoundryObservation(selection)).toEqual(projected)
+  expect((await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim().split('\n')).toHaveLength(2)
+})
+
+it('stops before Caps invoke when the dispatch checkpoint cannot be confirmed', async ({ onTestFinished }) => {
+  const { ctx, space, workspace } = await setupCaps(onTestFinished)
+  const agent = await ctx.agentLoop.create(SessionId('caps-no-dispatch-checkpoint'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+  await ctx.mydot.attach(agent.id, space.id)
+  ctx.llm.registerAdapter(['mock'], new MockAdapter([
+    toolCallResponse('checkpoint-lost', 'caps_compile_document_bundle', { name: 'bundle', documents: [{ source: 'guide.md' }] }),
+    textResponse('Stopped'),
+  ]))
+  const checkpoint = ctx.sessions.flush.bind(ctx.sessions)
+  let refused = false
+  const flush = vi.spyOn(ctx.sessions, 'flush').mockImplementation(async (session) => {
+    if (!refused && session === agent.session
+      && session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:mydot/caps-dispatch')) {
+      refused = true
+      return false
+    }
+    return checkpoint(session)
+  })
+  onTestFinished(() => { flush.mockRestore() })
+  agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Compile a public guide' }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+  using recorded = await ctx.sessionQuery.observeSession(agent.id)
+  expect(recorded.events.find(event => event.type === 'tool/result')?.data.meta).toMatchObject({ status: 'not_dispatched' })
+  const preflight = (await readFile(join(workspace, 'calls.jsonl'), 'utf8')).trim()
+  expect(preflight.split('\n')).toHaveLength(1)
+  expect(preflight).toContain('"phase":"check"')
+})
+
+it('reads an unsettled Caps intent after recovery and ignores records from different calls', async ({ onTestFinished }) => {
+  const { ctx, space, workspace } = await setupCaps(onTestFinished)
+  const session = ctx.sessions.create(SessionId('caps-unsettled-intent'), { meta: { cwd: workspace } })
+  await ctx.mydot.attach(session.id, space.id)
+  const start = session.append('turn/start', { turn: 1 })
+  session.append('step/start', { turn: 1, step: 1 })
+  const input = session.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'Recover the public document attempt' }], source: { kind: 'user' },
+  }), { surfaceOp: 'append' })
+  const callId = ToolCallId('first')
+  const name = 'caps_compile_document_bundle'
+  session.append('assistant/message', {
+    turn: 1, step: 1, stream: [], message: createAssistantMessage({
+      source: { provider: 'mock', model: 'mock' }, content: [{ type: 'tool-call', id: callId, name, arguments: '{}' }],
+    }),
+  }, { surfaceOp: 'append' })
+  const call = session.append('tool/call', { turn: 1, step: 1, callId, name, arguments: '{}' })
+  const refs = capsAttemptRefs(session.id, start.seq)
+  const binding = {
+    ...refs, runtimeVersion: '1.2.3', installedVersion: '0.4.1',
+    executionFingerprint: 'sha256:' + 'a'.repeat(64), authorityDigest: 'sha256:' + 'b'.repeat(64),
+  }
+  const foreign = { ...refs, status: 'succeeded', handoff: 'verified' }
+  appendPluginRecord(session, 'plugin:mydot/caps-settlement', { dispatchSequence: call.seq, observation: foreign })
+  appendPluginRecord(session, 'plugin:mydot/caps-dispatch', { ...binding, callSequence: input.seq })
+  const dispatchSequence = appendPluginRecord(session, 'plugin:mydot/caps-dispatch', { ...binding, callSequence: call.seq })
+  appendPluginRecord(session, 'plugin:mydot/caps-settlement', {
+    dispatchSequence, observation: { ...foreign, executionRef: 'foreign-execution' },
+  })
+  session.append('tool/result', {
+    turn: 1, step: 1, message: createToolResultMessage({
+      callId, isError: true, content: [{ type: 'text', text: 'Interrupted' }],
+    }),
+  }, { surfaceOp: 'append', sourceEventSeqs: [call.seq] })
+  session.append('step/end', { turn: 1, step: 1 })
+  const end = session.append('turn/end', { turn: 1, reason: { kind: 'interrupted' } })
+  await using writer = await ctx.sessionPersistence.create(session.header)
+  await writer.append(session.snapshotEvents())
+  await writer.flush()
+  const result = await ctx.mydot.projectFoundryObservation({
+    projectId: 'bound-project', spaceId: space.id, sessionId: session.id, firstSequence: start.seq, lastSequence: end.seq,
+    requestSequence: input.seq, artifacts: [],
+  })
+  expect(result.observation.status).toBe('UNKNOWN')
+  expect(result.observation.events.find(event => event.sequence === dispatchSequence)).toMatchObject({
+    type: 'CAPTURE_DEGRADED', payload: { ...binding, status: 'unknown' },
+  })
+  expect(result.hccScope?.executionRef).toBe(refs.executionRef)
+  await expect(readFile(join(workspace, 'calls.jsonl'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
 it('requires a real terminal boundary before projecting an otherwise admissible persisted input', async ({ onTestFinished }) => {
   const { ctx, space, workspace } = await setupCaps(onTestFinished)
   const agent = await ctx.agentLoop.create(SessionId('observation-open-turn'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
@@ -476,10 +630,17 @@ it('requires a real terminal boundary before projecting an otherwise admissible 
     projectId: 'bound-project', spaceId: space.id, sessionId: agent.id,
     firstSequence: start.seq, requestSequence: request.seq, lastSequence: request.seq + 1, artifacts: [],
   }
+  const caller = new AbortController()
+  const remote = ctx.extend({ invocation: {
+    request: { namespace: 'mydot', method: 'projectFoundryObservation', args: {} },
+    service: 'mydot', peer: new Peer(ctx, { principal: { kind: 'owner' } }), signal: caller.signal,
+    uplink: <T>(): AsyncIterable<T> => ({ [Symbol.asyncIterator]: () => ({ next: async () => ({ done: true, value: undefined }) }) }),
+  } })
+  await expect(remote.mydot.projectFoundryObservation(selection)).rejects.toThrow('requires a trusted Host caller')
   await expect(ctx.mydot.projectFoundryObservation(selection)).rejects.toThrow('durable closed turn')
   const ended = agent.session.append('turn/end', { turn: 1, reason: { kind: 'interrupted' } })
   expect(ended.seq).toBe(selection.lastSequence)
-  const projected = await ctx.mydot.projectFoundryObservation(selection)
+  const projected = await ctx.mydot.projectFoundryObservation(selection, caller.signal)
   expect(projected).toMatchObject({
     hccScope: null, observation: {
       identity: { requestId: request.data.id }, runtimeVersion: null, status: 'UNKNOWN',
@@ -496,6 +657,8 @@ it('requires a real terminal boundary before projecting an otherwise admissible 
   })
   expect(later.observation.status).toBe('CANCELLED')
   expect(later.observation.identity.attemptId).not.toBe(projected.observation.identity.attemptId)
+  caller.abort(new Error('Host read cancelled'))
+  await expect(ctx.mydot.projectFoundryObservation(selection, caller.signal)).rejects.toThrow('Host read cancelled')
 })
 
 it('refuses unpersisted Sessions before and after the persistence service is enabled', async ({ onTestFinished }) => {
@@ -631,7 +794,7 @@ it.for([
 ] as const)('refuses %s before reaching the launcher', async ([scenario, message], { onTestFinished }) => {
   const { ctx, workspace, space, launcher } = await setupCaps(onTestFinished, { persist: scenario !== 'unpersisted' })
   const source = scenario === 'outside' ? '../guide.md' : 'guide.md'
-  if (scenario === 'unsafe-launcher') await chmod(launcher, 0o520)
+  if (scenario === 'unsafe-launcher') await chmod(launcher, 0o666)
   ctx.llm.registerAdapter(['mock'], new MockAdapter([
     toolCallResponse(scenario, 'caps_compile_document_bundle', { name: 'bundle', documents: [{ source }] }),
     textResponse('Done'),

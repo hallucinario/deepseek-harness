@@ -1,7 +1,7 @@
 /** Project one operator-selected, durably recorded turn for Foundry's Host intake. */
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionEvent, SessionId, TurnEndReason } from '@deepseek-ai/dsh-session'
+import { pluginRecordOf, type SessionEvent, type SessionId, type TurnEndReason } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import { SESSION_QUERY_READ_WINDOW_MAX } from '@deepseek-ai/dsh-session-query'
 import { z } from 'zod'
@@ -16,6 +16,14 @@ const artifactIdentity = z.object({ sourceRef: reference, version: reference, ar
 const artifactApproval = artifactIdentity.extend({ path: reference, contentDigest: digest })
 const capsDigest = z.string().regex(/^sha256:[0-9a-f]{64}$/u)
 const scope = z.object({ taskRef: reference, sessionRef: reference, executionRef: reference })
+const capsDispatch = scope.extend({
+  requestId: reference,
+  callSequence: z.int().nonnegative(),
+  runtimeVersion: reference,
+  authorityDigest: capsDigest,
+  executionFingerprint: capsDigest,
+  installedVersion: reference,
+})
 const capsRecord = scope.extend({
   requestId: reference,
   status: z.enum(['not_dispatched', 'needs_approval', 'blocked', 'unavailable', 'stale', 'rejected',
@@ -33,6 +41,7 @@ const capsRecord = scope.extend({
   duplicate: z.boolean().optional(),
   artifacts: z.array(z.object({ path: reference, digest: capsDigest })).optional(),
 })
+const capsSettlement = z.object({ dispatchSequence: z.int().nonnegative(), observation: capsRecord })
 
 /** Exact root Session and independent disclosure selections from trusted Host code. */
 export interface FoundryObservationSelection {
@@ -48,7 +57,7 @@ export interface FoundryObservationSelection {
 type ObservationStatus = 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'UNKNOWN'
 interface ObservationEvent {
   sequence: number
-  type: 'RUN_STATE_TRANSITION' | 'MODEL_CALL_END' | 'TOOL_CALL_START' | 'TOOL_CALL_END' | 'TOOL_ERROR'
+  type: 'RUN_STATE_TRANSITION' | 'MODEL_CALL_END' | 'TOOL_CALL_START' | 'TOOL_CALL_END' | 'TOOL_ERROR' | 'CAPTURE_DEGRADED'
   payload: Record<string, string | number | boolean>
 }
 type ObservationArtifact = z.infer<typeof artifactIdentity> & { content: Uint8Array }
@@ -71,6 +80,7 @@ export interface FoundryObservationProjection {
 type ToolCall = Extract<SessionEvent, { type: 'tool/call' }>
 type ToolResult = Extract<SessionEvent, { type: 'tool/result' }>
 type CapsRecord = z.infer<typeof capsRecord>
+type CapsRefs = ReturnType<typeof capsAttemptRefs>
 
 const terminalTurnStatus = new Map<TurnEndReason['kind'], ObservationStatus>([
   ['aborted', 'CANCELLED'], ['error', 'FAILED'], ['blocked', 'FAILED'], ['max-tokens', 'FAILED'],
@@ -80,8 +90,28 @@ const terminalCapsStatus: Partial<Record<CapsRecord['status'], ObservationStatus
 }
 
 function attemptStatus(reason: TurnEndReason, hasCapsCall: boolean, caps?: CapsRecord): ObservationStatus {
+  if (reason.kind === 'aborted' && caps?.status === 'unknown') return 'UNKNOWN'
   if (reason.kind !== 'completed') return terminalTurnStatus.get(reason.kind) ?? 'UNKNOWN'
   return hasCapsCall ? terminalCapsStatus[caps?.status ?? 'unknown'] ?? 'UNKNOWN' : 'SUCCEEDED'
+}
+
+function readCapsDispatch(events: readonly SessionEvent[], call: ToolCall, refs: CapsRefs) {
+  const records = events.map(pluginRecordOf).filter(record => record !== undefined)
+  for (const dispatch of records) {
+    if (dispatch.type !== 'plugin:mydot/caps-dispatch' || dispatch.seq <= call.seq) continue
+    const parsed = capsDispatch.safeParse(dispatch.data)
+    if (!parsed.success || parsed.data.callSequence !== call.seq || !matchesAttempt(parsed.data, refs)) continue
+    const { callSequence: _callSequence, ...binding } = parsed.data
+    const pending: CapsRecord = { ...binding, status: 'unknown', handoff: 'not_applicable' }
+    for (const result of records) {
+      if (result.type !== 'plugin:mydot/caps-settlement' || result.seq <= dispatch.seq) continue
+      const parsed = capsSettlement.safeParse(result.data)
+      if (!parsed.success || parsed.data.dispatchSequence !== dispatch.seq || !matchesAttempt(parsed.data.observation, refs)) continue
+      return { sequence: result.seq, observation: { ...parsed.data.observation, ...binding }, pending: false }
+    }
+    return { sequence: dispatch.seq, observation: pending, pending: true }
+  }
+  return undefined
 }
 
 const usageKeys = ['inputTokens', 'outputTokens', 'totalTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens'] as const
@@ -180,10 +210,16 @@ export async function projectFoundryObservation(
     && event.data.message.toolCallId === capsCall.data.callId && event.sourceEventSeqs?.length === 1
     && event.sourceEventSeqs[0] === capsCall.seq)
   const parsed = capsRecord.safeParse(settled?.data.meta)
-  const caps = parsed.success && matchesAttempt(parsed.data, refs)
+  const native = parsed.success && matchesAttempt(parsed.data, refs)
     && (parsed.data.status !== 'succeeded' || (!settled?.data.message.isError && parsed.data.executionFingerprint !== undefined
       && parsed.data.invocationId !== undefined))
     ? parsed.data : undefined
+  const dispatch = capsCall === undefined ? undefined : readCapsDispatch(events, capsCall, refs)
+  // Prefer logged execution facts. Normal ToolRegistry metadata proves which verified files were published.
+  const caps = dispatch === undefined ? native : {
+    ...dispatch.observation, ...native?.artifacts === undefined ? {} : { artifacts: native.artifacts },
+  }
+  const evidenceSequence = dispatch?.pending ? dispatch.sequence : settled?.seq ?? dispatch?.sequence
   const status = attemptStatus(last.data.reason, capsCall !== undefined, caps)
   const artifacts = await readArtifacts(approvals, handle.header.cwd, events, turn, capsCall, caps, maxArtifactBytes, signal)
   const projected: ObservationEvent[] = []
@@ -195,12 +231,13 @@ export async function projectFoundryObservation(
     if (event === capsCall) {
       projected.push({ sequence, type: 'TOOL_CALL_START', payload: { toolName: capsToolName } })
     }
-    if (event === settled) {
+    if (sequence === evidenceSequence) {
       const payload = caps === undefined ? { status: 'unverified' } : Object.fromEntries(
         Object.entries(caps).filter((item): item is [string, string | boolean] =>
           typeof item[1] === 'string' || typeof item[1] === 'boolean'),
       )
-      projected.push({ sequence, type: settled.data.message.isError ? 'TOOL_ERROR' : 'TOOL_CALL_END', payload })
+      const type = dispatch?.pending ? 'CAPTURE_DEGRADED' : settled?.data.message.isError ? 'TOOL_ERROR' : 'TOOL_CALL_END'
+      projected.push({ sequence, type, payload })
     }
   }
   signal.throwIfAborted()
@@ -214,7 +251,7 @@ export async function projectFoundryObservation(
   }
 }
 
-function matchesAttempt(record: CapsRecord, refs: ReturnType<typeof capsAttemptRefs>): boolean {
+function matchesAttempt(record: CapsRefs, refs: CapsRefs): boolean {
   return record.requestId === refs.requestId && record.sessionRef === refs.sessionRef
     && record.taskRef === refs.taskRef && record.executionRef === refs.executionRef
 }

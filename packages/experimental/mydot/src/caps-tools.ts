@@ -3,7 +3,7 @@ import { lstat, realpath } from 'node:fs/promises'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import { appendPluginRecord, type SessionId, type SessionSeq } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-session-projection'
@@ -11,13 +11,25 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
 import { defineTool, type ToolExecution } from '@deepseek-ai/dsh-tools'
 import type { Space } from './types.ts'
-import { capsDigest, compileCapsBundle, type CapsOutcome, type CapsScope } from './caps-mcp.ts'
+import { capsDigest, compileCapsBundle, type CapsInvocationBinding, type CapsScope } from './caps-mcp.ts'
 import { capsHandoffDirectory, verifyCapsBundle } from './caps-artifacts.ts'
 
 /** The registered native tool name recorded in Session call events. */
 export const capsToolName = 'caps_compile_document_bundle'
 const modelKeys = new Set(['name', 'title', 'documents', 'toc', 'checkLinks'])
 const controlDirectories = new Set(['.git', 'node_modules', '.hcap', capsHandoffDirectory])
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface PluginRecordMap {
+    /** Exact matched preflight and native call retained before sending a Caps invocation. */
+    'plugin:mydot/caps-dispatch': Omit<CapsScope, 'workspace' | 'spaceId'> & CapsInvocationBinding & {
+      callSequence: SessionSeq
+      runtimeVersion: string
+    }
+    /** Caps outcome linked to one durable dispatch intent independently of the tool response. */
+    'plugin:mydot/caps-settlement': { dispatchSequence: SessionSeq; observation: Record<string, string | boolean> }
+  }
+}
 
 /** Operator-selected launcher and local workspace scope for the optional Caps tool. */
 export interface CapsConfig {
@@ -78,7 +90,7 @@ export function mountCapsTool(
     throw new Error('MyDot Caps requires an absolute external launcher, approved absolute workspaces and a valid timeout')
   }
   const closing = new AbortController()
-  const running = new Set<Promise<CapsOutcome>>()
+  const running = new Set<Promise<unknown>>()
   const pending = new WeakMap<ToolExecution, { turn: number; paths: string[] }>()
   ctx.effect(() => async () => { closing.abort(); await Promise.allSettled(running) })
   ctx.tools.register(defineTool({
@@ -141,27 +153,42 @@ export function mountCapsTool(
       signal.throwIfAborted()
       const { getDshRuntimeVersion } = await import('@deepseek-ai/dsh-app-boot')
       const runtimeVersion = getDshRuntimeVersion()
-      const work = compileCapsBundle(config.launcher, scope, args, runtimeVersion, config.timeoutMs, signal)
+      const callSequence = calls[0].seq
+      const work = (async () => {
+        let dispatchSequence: SessionSeq | undefined
+        const outcome = await compileCapsBundle(config.launcher, scope, args, runtimeVersion, config.timeoutMs, signal, async (binding) => {
+          dispatchSequence = appendPluginRecord(session, 'plugin:mydot/caps-dispatch', { callSequence, runtimeVersion, ...refs, ...binding })
+          if (!await ctx.sessions.flush(session)) throw new Error('Caps requires a durable dispatch record')
+        })
+        const artifacts = await verifyCapsBundle(scope, args, outcome, textLimit, signal)
+        const observation = {
+          ...refs, runtimeVersion, status: outcome.status,
+          handoff: outcome.status !== 'succeeded' ? 'not_applicable' : artifacts === undefined ? 'unavailable' : 'verified',
+          ...outcome.invocationId === undefined ? {} : { invocationId: outcome.invocationId },
+          ...outcome.executionFingerprint === undefined ? {} : { executionFingerprint: outcome.executionFingerprint },
+          ...outcome.installedVersion === undefined ? {} : { installedVersion: outcome.installedVersion },
+          ...outcome.resultDigest === undefined ? {} : { resultDigest: outcome.resultDigest },
+          ...outcome.duplicate === undefined ? {} : { duplicate: outcome.duplicate },
+          ...outcome.recordingStatus === undefined ? {} : { recordingStatus: outcome.recordingStatus },
+          ...outcome.receipt === undefined ? {} : { receiptVerification: outcome.receipt.verification.status },
+          ...outcome.observation?.eventId == null ? {} : { usageEventId: outcome.observation.eventId },
+          usageRecording: outcome.observation?.status ?? 'unknown',
+        }
+        if (dispatchSequence !== undefined) {
+          appendPluginRecord(session, 'plugin:mydot/caps-settlement', { dispatchSequence, observation })
+          // This evidence survives even when ToolRegistry replaces the returned result with ABORTED.
+          await ctx.sessions.flush(session)
+        }
+        if (artifacts !== undefined && !signal.aborted) {
+          pending.set(exec, { turn: boundary.lastTurn, paths: artifacts.map(file => file.path) })
+        }
+        return {
+          ...observation, ...outcome.reason === undefined ? {} : { reason: outcome.reason },
+          ...artifacts === undefined ? {} : { artifacts },
+        }
+      })()
       running.add(work)
-      const outcome = await work.finally(() => { running.delete(work) })
-      const artifacts = await verifyCapsBundle(scope, args, outcome, textLimit, signal)
-      if (artifacts !== undefined && !signal.aborted) {
-        pending.set(exec, { turn: boundary.lastTurn, paths: artifacts.map(file => file.path) })
-      }
-      return {
-        ...refs, runtimeVersion, status: outcome.status, handoff: outcome.status !== 'succeeded' ? 'not_applicable' : artifacts === undefined ? 'unavailable' : 'verified',
-        ...outcome.reason === undefined ? {} : { reason: outcome.reason },
-        ...outcome.invocationId === undefined ? {} : { invocationId: outcome.invocationId },
-        ...outcome.executionFingerprint === undefined ? {} : { executionFingerprint: outcome.executionFingerprint },
-        ...outcome.installedVersion === undefined ? {} : { installedVersion: outcome.installedVersion },
-        ...outcome.resultDigest === undefined ? {} : { resultDigest: outcome.resultDigest },
-        ...outcome.duplicate === undefined ? {} : { duplicate: outcome.duplicate },
-        ...outcome.recordingStatus === undefined ? {} : { recordingStatus: outcome.recordingStatus },
-        ...outcome.receipt === undefined ? {} : { receiptVerification: outcome.receipt.verification.status },
-        ...outcome.observation?.eventId == null ? {} : { usageEventId: outcome.observation.eventId },
-        usageRecording: outcome.observation?.status ?? 'unknown',
-        ...artifacts === undefined ? {} : { artifacts },
-      }
+      return await work.finally(() => { running.delete(work) })
     },
   }))
   ctx.on('tools/result', (exec, result) => {

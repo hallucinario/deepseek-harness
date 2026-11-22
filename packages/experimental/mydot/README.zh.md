@@ -47,7 +47,7 @@ kind: "package-reference"
 
 启动程序从 Host 接收 `--dsh-version`、`--workspace`、`--space-id`、`--session-ref`、`--task-ref`、`--execution-ref` 和 `--request-id`，通过标准输入输出提供仅供这一任务的 Caps MCP。它取得匹配的任务授权，并将运行时、配置、凭据和持久请求状态置于运维控制之下。预检与调用共用同一连接和执行指纹。启动程序必须在返回调用结果前，将 `bundle/manifest.json` 与编译生成的 Markdown 文件放在 `<workspace>/.dsh-caps/<request-id>/` 下。MyDot 先按回执验证清单再读取，然后将各文档与清单及对应回执条目核对。全部匹配后才发布完整文档包供读取当前内容。部署方需确保模型无法访问启动程序、授权发放和主机控制状态，并验证该隔离。
 
-每个原生 turn 只接纳该 turn 已记录的第一条 Caps 调用。持久化结果保留请求、任务、执行引用和已观察到的能力安装版本、用量事件状态、验证状态与文件摘要。调用发出后连接丢失会保留结果未知，可能需要通过 Host 查询。模型和配置档均不自动重试。省略 `caps` 会移除此工具并关闭活动连接。
+每个原生 turn 只接纳该 turn 已记录的第一条 Caps 调用。Host 在发送调用之前将带执行指纹的发送意图写入 Session，并将观察到的 Caps 结果与工具响应分别记录。取消本地 turn 后，Caps 结果仍可能未知。Foundry 保留确切绑定供后续查询。模型和配置档均不自动重试。省略 `caps` 会移除此工具并关闭活动连接。
 
 受信任的进程内 Host 代码可调用 `ctx.mydot.projectFoundryObservation(selection, signal)`，读取一个已结束的根 Session turn 供 Foundry 接收。选择参数指定已授权的项目、已关联的 Space、Session、包含首尾的事件范围以及原始请求的记录序号。范围遵循 Session 查询读取窗口限制。投影保留原始请求 ID、稳定的尝试 ID、源事件序号以及已记录的模型路由和 Token 计数。匹配的 Caps 结果还提供已记录的 DSH 版本、任务和调用引用、回执状态及用量事件引用。只要获准的文件字节仍可读取，重启后相同的选择仍返回相同投影。
 
